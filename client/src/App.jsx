@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { supabase } from './supabase'
 import AuthPage from './components/Auth'
+import Onboarding from './pages/Onboarding'
 
 function App() {
   const [session, setSession] = useState(null)
@@ -19,13 +20,7 @@ function App() {
     return <AuthPage />
   }
 
-  return (
-    <div>
-      <h1>Welcome to Slate</h1>
-      <p>You are logged in.</p>
-      <button onClick={() => supabase.auth.signOut()}>Sign Out</button>
-    </div>
-  )
+  return <Onboarding />
 }
 
 export default App
