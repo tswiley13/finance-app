@@ -38,6 +38,8 @@ function Onboarding() {
   const [billOwner, setBillOwner] = useState("joint");
   const [billAccountId, setBillAccountId] = useState("");
   const [isVariable, setIsVariable] = useState(false);
+  const [payPeriodList, setPayPeriodList] = useState([]);
+  const [depositAccountId, setDepositAccountId] = useState("");
   // console.log("current step:", step);
 
   async function createHousehold() {
@@ -105,6 +107,7 @@ function Onboarding() {
       name: incomeName,
       owner: incomeOwner,
       type: incomeType,
+      deposit_account_id: depositAccountId || null,
       frequency: incomeFrequency,
       fixed_amount: incomeType !== "hourly" ? parseFloat(fixedAmount) : null,
       hourly_rate: incomeType === "hourly" ? parseFloat(hourlyRate) : null,
@@ -131,6 +134,7 @@ function Onboarding() {
     setOvertimeRate("");
     setTaxRate("");
     setNextPayDate("");
+    setDepositAccountId("");
   }
 
   async function addAccount() {
@@ -274,6 +278,85 @@ function Onboarding() {
     setIsVariable(false);
   }
 
+  function formatDate(dateString) {
+    const date = new Date(dateString);
+    return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+  }
+
+  function calculatePayPeriods() {
+    const paychecks = incomeList.filter((i) => i.frequency !== "monthly");
+
+    // Generate 8 occurrences of each biweekly paycheck (covers ~4 months)
+    const allDates = [];
+    paychecks.forEach((income) => {
+      const baseDate = new Date(income.next_pay_date);
+      for (let i = 0; i < 8; i++) {
+        const date = new Date(baseDate);
+        date.setDate(baseDate.getDate() + i * 14);
+        allDates.push(date);
+      }
+    });
+
+    // Sort all dates chronologically
+    allDates.sort((a, b) => a - b);
+
+    // Remove duplicates (same day)
+    const uniqueDates = allDates.filter(
+      (date, index, self) =>
+        index === 0 || date.toDateString() !== self[index - 1].toDateString(),
+    );
+
+    // Create pay periods between each date
+    const periods = [];
+    for (let i = 0; i < uniqueDates.length; i++) {
+      const startDate = new Date(uniqueDates[i]);
+
+      let endDate;
+      if (i < uniqueDates.length - 1) {
+        endDate = new Date(uniqueDates[i + 1]);
+        endDate.setDate(endDate.getDate() - 1);
+      } else {
+        endDate = new Date(startDate);
+        endDate.setDate(startDate.getDate() + 13);
+      }
+
+      periods.push({
+        name: `Pay Period ${i + 1}`,
+        start_day: startDate.getDate(),
+        end_day: endDate.getDate(),
+        start_date: startDate.toISOString().split("T")[0],
+        end_date: endDate.toISOString().split("T")[0],
+      });
+    }
+
+    setPayPeriodList(periods);
+  }
+
+  async function savePayPeriods() {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    const { data: household } = await supabase
+      .from("households")
+      .select("id")
+      .eq("created_by", user.id)
+      .single();
+
+    for (const period of payPeriodList) {
+      await supabase.from("pay_periods").insert({
+        household_id: household.id,
+        name: period.name,
+        start_day: period.start_day,
+        end_day: period.end_day,
+        start_date: period.start_date,
+        end_date: period.end_date,
+      });
+    }
+
+    alert("Setup complete! Welcome to Slate.");
+  }
+
   if (step === 1) {
     return (
       <div>
@@ -318,6 +401,116 @@ function Onboarding() {
   }
 
   if (step === 3) {
+    return (
+      <div>
+        <h1>Set up your accounts</h1>
+
+        <div>
+          <input
+            type="text"
+            placeholder="Account name (e.g. Mortgage Account)"
+            value={accountName}
+            onChange={(e) => setAccountName(e.target.value)}
+          />
+          <input
+            type="text"
+            placeholder="Bank name (e.g. USAA)"
+            value={bankName}
+            onChange={(e) => setBankName(e.target.value)}
+          />
+          <input
+            type="text"
+            placeholder="Last 4 digits"
+            value={lastFour}
+            onChange={(e) => setLastFour(e.target.value)}
+          />
+          <select
+            value={accountType}
+            onChange={(e) => setAccountType(e.target.value)}
+          >
+            <option value="checking">Checking</option>
+            <option value="savings">Savings</option>
+          </select>
+          <input
+            type="number"
+            placeholder="Current balance"
+            value={currentBalance}
+            onChange={(e) => setCurrentBalance(e.target.value)}
+          />
+          <label>
+            <input
+              type="checkbox"
+              checked={isPrimary}
+              onChange={(e) => setIsPrimary(e.target.checked)}
+            />
+            This is my primary account
+          </label>
+          <label>
+            <input
+              type="checkbox"
+              checked={isAccumulating}
+              onChange={(e) => setIsAccumulating(e.target.checked)}
+            />
+            This account accumulates toward a recurring payment
+          </label>
+
+          {isAccumulating && (
+            <>
+              <input
+                type="number"
+                placeholder="Target amount (e.g. 4291.60 for mortgage)"
+                value={accumulationTarget}
+                onChange={(e) => setAccumulationTarget(e.target.value)}
+              />
+              <select
+                value={resetType}
+                onChange={(e) => setResetType(e.target.value)}
+              >
+                <option value="manual">Manual reset</option>
+                <option value="auto">Auto reset</option>
+              </select>
+              {resetType === "auto" && (
+                <input
+                  type="number"
+                  placeholder="Reset on day of month (e.g. 1)"
+                  value={resetDay}
+                  onChange={(e) => setResetDay(e.target.value)}
+                />
+              )}
+            </>
+          )}
+        </div>
+
+        <button onClick={addAccount}>Add Account</button>
+
+        <div>
+          {accountList.map((account, index) => (
+            <div key={index}>
+              <p>
+                {account.name} — {account.account_type}
+                {account.is_primary ? " — Primary" : ""}
+                {account.is_accumulating ? " — Accumulating" : ""}
+              </p>
+            </div>
+          ))}
+        </div>
+
+        <button
+          onClick={async () => {
+            if (accountName && bankName && lastFour) {
+              await addAccount();
+            }
+            setStep(4);
+          }}
+        >
+          Continue
+        </button>
+        <button onClick={() => setStep(2)}>Back</button>
+      </div>
+    );
+  }
+
+  if (step === 4) {
     return (
       <div>
         <h1>Add your income sources</h1>
@@ -463,6 +656,18 @@ function Onboarding() {
             />
           )}
 
+          <select
+            value={depositAccountId}
+            onChange={(e) => setDepositAccountId(e.target.value)}
+          >
+            <option value="">Which account does this deposit into?</option>
+            {accountList.map((account, index) => (
+              <option key={index} value={account.id}>
+                {account.name}
+              </option>
+            ))}
+          </select>
+
           <input
             type="date"
             value={nextPayDate}
@@ -487,116 +692,6 @@ function Onboarding() {
           onClick={async () => {
             if (incomeName && fixedAmount) {
               await addIncome();
-            }
-            setStep(4);
-          }}
-        >
-          Continue
-        </button>
-        <button onClick={() => setStep(2)}>Back</button>
-      </div>
-    );
-  }
-
-  if (step === 4) {
-    return (
-      <div>
-        <h1>Set up your accounts</h1>
-
-        <div>
-          <input
-            type="text"
-            placeholder="Account name (e.g. Mortgage Account)"
-            value={accountName}
-            onChange={(e) => setAccountName(e.target.value)}
-          />
-          <input
-            type="text"
-            placeholder="Bank name (e.g. USAA)"
-            value={bankName}
-            onChange={(e) => setBankName(e.target.value)}
-          />
-          <input
-            type="text"
-            placeholder="Last 4 digits"
-            value={lastFour}
-            onChange={(e) => setLastFour(e.target.value)}
-          />
-          <select
-            value={accountType}
-            onChange={(e) => setAccountType(e.target.value)}
-          >
-            <option value="checking">Checking</option>
-            <option value="savings">Savings</option>
-          </select>
-          <input
-            type="number"
-            placeholder="Current balance"
-            value={currentBalance}
-            onChange={(e) => setCurrentBalance(e.target.value)}
-          />
-          <label>
-            <input
-              type="checkbox"
-              checked={isPrimary}
-              onChange={(e) => setIsPrimary(e.target.checked)}
-            />
-            This is my primary account
-          </label>
-          <label>
-            <input
-              type="checkbox"
-              checked={isAccumulating}
-              onChange={(e) => setIsAccumulating(e.target.checked)}
-            />
-            This account accumulates toward a recurring payment
-          </label>
-
-          {isAccumulating && (
-            <>
-              <input
-                type="number"
-                placeholder="Target amount (e.g. 4291.60 for mortgage)"
-                value={accumulationTarget}
-                onChange={(e) => setAccumulationTarget(e.target.value)}
-              />
-              <select
-                value={resetType}
-                onChange={(e) => setResetType(e.target.value)}
-              >
-                <option value="manual">Manual reset</option>
-                <option value="auto">Auto reset</option>
-              </select>
-              {resetType === "auto" && (
-                <input
-                  type="number"
-                  placeholder="Reset on day of month (e.g. 1)"
-                  value={resetDay}
-                  onChange={(e) => setResetDay(e.target.value)}
-                />
-              )}
-            </>
-          )}
-        </div>
-
-        <button onClick={addAccount}>Add Account</button>
-
-        <div>
-          {accountList.map((account, index) => (
-            <div key={index}>
-              <p>
-                {account.name} — {account.account_type}
-                {account.is_primary ? " — Primary" : ""}
-                {account.is_accumulating ? " — Accumulating" : ""}
-              </p>
-            </div>
-          ))}
-        </div>
-
-        <button
-          onClick={async () => {
-            if (accountName && bankName && lastFour) {
-              await addAccount();
             }
             setStep(5);
           }}
@@ -713,6 +808,34 @@ function Onboarding() {
           Continue
         </button>
         <button onClick={() => setStep(4)}>Back</button>
+      </div>
+    );
+  }
+
+  if (step === 6) {
+    return (
+      <div>
+        <h1>Review your pay periods</h1>
+        <p>
+          Based on your income sources, here are your calculated pay periods.
+          You can adjust the names if needed.
+        </p>
+
+        <button onClick={calculatePayPeriods}>Calculate Pay Periods</button>
+
+        <div>
+          {payPeriodList.map((period, index) => (
+            <div key={index}>
+              <p>
+                {period.name} — {formatDate(period.start_date)} to{" "}
+                {formatDate(period.end_date)}
+              </p>
+            </div>
+          ))}
+        </div>
+
+        <button onClick={savePayPeriods}>Confirm & Go to Dashboard</button>
+        <button onClick={() => setStep(5)}>Back</button>
       </div>
     );
   }
