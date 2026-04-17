@@ -18,6 +18,18 @@ function Onboarding() {
   const [overtimeRate, setOvertimeRate] = useState("");
   const [taxRate, setTaxRate] = useState("");
   const [nextPayDate, setNextPayDate] = useState("");
+  const [accountList, setAccountList] = useState([]);
+  const [accountName, setAccountName] = useState("");
+  const [bankName, setBankName] = useState("");
+  const [lastFour, setLastFour] = useState("");
+  const [accountType, setAccountType] = useState("checking");
+  const [currentBalance, setCurrentBalance] = useState("");
+  const [isPrimary, setIsPrimary] = useState(false);
+  const [isAccumulating, setIsAccumulating] = useState(false);
+  const [accumulationTarget, setAccumulationTarget] = useState("");
+  const [resetType, setResetType] = useState("manual");
+  const [resetDay, setResetDay] = useState("");
+  // console.log("current step:", step);
 
   async function createHousehold() {
     const {
@@ -112,6 +124,83 @@ function Onboarding() {
     setNextPayDate("");
   }
 
+  async function addAccount() {
+    if (!accountName) {
+      alert("Please enter an account name.");
+      return;
+    }
+
+    if (lastFour && lastFour.length !== 4) {
+      alert("Last 4 digits must be exactly 4 numbers.");
+      return;
+    }
+
+    if (lastFour && !/^\d{4}$/.test(lastFour)) {
+      alert("Last 4 digits must be numbers only.");
+      return;
+    }
+
+    if (!bankName) {
+      alert("Please enter your bank name.");
+      return;
+    }
+
+    if (!lastFour) {
+      alert("Please enter the last 4 digits of your account.");
+      return;
+    }
+
+    if (lastFour.length !== 4 || !/^\d{4}$/.test(lastFour)) {
+      alert("Last 4 digits must be exactly 4 numbers.");
+      return;
+    }
+
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    const { data: household } = await supabase
+      .from("households")
+      .select("id")
+      .eq("created_by", user.id)
+      .single();
+
+    const newAccount = {
+      household_id: household.id,
+      name: accountName,
+      bank_name: bankName,
+      last_four: lastFour,
+      account_type: accountType,
+      current_balance: currentBalance ? parseFloat(currentBalance) : 0,
+      is_primary: isPrimary,
+      is_accumulating: isAccumulating,
+      accumulation_target: accumulationTarget
+        ? parseFloat(accumulationTarget)
+        : null,
+      reset_type: resetType,
+      reset_day: resetDay ? parseInt(resetDay) : null,
+    };
+
+    const { error } = await supabase.from("accounts").insert(newAccount);
+
+    if (error) {
+      console.log("Error:", error.message);
+      return;
+    }
+
+    setAccountList([...accountList, newAccount]);
+    setAccountName("");
+    setBankName("");
+    setLastFour("");
+    setAccountType("checking");
+    setCurrentBalance("");
+    setIsPrimary(false);
+    setIsAccumulating(false);
+    setAccumulationTarget("");
+    setResetType("manual");
+    setResetDay("");
+  }
+
   if (step === 1) {
     return (
       <div>
@@ -150,6 +239,7 @@ function Onboarding() {
           ))}
         </div>
         <button onClick={() => setStep(3)}>Continue</button>
+        <button onClick={() => setStep(1)}>Back</button>
       </div>
     );
   }
@@ -197,70 +287,75 @@ function Onboarding() {
             <option value="weekly">Weekly</option>
           </select>
 
-          <p>How would you like to enter your income?</p>
-
-          {incomeEntryMode === "" && (
+          {incomeType !== "variable" && (
             <>
-              <label>
+              <p>How would you like to enter your income?</p>
+
+              {incomeEntryMode === "" && (
+                <>
+                  <label>
+                    <input
+                      type="radio"
+                      name="incomeMode"
+                      value="net"
+                      checked={incomeEntryMode === "net"}
+                      onChange={() => setIncomeEntryMode("net")}
+                    />
+                    After-tax — enter what hits my bank
+                  </label>
+                  <label>
+                    <input
+                      type="radio"
+                      name="incomeMode"
+                      value="gross"
+                      checked={incomeEntryMode === "gross"}
+                      onChange={() => setIncomeEntryMode("gross")}
+                    />
+                    Gross pay — app will calculate take-home
+                  </label>
+                </>
+              )}
+
+              {incomeEntryMode === "net" && (
+                <p>
+                  After-tax — Enter what hits my bank{" "}
+                  <button onClick={() => setIncomeEntryMode("")}>Change</button>
+                </p>
+              )}
+
+              {incomeEntryMode === "gross" && (
+                <p>
+                  Gross pay — app will calculate take-home{" "}
+                  <button onClick={() => setIncomeEntryMode("")}>Change</button>
+                </p>
+              )}
+
+              {incomeEntryMode === "net" && (
                 <input
-                  type="radio"
-                  name="incomeMode"
-                  value="net"
-                  checked={incomeEntryMode === "net"}
-                  onChange={() => setIncomeEntryMode("net")}
+                  type="number"
+                  placeholder="Amount deposited"
+                  value={fixedAmount}
+                  onChange={(e) => setFixedAmount(e.target.value)}
                 />
-                After-tax — enter what hits my bank
-              </label>
-              <label>
-                <input
-                  type="radio"
-                  name="incomeMode"
-                  value="gross"
-                  checked={incomeEntryMode === "gross"}
-                  onChange={() => setIncomeEntryMode("gross")}
-                />
-                Gross pay — app will calculate take-home
-              </label>
-            </>
-          )}
+              )}
 
-          {incomeEntryMode === "net" && (
-            <p>
-              After-tax — Enter what hits my bank{" "}
-              <button onClick={() => setIncomeEntryMode("")}>Change</button>
-            </p>
-          )}
-
-          {incomeEntryMode === "gross" && (
-            <p>
-              Gross pay — app will calculate take-home{" "}
-              <button onClick={() => setIncomeEntryMode("")}>Change</button>
-            </p>
-          )}
-
-          {incomeEntryMode === "net" && (
-            <input
-              type="number"
-              placeholder="Amount deposited"
-              value={fixedAmount}
-              onChange={(e) => setFixedAmount(e.target.value)}
-            />
-          )}
-
-          {incomeEntryMode === "gross" && (
-            <>
-              <input
-                type="number"
-                placeholder="Gross amount"
-                value={fixedAmount}
-                onChange={(e) => setFixedAmount(e.target.value)}
-              />
-              <input
-                type="number"
-                placeholder="Tax rate (e.g. 20 for 20%)"
-                value={taxRate}
-                onChange={(e) => setTaxRate(e.target.value)}
-              />
+              {incomeEntryMode === "gross" && (
+                <>
+                  <input
+                    type="number"
+                    placeholder="Gross amount"
+                    value={fixedAmount}
+                    onChange={(e) => setFixedAmount(e.target.value)}
+                  />
+                  <input
+                    type="number"
+                    placeholder="Tax rate (e.g. 20 for 20%)"
+                    value={taxRate}
+                    onChange={(e) => setTaxRate(e.target.value)}
+                  />
+                </>
+              )}
+              <button onClick={() => setStep(2)}>Back</button>
             </>
           )}
 
@@ -290,7 +385,7 @@ function Onboarding() {
           {incomeType === "variable" && (
             <input
               type="number"
-              placeholder="Estimated amount per period"
+              placeholder="Estimated amount"
               value={fixedAmount}
               onChange={(e) => setFixedAmount(e.target.value)}
             />
@@ -317,6 +412,108 @@ function Onboarding() {
         </div>
 
         <button onClick={() => setStep(4)}>Continue</button>
+        <button onClick={() => setStep(2)}>Back</button>
+      </div>
+    );
+  }
+
+  if (step === 4) {
+    return (
+      <div>
+        <h1>Set up your accounts</h1>
+
+        <div>
+          <input
+            type="text"
+            placeholder="Account name (e.g. Mortgage Account)"
+            value={accountName}
+            onChange={(e) => setAccountName(e.target.value)}
+          />
+          <input
+            type="text"
+            placeholder="Bank name (e.g. USAA)"
+            value={bankName}
+            onChange={(e) => setBankName(e.target.value)}
+          />
+          <input
+            type="text"
+            placeholder="Last 4 digits"
+            value={lastFour}
+            onChange={(e) => setLastFour(e.target.value)}
+          />
+          <select
+            value={accountType}
+            onChange={(e) => setAccountType(e.target.value)}
+          >
+            <option value="checking">Checking</option>
+            <option value="savings">Savings</option>
+          </select>
+          <input
+            type="number"
+            placeholder="Current balance"
+            value={currentBalance}
+            onChange={(e) => setCurrentBalance(e.target.value)}
+          />
+          <label>
+            <input
+              type="checkbox"
+              checked={isPrimary}
+              onChange={(e) => setIsPrimary(e.target.checked)}
+            />
+            This is my primary account
+          </label>
+          <label>
+            <input
+              type="checkbox"
+              checked={isAccumulating}
+              onChange={(e) => setIsAccumulating(e.target.checked)}
+            />
+            This account accumulates toward a recurring payment
+          </label>
+
+          {isAccumulating && (
+            <>
+              <input
+                type="number"
+                placeholder="Target amount (e.g. 4291.60 for mortgage)"
+                value={accumulationTarget}
+                onChange={(e) => setAccumulationTarget(e.target.value)}
+              />
+              <select
+                value={resetType}
+                onChange={(e) => setResetType(e.target.value)}
+              >
+                <option value="manual">Manual reset</option>
+                <option value="auto">Auto reset</option>
+              </select>
+              {resetType === "auto" && (
+                <input
+                  type="number"
+                  placeholder="Reset on day of month (e.g. 1)"
+                  value={resetDay}
+                  onChange={(e) => setResetDay(e.target.value)}
+                />
+              )}
+            </>
+          )}
+        </div>
+
+        <button onClick={addAccount}>Add Account</button>
+
+        <div>
+          {accountList.map((account, index) => (
+            <div key={index}>
+              <p>
+                {account.name} — {account.account_type}
+                {account.is_primary ? " — Primary" : ""}
+                {account.is_accumulating ? " — Accumulating" : ""}
+              </p>
+            </div>
+          ))}
+        </div>
+
+        <button onClick={() => setStep(5)}>Continue</button>
+        <button onClick={() => setStep(3)}>Back</button>
       </div>
     );
   }
