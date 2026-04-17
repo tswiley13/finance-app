@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { supabase } from "../supabase";
 
-function Onboarding() {
+function Onboarding({ onComplete }) {
   const [step, setStep] = useState(1);
   const [householdName, setHouseholdName] = useState("");
   const [memberList, setMemberList] = useState([]);
@@ -236,6 +236,11 @@ function Onboarding() {
       return;
     }
 
+    if (!billAccountId) {
+      alert("Please select which account this bill comes from.");
+      return;
+    }
+
     const {
       data: { user },
     } = await supabase.auth.getUser();
@@ -330,9 +335,10 @@ function Onboarding() {
     }
 
     setPayPeriodList(periods);
+    return periods;
   }
 
-  async function savePayPeriods() {
+  async function savePayPeriods(periods) {
     const {
       data: { user },
     } = await supabase.auth.getUser();
@@ -343,7 +349,7 @@ function Onboarding() {
       .eq("created_by", user.id)
       .single();
 
-    for (const period of payPeriodList) {
+    for (const period of periods) {
       await supabase.from("pay_periods").insert({
         household_id: household.id,
         name: period.name,
@@ -353,8 +359,40 @@ function Onboarding() {
         end_date: period.end_date,
       });
     }
+  }
 
-    alert("Setup complete! Welcome to Slate.");
+  function calculateTransfers() {
+    const transfers = [];
+
+    payPeriodList.forEach((period) => {
+      const periodStart = new Date(period.start_date);
+      const periodEnd = new Date(period.end_date);
+
+      // Find bills due during this pay period
+      const periodBills = billList.filter((bill) => {
+        const dueDate = new Date(periodStart);
+        dueDate.setDate(bill.due_day);
+        return dueDate >= periodStart && dueDate <= periodEnd;
+      });
+
+      // Group bills by account
+      const accountTotals = {};
+      periodBills.forEach((bill) => {
+        if (bill.account_id) {
+          if (!accountTotals[bill.account_id]) {
+            accountTotals[bill.account_id] = 0;
+          }
+          accountTotals[bill.account_id] += bill.amount;
+        }
+      });
+
+      transfers.push({
+        period,
+        accountTotals,
+      });
+    });
+
+    return transfers;
   }
 
   if (step === 1) {
@@ -668,6 +706,7 @@ function Onboarding() {
             ))}
           </select>
 
+          <label>Next Deposit Date</label>
           <input
             type="date"
             value={nextPayDate}
@@ -767,7 +806,7 @@ function Onboarding() {
             value={billAccountId}
             onChange={(e) => setBillAccountId(e.target.value)}
           >
-            <option value="">Select account (optional)</option>
+            <option value="">Which account pays this bill?</option>
             {accountList.map((account, index) => (
               <option key={index} value={account.id}>
                 {account.name}
@@ -790,8 +829,15 @@ function Onboarding() {
           {billList.map((bill, index) => (
             <div key={index}>
               <p>
-                {bill.name} — ${bill.amount} — Due day {bill.due_day} —{" "}
-                {bill.category}
+                {bill.name} — ${bill.amount} — Due the {bill.due_day}
+                {bill.due_day === 1
+                  ? "st"
+                  : bill.due_day === 2
+                    ? "nd"
+                    : bill.due_day === 3
+                      ? "rd"
+                      : "th"}{" "}
+                — {bill.category}
               </p>
             </div>
           ))}
@@ -802,40 +848,14 @@ function Onboarding() {
             if (billName && billAmount && dueDay) {
               await addBill();
             }
-            setStep(6);
+            const periods = calculatePayPeriods();
+            await savePayPeriods(periods);
+            onComplete();
           }}
         >
-          Continue
+          Finish Setup
         </button>
         <button onClick={() => setStep(4)}>Back</button>
-      </div>
-    );
-  }
-
-  if (step === 6) {
-    return (
-      <div>
-        <h1>Review your pay periods</h1>
-        <p>
-          Based on your income sources, here are your calculated pay periods.
-          You can adjust the names if needed.
-        </p>
-
-        <button onClick={calculatePayPeriods}>Calculate Pay Periods</button>
-
-        <div>
-          {payPeriodList.map((period, index) => (
-            <div key={index}>
-              <p>
-                {period.name} — {formatDate(period.start_date)} to{" "}
-                {formatDate(period.end_date)}
-              </p>
-            </div>
-          ))}
-        </div>
-
-        <button onClick={savePayPeriods}>Confirm & Go to Dashboard</button>
-        <button onClick={() => setStep(5)}>Back</button>
       </div>
     );
   }
