@@ -483,7 +483,16 @@ function Onboarding() {
           ))}
         </div>
 
-        <button onClick={() => setStep(4)}>Continue</button>
+        <button
+          onClick={async () => {
+            if (incomeName && fixedAmount) {
+              await addIncome();
+            }
+            setStep(4);
+          }}
+        >
+          Continue
+        </button>
         <button onClick={() => setStep(2)}>Back</button>
       </div>
     );
@@ -584,7 +593,16 @@ function Onboarding() {
           ))}
         </div>
 
-        <button onClick={() => setStep(5)}>Continue</button>
+        <button
+          onClick={async () => {
+            if (accountName && bankName && lastFour) {
+              await addAccount();
+            }
+            setStep(5);
+          }}
+        >
+          Continue
+        </button>
         <button onClick={() => setStep(3)}>Back</button>
       </div>
     );
@@ -684,7 +702,16 @@ function Onboarding() {
           ))}
         </div>
 
-        <button onClick={() => setStep(6)}>Continue</button>
+        <button
+          onClick={async () => {
+            if (billName && billAmount && dueDay) {
+              await addBill();
+            }
+            setStep(6);
+          }}
+        >
+          Continue
+        </button>
         <button onClick={() => setStep(4)}>Back</button>
       </div>
     );
