@@ -53,6 +53,15 @@ function Dashboard() {
     loadData();
   }, []);
 
+  function getCurrentPayPeriod() {
+    const today = new Date();
+    return payPeriods.find((period) => {
+      const start = new Date(period.start_date);
+      const end = new Date(period.end_date);
+      return today >= start && today <= end;
+    });
+  }
+
   if (loading) {
     return <div>Loading your dashboard...</div>;
   }
@@ -69,6 +78,29 @@ function Dashboard() {
           day: "numeric",
         })}
       </p>
+
+      {(() => {
+        const currentPeriod = getCurrentPayPeriod();
+        return currentPeriod ? (
+          <div>
+            <h2>Current Pay Period</h2>
+            <p>
+              {currentPeriod.name} —{" "}
+              {new Date(currentPeriod.start_date).toLocaleDateString("en-US", {
+                month: "short",
+                day: "numeric",
+              })}{" "}
+              to{" "}
+              {new Date(currentPeriod.end_date).toLocaleDateString("en-US", {
+                month: "short",
+                day: "numeric",
+              })}
+            </p>
+          </div>
+        ) : (
+          <p>No current pay period found</p>
+        );
+      })()}
 
       <h2>Your Accounts</h2>
       {accounts.map((account, index) => (
