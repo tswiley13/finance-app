@@ -29,6 +29,15 @@ function Onboarding() {
   const [accumulationTarget, setAccumulationTarget] = useState("");
   const [resetType, setResetType] = useState("manual");
   const [resetDay, setResetDay] = useState("");
+  const [billList, setBillList] = useState([]);
+  const [billName, setBillName] = useState("");
+  const [billAmount, setBillAmount] = useState("");
+  const [dueDay, setDueDay] = useState("");
+  const [paymentMethod, setPaymentMethod] = useState("auto");
+  const [billCategory, setBillCategory] = useState("");
+  const [billOwner, setBillOwner] = useState("joint");
+  const [billAccountId, setBillAccountId] = useState("");
+  const [isVariable, setIsVariable] = useState(false);
   // console.log("current step:", step);
 
   async function createHousehold() {
@@ -181,14 +190,18 @@ function Onboarding() {
       reset_day: resetDay ? parseInt(resetDay) : null,
     };
 
-    const { error } = await supabase.from("accounts").insert(newAccount);
+    const { data: savedAccount, error } = await supabase
+      .from("accounts")
+      .insert(newAccount)
+      .select()
+      .single();
 
     if (error) {
       console.log("Error:", error.message);
       return;
     }
 
-    setAccountList([...accountList, newAccount]);
+    setAccountList([...accountList, savedAccount]);
     setAccountName("");
     setBankName("");
     setLastFour("");
@@ -199,6 +212,66 @@ function Onboarding() {
     setAccumulationTarget("");
     setResetType("manual");
     setResetDay("");
+  }
+
+  async function addBill() {
+    if (!billName) {
+      alert("Please enter a bill name.");
+      return;
+    }
+    if (!billAmount) {
+      alert("Please enter a bill amount.");
+      return;
+    }
+    if (!dueDay) {
+      alert("Please enter a due day.");
+      return;
+    }
+    if (!billCategory) {
+      alert("Please select a category.");
+      return;
+    }
+
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    const { data: household } = await supabase
+      .from("households")
+      .select("id")
+      .eq("created_by", user.id)
+      .single();
+
+    const newBill = {
+      household_id: household.id,
+      name: billName,
+      amount: parseFloat(billAmount),
+      due_day: parseInt(dueDay),
+      payment_method: paymentMethod,
+      category: billCategory,
+      owner: billOwner,
+      account_id: billAccountId || null,
+      is_variable: isVariable,
+      is_active: true,
+      is_paid: false,
+    };
+
+    const { error } = await supabase.from("bills").insert(newBill);
+
+    if (error) {
+      console.log("Error:", error.message);
+      return;
+    }
+
+    setBillList([...billList, newBill]);
+    setBillName("");
+    setBillAmount("");
+    setDueDay("");
+    setPaymentMethod("auto");
+    setBillCategory("");
+    setBillOwner("joint");
+    setBillAccountId("");
+    setIsVariable(false);
   }
 
   if (step === 1) {
@@ -355,7 +428,6 @@ function Onboarding() {
                   />
                 </>
               )}
-              <button onClick={() => setStep(2)}>Back</button>
             </>
           )}
 
@@ -514,6 +586,106 @@ function Onboarding() {
 
         <button onClick={() => setStep(5)}>Continue</button>
         <button onClick={() => setStep(3)}>Back</button>
+      </div>
+    );
+  }
+
+  if (step === 5) {
+    return (
+      <div>
+        <h1>Add your bills</h1>
+
+        <div>
+          <input
+            type="text"
+            placeholder="Bill name (e.g. Mortgage)"
+            value={billName}
+            onChange={(e) => setBillName(e.target.value)}
+          />
+          <input
+            type="number"
+            placeholder="Amount"
+            value={billAmount}
+            onChange={(e) => setBillAmount(e.target.value)}
+          />
+          <input
+            type="number"
+            placeholder="Due day of month (e.g. 1)"
+            value={dueDay}
+            onChange={(e) => setDueDay(e.target.value)}
+          />
+          <select
+            value={paymentMethod}
+            onChange={(e) => setPaymentMethod(e.target.value)}
+          >
+            <option value="auto">Auto</option>
+            <option value="transfer">Transfer</option>
+            <option value="zelle">Zelle</option>
+            <option value="check">Check</option>
+            <option value="manual">Manual</option>
+          </select>
+          <select
+            value={billCategory}
+            onChange={(e) => setBillCategory(e.target.value)}
+          >
+            <option value="">Select a category</option>
+            <option value="housing">Housing</option>
+            <option value="utilities">Utilities</option>
+            <option value="insurance">Insurance</option>
+            <option value="subscriptions">Subscriptions</option>
+            <option value="loans">Loans</option>
+            <option value="transportation">Transportation</option>
+            <option value="food">Food & Gas</option>
+            <option value="savings">Savings</option>
+            <option value="other">Other</option>
+          </select>
+          <select
+            value={billOwner}
+            onChange={(e) => setBillOwner(e.target.value)}
+          >
+            <option value="joint">Joint</option>
+            {memberList.map((member, index) => (
+              <option key={index} value={member.name}>
+                {member.name}
+              </option>
+            ))}
+          </select>
+          <select
+            value={billAccountId}
+            onChange={(e) => setBillAccountId(e.target.value)}
+          >
+            <option value="">Select account (optional)</option>
+            {accountList.map((account, index) => (
+              <option key={index} value={account.id}>
+                {account.name}
+              </option>
+            ))}
+          </select>
+          <label>
+            <input
+              type="checkbox"
+              checked={isVariable}
+              onChange={(e) => setIsVariable(e.target.checked)}
+            />
+            This bill varies month to month
+          </label>
+        </div>
+
+        <button onClick={addBill}>Add Bill</button>
+
+        <div>
+          {billList.map((bill, index) => (
+            <div key={index}>
+              <p>
+                {bill.name} — ${bill.amount} — Due day {bill.due_day} —{" "}
+                {bill.category}
+              </p>
+            </div>
+          ))}
+        </div>
+
+        <button onClick={() => setStep(6)}>Continue</button>
+        <button onClick={() => setStep(4)}>Back</button>
       </div>
     );
   }
