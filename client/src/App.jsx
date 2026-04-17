@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { supabase } from "./supabase";
 import AuthPage from "./components/Auth";
 import Onboarding from "./pages/Onboarding";
+import Dashboard from "./pages/Dashboard";
 
 function App() {
   const [session, setSession] = useState(null);
@@ -52,7 +53,7 @@ function App() {
   if (hasHousehold) {
     return (
       <div>
-        <p>Dashboard coming soon</p>
+        <Dashboard />
         <button onClick={() => supabase.auth.signOut()}>Sign Out</button>
       </div>
     );
