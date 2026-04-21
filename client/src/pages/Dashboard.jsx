@@ -387,6 +387,98 @@ function Dashboard() {
     return total;
   }
 
+  function getPayPeriodBreakdown() {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const upcomingPeriods = [...payPeriods]
+      .filter((p) => {
+        const end = new Date(p.end_date + "T12:00:00");
+        return end >= today;
+      })
+      .sort((a, b) => new Date(a.start_date) - new Date(b.start_date))
+      .slice(0, 4);
+
+    return upcomingPeriods.map((period) => {
+      const periodStart = new Date(period.start_date + "T12:00:00");
+      const periodEnd = new Date(period.end_date + "T12:00:00");
+
+      let periodIncome = 0;
+      const periodIncomeItems = [];
+
+      income.forEach((inc) => {
+        if (!inc.next_pay_date || !inc.fixed_amount) return;
+
+        const baseDate = new Date(inc.next_pay_date + "T12:00:00");
+        const interval =
+          inc.frequency === "weekly"
+            ? 7
+            : inc.frequency === "biweekly"
+              ? 14
+              : 0;
+
+        if (interval === 0) {
+          if (baseDate >= periodStart && baseDate <= periodEnd) {
+            periodIncome += inc.fixed_amount;
+            periodIncomeItems.push(inc);
+          }
+        } else {
+          let payDate = new Date(baseDate);
+          while (payDate <= periodEnd) {
+            if (payDate >= periodStart && payDate <= periodEnd) {
+              periodIncome += inc.fixed_amount;
+              periodIncomeItems.push({
+                ...inc,
+                actualPayDate: payDate.toISOString().split("T")[0],
+              });
+            }
+            payDate = new Date(payDate);
+            payDate.setDate(payDate.getDate() + interval);
+          }
+        }
+      });
+
+      const periodBills = bills.filter((bill) => {
+        if (!isBillDue(bill)) return false;
+
+        // Build the actual due date for this bill in the period's month
+        const dueDateThisMonth = new Date(
+          periodStart.getFullYear(),
+          periodStart.getMonth(),
+          bill.due_day,
+        );
+        const dueDateNextMonth = new Date(
+          periodStart.getFullYear(),
+          periodStart.getMonth() + 1,
+          bill.due_day,
+        );
+
+        // Check if due date falls within the period
+        return (
+          (dueDateThisMonth >= periodStart && dueDateThisMonth <= periodEnd) ||
+          (dueDateNextMonth >= periodStart && dueDateNextMonth <= periodEnd)
+        );
+      });
+
+      const periodBillsTotal = periodBills.reduce(
+        (sum, b) => sum + (b.amount || 0),
+        0,
+      );
+
+      const isCurrentPeriod = periodStart <= today && periodEnd >= today;
+
+      return {
+        period,
+        isCurrentPeriod,
+        income: periodIncome,
+        incomeItems: periodIncomeItems,
+        bills: periodBills,
+        billsTotal: periodBillsTotal,
+        leftOver: periodIncome - periodBillsTotal,
+      };
+    });
+  }
+
   async function addIncome() {
     if (!incomeName || !fixedAmount || !nextPayDate) {
       alert("Please fill in all required income fields.");
@@ -1204,13 +1296,13 @@ function Dashboard() {
 
         <div className="stat-row">
           <div className="stat-card">
-            <div className="stat-label">Income Remaining This Month</div>
+            <div className="stat-label">Income Remaining</div>
             <div className="stat-amount">
               ${fmt(getRemainingIncomeThisMonth())}
             </div>
           </div>
           <div className="stat-card">
-            <div className="stat-label">Bills Remaining This Month</div>
+            <div className="stat-label">Bills Remaining</div>
             <div className="stat-amount">
               $
               {fmt(
@@ -1221,26 +1313,25 @@ function Dashboard() {
             </div>
           </div>
           <div className="stat-card">
-            <div className="stat-label">Projected Balance</div>
+            <div className="stat-label">Left After Bills</div>
             {(() => {
-              const projectedRemaining =
+              const left =
                 getRemainingIncomeThisMonth() -
                 bills
                   .filter(isBillDue)
                   .reduce((sum, b) => sum + (b.amount || 0), 0);
               return (
                 <div
-                  className={`stat-amount ${projectedRemaining < 0 ? "negative" : "neutral"}`}
+                  className={`stat-amount ${left < 0 ? "negative" : "neutral"}`}
                 >
-                  {projectedRemaining < 0 ? "-" : ""}$
-                  {fmt(Math.abs(projectedRemaining))}
+                  {left < 0 ? "-" : ""}${fmt(Math.abs(left))}
                 </div>
               );
             })()}
           </div>
         </div>
 
-        <div className="content-grid">
+        <div>
           <div className="panel">
             <div className="panel-header">
               <div className="panel-title">Accounts</div>
@@ -1278,57 +1369,219 @@ function Dashboard() {
               ))
             )}
           </div>
-
-          <div className="panel">
-            <div className="panel-header">
-              <div className="panel-title">Bills Remaining</div>
-              <div className="panel-count">
-                {bills.filter(isBillDue).length} remaining
-              </div>
-            </div>
-            {bills.filter(isBillDue).length === 0 ? (
-              <div className="empty-state">All bills paid this month 🎉</div>
-            ) : (
-              [...bills]
-                .filter(isBillDue)
-                .sort((a, b) => a.due_day - b.due_day)
-                .map((bill, i) => (
-                  <div className="row-item" key={i}>
+        </div>
+        {/* Pay Period Breakdown */}
+        <div style={{ marginTop: "16px" }}>
+          {getPayPeriodBreakdown().length === 0
+            ? null
+            : getPayPeriodBreakdown().map((item, i) => (
+                <div key={i} className="panel" style={{ marginBottom: "12px" }}>
+                  <div
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                      marginBottom: "16px",
+                    }}
+                  >
                     <div>
-                      <div className="row-name">{bill.name}</div>
-                      <div className="row-sub">
-                        Due the {bill.due_day}
-                        {getSuffix(bill.due_day)} · {bill.category}
+                      <div
+                        style={{
+                          fontFamily: "'Syne', sans-serif",
+                          fontSize: "15px",
+                          fontWeight: "700",
+                          color: "#E8E6E1",
+                        }}
+                      >
+                        {fmtDate(item.period.start_date)} —{" "}
+                        {fmtDate(item.period.end_date)}
+                        {item.isCurrentPeriod && (
+                          <span
+                            style={{
+                              marginLeft: "10px",
+                              fontSize: "9px",
+                              background: "#E8B84B",
+                              color: "#0F1218",
+                              padding: "2px 8px",
+                              borderRadius: "4px",
+                              letterSpacing: "0.1em",
+                              textTransform: "uppercase",
+                              fontWeight: "700",
+                            }}
+                          >
+                            Current
+                          </span>
+                        )}
+                      </div>
+                      {item.incomeItems.length > 0 && (
+                        <div
+                          style={{
+                            fontSize: "11px",
+                            color: "#68D391",
+                            marginTop: "4px",
+                          }}
+                        >
+                          {item.incomeItems.map((inc, j) => (
+                            <span key={j}>
+                              {inc.name} deposits
+                              {j < item.incomeItems.length - 1 ? " · " : ""}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                    <div style={{ textAlign: "right" }}>
+                      <div
+                        style={{
+                          fontSize: "10px",
+                          color: "#4A5568",
+                          letterSpacing: "0.15em",
+                          textTransform: "uppercase",
+                          marginBottom: "4px",
+                        }}
+                      >
+                        Left Over
+                      </div>
+                      <div
+                        style={{
+                          fontFamily: "'DM Mono', monospace",
+                          fontSize: "20px",
+                          fontWeight: "500",
+                          color: item.leftOver < 0 ? "#FC8181" : "#E8E6E1",
+                        }}
+                      >
+                        {item.leftOver < 0 ? "-" : ""}$
+                        {fmt(Math.abs(item.leftOver))}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div
+                    style={{
+                      display: "grid",
+                      gridTemplateColumns: "1fr 1fr",
+                      gap: "8px",
+                      marginBottom: item.bills.length > 0 ? "12px" : "0",
+                    }}
+                  >
+                    <div
+                      style={{
+                        background: "#1E2736",
+                        borderRadius: "8px",
+                        padding: "10px 12px",
+                      }}
+                    >
+                      <div
+                        style={{
+                          fontSize: "10px",
+                          color: "#4A5568",
+                          letterSpacing: "0.15em",
+                          textTransform: "uppercase",
+                          marginBottom: "4px",
+                        }}
+                      >
+                        Income
+                      </div>
+                      <div
+                        style={{
+                          fontFamily: "'DM Mono', monospace",
+                          fontSize: "16px",
+                          color: "#68D391",
+                        }}
+                      >
+                        ${fmt(item.income)}
                       </div>
                     </div>
                     <div
                       style={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: "8px",
+                        background: "#1E2736",
+                        borderRadius: "8px",
+                        padding: "10px 12px",
                       }}
                     >
-                      <div className="row-amount">${fmt(bill.amount)}</div>
-                      <button
-                        onClick={() => markBillPaid(bill)}
+                      <div
                         style={{
-                          background: "none",
-                          border: "1px solid #2D3748",
-                          color: "#68D391",
-                          padding: "4px 10px",
-                          borderRadius: "6px",
-                          cursor: "pointer",
-                          fontSize: "11px",
-                          fontFamily: "'DM Sans', sans-serif",
+                          fontSize: "10px",
+                          color: "#4A5568",
+                          letterSpacing: "0.15em",
+                          textTransform: "uppercase",
+                          marginBottom: "4px",
                         }}
                       >
-                        Paid
-                      </button>
+                        Bills Due
+                      </div>
+                      <div
+                        style={{
+                          fontFamily: "'DM Mono', monospace",
+                          fontSize: "16px",
+                          color: item.billsTotal > 0 ? "#FC8181" : "#4A5568",
+                        }}
+                      >
+                        ${fmt(item.billsTotal)}
+                      </div>
                     </div>
                   </div>
-                ))
-            )}
-          </div>
+
+                  {item.bills.length > 0 && (
+                    <div
+                      style={{
+                        borderTop: "1px solid #1E2736",
+                        paddingTop: "12px",
+                      }}
+                    >
+                      {item.bills.map((bill, j) => (
+                        <div
+                          key={j}
+                          style={{
+                            display: "flex",
+                            justifyContent: "space-between",
+                            alignItems: "center",
+                            padding: "6px 0",
+                            fontSize: "12px",
+                            borderBottom:
+                              j < item.bills.length - 1
+                                ? "1px solid #1E2736"
+                                : "none",
+                          }}
+                        >
+                          <span style={{ color: "#8892A4" }}>{bill.name}</span>
+                          <div
+                            style={{
+                              display: "flex",
+                              alignItems: "center",
+                              gap: "8px",
+                            }}
+                          >
+                            <span
+                              style={{
+                                fontFamily: "'DM Mono', monospace",
+                                color: "#4A5568",
+                              }}
+                            >
+                              ${fmt(bill.amount)}
+                            </span>
+                            <button
+                              onClick={() => markBillPaid(bill)}
+                              style={{
+                                background: "none",
+                                border: "1px solid #2D3748",
+                                color: "#68D391",
+                                padding: "2px 8px",
+                                borderRadius: "4px",
+                                cursor: "pointer",
+                                fontSize: "10px",
+                                fontFamily: "'DM Sans', sans-serif",
+                              }}
+                            >
+                              Paid
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ))}
         </div>
       </>
     );
