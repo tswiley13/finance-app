@@ -93,6 +93,25 @@ function Dashboard() {
   const [fixedAmount, setFixedAmount] = useState("");
   const [nextPayDate, setNextPayDate] = useState("");
   const [depositAccountId, setDepositAccountId] = useState("");
+  const [editingAccount, setEditingAccount] = useState(null);
+  const [showAccountForm, setShowAccountForm] = useState(false);
+  const [accountName, setAccountName] = useState("");
+  const [bankName, setBankName] = useState("");
+  const [lastFour, setLastFour] = useState("");
+  const [accountType, setAccountType] = useState("checking");
+  const [currentBalance, setCurrentBalance] = useState("");
+  const [isPrimary, setIsPrimary] = useState(false);
+  const [isAccumulating, setIsAccumulating] = useState(false);
+  const [accumulationTarget, setAccumulationTarget] = useState("");
+  const [accumulationCurrent, setAccumulationCurrent] = useState("");
+  const [resetType, setResetType] = useState("manual");
+  const [resetDay, setResetDay] = useState("");
+  const [quickEditAccountId, setQuickEditAccountId] = useState(null);
+  const [quickEditBalance, setQuickEditBalance] = useState("");
+  const [quickEditBillId, setQuickEditBillId] = useState(null);
+  const [quickEditBillAmount, setQuickEditBillAmount] = useState("");
+  const [quickEditIncomeId, setQuickEditIncomeId] = useState(null);
+  const [quickEditIncomeAmount, setQuickEditIncomeAmount] = useState("");
 
   useEffect(() => {
     async function loadData() {
@@ -586,6 +605,152 @@ function Dashboard() {
     setIncome(income.filter((i) => i.id !== incomeId));
   }
 
+  async function updateAccount() {
+    if (!accountName || !bankName || !lastFour) {
+      alert("Please fill in all required account fields.");
+      return;
+    }
+
+    const { error } = await supabase
+      .from("accounts")
+      .update({
+        name: accountName,
+        bank_name: bankName,
+        last_four: lastFour,
+        account_type: accountType,
+        current_balance: parseFloat(currentBalance) || 0,
+        is_primary: isPrimary,
+        is_accumulating: isAccumulating,
+        accumulation_target: accumulationTarget
+          ? parseFloat(accumulationTarget)
+          : null,
+        accumulation_current: accumulationCurrent
+          ? parseFloat(accumulationCurrent)
+          : 0,
+        reset_type: resetType,
+        reset_day: resetDay ? parseInt(resetDay) : null,
+      })
+      .eq("id", editingAccount.id);
+
+    if (error) {
+      console.log("Error:", error.message);
+      return;
+    }
+
+    setAccounts(
+      accounts.map((a) =>
+        a.id === editingAccount.id
+          ? {
+              ...a,
+              name: accountName,
+              bank_name: bankName,
+              last_four: lastFour,
+              account_type: accountType,
+              current_balance: parseFloat(currentBalance) || 0,
+              is_primary: isPrimary,
+              is_accumulating: isAccumulating,
+              accumulation_target: parseFloat(accumulationTarget) || null,
+              accumulation_current: parseFloat(accumulationCurrent) || 0,
+              reset_type: resetType,
+              reset_day: parseInt(resetDay) || null,
+            }
+          : a,
+      ),
+    );
+
+    setEditingAccount(null);
+    setAccountName("");
+    setBankName("");
+    setLastFour("");
+    setAccountType("checking");
+    setCurrentBalance("");
+    setIsPrimary(false);
+    setIsAccumulating(false);
+    setAccumulationTarget("");
+    setAccumulationCurrent("");
+    setResetType("manual");
+    setResetDay("");
+  }
+
+  async function deleteAccount(accountId) {
+    const { error } = await supabase
+      .from("accounts")
+      .delete()
+      .eq("id", accountId);
+    if (error) {
+      console.log("Error:", error.message);
+      return;
+    }
+    setAccounts(accounts.filter((a) => a.id !== accountId));
+  }
+
+  async function updateAccountBalance(accountId, newBalance) {
+    const { error } = await supabase
+      .from("accounts")
+      .update({ current_balance: parseFloat(newBalance) || 0 })
+      .eq("id", accountId);
+
+    if (error) {
+      console.log("Error:", error.message);
+      return;
+    }
+
+    setAccounts(
+      accounts.map((a) =>
+        a.id === accountId
+          ? { ...a, current_balance: parseFloat(newBalance) || 0 }
+          : a,
+      ),
+    );
+
+    setQuickEditAccountId(null);
+    setQuickEditBalance("");
+  }
+
+  async function updateBillAmount(billId, newAmount) {
+    const { error } = await supabase
+      .from("bills")
+      .update({ amount: parseFloat(newAmount) || 0 })
+      .eq("id", billId);
+
+    if (error) {
+      console.log("Error:", error.message);
+      return;
+    }
+
+    setBills(
+      bills.map((b) =>
+        b.id === billId ? { ...b, amount: parseFloat(newAmount) || 0 } : b,
+      ),
+    );
+
+    setQuickEditBillId(null);
+    setQuickEditBillAmount("");
+  }
+
+  async function updateIncomeAmount(incomeId, newAmount) {
+    const { error } = await supabase
+      .from("income")
+      .update({ fixed_amount: parseFloat(newAmount) || 0 })
+      .eq("id", incomeId);
+
+    if (error) {
+      console.log("Error:", error.message);
+      return;
+    }
+
+    setIncome(
+      income.map((i) =>
+        i.id === incomeId
+          ? { ...i, fixed_amount: parseFloat(newAmount) || 0 }
+          : i,
+      ),
+    );
+
+    setQuickEditIncomeId(null);
+    setQuickEditIncomeAmount("");
+  }
+
   const totalIncome = income.reduce((sum, i) => {
     const amount = i.fixed_amount || 0;
     if (i.frequency === "biweekly") return sum + amount * 2;
@@ -620,6 +785,298 @@ function Dashboard() {
   const currentPeriod = getCurrentPayPeriod();
 
   function renderContent() {
+    if (activeNav === "accounts") {
+      return (
+        <div>
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              marginBottom: "24px",
+            }}
+          >
+            <h2 style={{ fontFamily: "'Syne', sans-serif", fontSize: "24px" }}>
+              Accounts
+            </h2>
+          </div>
+
+          {editingAccount && (
+            <div className="panel" style={{ marginBottom: "16px" }}>
+              <div className="panel-header">
+                <div className="panel-title">Edit Account</div>
+              </div>
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "1fr 1fr",
+                  gap: "12px",
+                }}
+              >
+                <input
+                  placeholder="Account name"
+                  value={accountName}
+                  onChange={(e) => setAccountName(e.target.value)}
+                  style={{
+                    background: "#1E2736",
+                    border: "1px solid #2D3748",
+                    color: "#E8E6E1",
+                    padding: "8px 12px",
+                    borderRadius: "6px",
+                    fontSize: "13px",
+                    fontFamily: "'DM Sans', sans-serif",
+                  }}
+                />
+                <input
+                  placeholder="Bank name"
+                  value={bankName}
+                  onChange={(e) => setBankName(e.target.value)}
+                  style={{
+                    background: "#1E2736",
+                    border: "1px solid #2D3748",
+                    color: "#E8E6E1",
+                    padding: "8px 12px",
+                    borderRadius: "6px",
+                    fontSize: "13px",
+                    fontFamily: "'DM Sans', sans-serif",
+                  }}
+                />
+                <input
+                  placeholder="Last 4 digits"
+                  value={lastFour}
+                  onChange={(e) => setLastFour(e.target.value)}
+                  style={{
+                    background: "#1E2736",
+                    border: "1px solid #2D3748",
+                    color: "#E8E6E1",
+                    padding: "8px 12px",
+                    borderRadius: "6px",
+                    fontSize: "13px",
+                    fontFamily: "'DM Sans', sans-serif",
+                  }}
+                />
+                <select
+                  value={accountType}
+                  onChange={(e) => setAccountType(e.target.value)}
+                  style={{
+                    background: "#1E2736",
+                    border: "1px solid #2D3748",
+                    color: "#E8E6E1",
+                    padding: "8px 12px",
+                    borderRadius: "6px",
+                    fontSize: "13px",
+                    fontFamily: "'DM Sans', sans-serif",
+                  }}
+                >
+                  <option value="checking">Checking</option>
+                  <option value="savings">Savings</option>
+                </select>
+                <input
+                  type="number"
+                  placeholder="Current balance"
+                  value={currentBalance}
+                  onChange={(e) => setCurrentBalance(e.target.value)}
+                  style={{
+                    background: "#1E2736",
+                    border: "1px solid #2D3748",
+                    color: "#E8E6E1",
+                    padding: "8px 12px",
+                    borderRadius: "6px",
+                    fontSize: "13px",
+                    fontFamily: "'DM Sans', sans-serif",
+                  }}
+                />
+                {isAccumulating && (
+                  <input
+                    type="number"
+                    placeholder="Amount accumulated so far"
+                    value={accumulationCurrent}
+                    onChange={(e) => setAccumulationCurrent(e.target.value)}
+                    style={{
+                      background: "#1E2736",
+                      border: "1px solid #2D3748",
+                      color: "#E8E6E1",
+                      padding: "8px 12px",
+                      borderRadius: "6px",
+                      fontSize: "13px",
+                      fontFamily: "'DM Sans', sans-serif",
+                    }}
+                  />
+                )}
+              </div>
+              <div style={{ display: "flex", gap: "8px", marginTop: "12px" }}>
+                <button
+                  onClick={updateAccount}
+                  style={{
+                    background: "#E8B84B",
+                    border: "none",
+                    color: "#0F1218",
+                    padding: "8px 16px",
+                    borderRadius: "6px",
+                    cursor: "pointer",
+                    fontSize: "13px",
+                    fontWeight: "600",
+                    fontFamily: "'DM Sans', sans-serif",
+                  }}
+                >
+                  Save Changes
+                </button>
+                <button
+                  onClick={() => setEditingAccount(null)}
+                  style={{
+                    background: "none",
+                    border: "1px solid #2D3748",
+                    color: "#8892A4",
+                    padding: "8px 16px",
+                    borderRadius: "6px",
+                    cursor: "pointer",
+                    fontSize: "13px",
+                    fontFamily: "'DM Sans', sans-serif",
+                  }}
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          )}
+
+          <div className="panel">
+            <div className="panel-header">
+              <div className="panel-title">Your Accounts</div>
+              <div className="panel-count">{accounts.length} total</div>
+            </div>
+            {accounts.length === 0 ? (
+              <div className="empty-state">No accounts added yet</div>
+            ) : (
+              accounts.map((acct, i) => (
+                <div className="row-item" key={i}>
+                  <div>
+                    <div className="row-name">
+                      {acct.name}
+                      {acct.is_primary && <span className="tag">Primary</span>}
+                      {acct.is_accumulating && (
+                        <span className="tag">Accumulating</span>
+                      )}
+                    </div>
+                    <div className="row-sub">
+                      {acct.bank_name} ···{acct.last_four} · {acct.account_type}
+                    </div>
+                    {acct.is_accumulating && acct.accumulation_target > 0 && (
+                      <>
+                        <div className="accumulating-bar">
+                          <div
+                            className="accumulating-fill"
+                            style={{
+                              width: `${Math.min(100, ((acct.accumulation_current || 0) / acct.accumulation_target) * 100)}%`,
+                            }}
+                          />
+                        </div>
+                        <div
+                          style={{
+                            fontSize: "10px",
+                            color: "#4A5568",
+                            marginTop: "4px",
+                          }}
+                        >
+                          ${fmt(acct.accumulation_current || 0)} of $
+                          {fmt(acct.accumulation_target)}
+                        </div>
+                      </>
+                    )}
+                  </div>
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "8px",
+                    }}
+                  >
+                    {quickEditAccountId === acct.id ? (
+                      <input
+                        type="number"
+                        value={quickEditBalance}
+                        onChange={(e) => setQuickEditBalance(e.target.value)}
+                        onBlur={() =>
+                          updateAccountBalance(acct.id, quickEditBalance)
+                        }
+                        autoFocus
+                        style={{
+                          background: "#1E2736",
+                          border: "1px solid #E8B84B",
+                          color: "#E8B84B",
+                          padding: "4px 8px",
+                          borderRadius: "6px",
+                          fontSize: "14px",
+                          fontFamily: "'DM Mono', monospace",
+                          width: "100px",
+                          textAlign: "right",
+                        }}
+                      />
+                    ) : (
+                      <div
+                        className="row-amount"
+                        onClick={() => {
+                          setQuickEditAccountId(acct.id);
+                          setQuickEditBalance(acct.current_balance || "");
+                        }}
+                        style={{ cursor: "pointer" }}
+                        title="Click to edit"
+                      >
+                        ${fmt(acct.current_balance)}
+                      </div>
+                    )}
+                    <button
+                      onClick={() => {
+                        setEditingAccount(acct);
+                        setAccountName(acct.name);
+                        setBankName(acct.bank_name);
+                        setLastFour(acct.last_four);
+                        setAccountType(acct.account_type);
+                        setCurrentBalance(acct.current_balance || "");
+                        setIsPrimary(acct.is_primary);
+                        setIsAccumulating(acct.is_accumulating);
+                        setAccumulationTarget(acct.accumulation_target || "");
+                        setAccumulationCurrent(acct.accumulation_current || "");
+                        setResetType(acct.reset_type || "manual");
+                        setResetDay(acct.reset_day || "");
+                      }}
+                      style={{
+                        background: "none",
+                        border: "1px solid #2D3748",
+                        color: "#8892A4",
+                        padding: "4px 10px",
+                        borderRadius: "6px",
+                        cursor: "pointer",
+                        fontSize: "11px",
+                        fontFamily: "'DM Sans', sans-serif",
+                      }}
+                    >
+                      Edit
+                    </button>
+                    <button
+                      onClick={() => deleteAccount(acct.id)}
+                      style={{
+                        background: "none",
+                        border: "1px solid #2D3748",
+                        color: "#FC8181",
+                        padding: "4px 10px",
+                        borderRadius: "6px",
+                        cursor: "pointer",
+                        fontSize: "11px",
+                        fontFamily: "'DM Sans', sans-serif",
+                      }}
+                    >
+                      Delete
+                    </button>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      );
+    }
+
     if (activeNav === "income") {
       return (
         <div>
@@ -874,7 +1331,42 @@ function Dashboard() {
                         gap: "8px",
                       }}
                     >
-                      <div className="row-amount">${fmt(inc.fixed_amount)}</div>
+                      {quickEditIncomeId === inc.id ? (
+                        <input
+                          type="number"
+                          value={quickEditIncomeAmount}
+                          onChange={(e) =>
+                            setQuickEditIncomeAmount(e.target.value)
+                          }
+                          onBlur={() =>
+                            updateIncomeAmount(inc.id, quickEditIncomeAmount)
+                          }
+                          autoFocus
+                          style={{
+                            background: "#1E2736",
+                            border: "1px solid #E8B84B",
+                            color: "#E8B84B",
+                            padding: "4px 8px",
+                            borderRadius: "6px",
+                            fontSize: "14px",
+                            fontFamily: "'DM Mono', monospace",
+                            width: "100px",
+                            textAlign: "right",
+                          }}
+                        />
+                      ) : (
+                        <div
+                          className="row-amount"
+                          onClick={() => {
+                            setQuickEditIncomeId(inc.id);
+                            setQuickEditIncomeAmount(inc.fixed_amount || "");
+                          }}
+                          style={{ cursor: "pointer" }}
+                          title="Click to edit"
+                        >
+                          ${fmt(inc.fixed_amount)}
+                        </div>
+                      )}
                       <button
                         onClick={() => {
                           setEditingIncome(inc);
@@ -1183,7 +1675,42 @@ function Dashboard() {
                         gap: "8px",
                       }}
                     >
-                      <div className="row-amount">${fmt(bill.amount)}</div>
+                      {quickEditBillId === bill.id ? (
+                        <input
+                          type="number"
+                          value={quickEditBillAmount}
+                          onChange={(e) =>
+                            setQuickEditBillAmount(e.target.value)
+                          }
+                          onBlur={() =>
+                            updateBillAmount(bill.id, quickEditBillAmount)
+                          }
+                          autoFocus
+                          style={{
+                            background: "#1E2736",
+                            border: "1px solid #E8B84B",
+                            color: "#E8B84B",
+                            padding: "4px 8px",
+                            borderRadius: "6px",
+                            fontSize: "14px",
+                            fontFamily: "'DM Mono', monospace",
+                            width: "100px",
+                            textAlign: "right",
+                          }}
+                        />
+                      ) : (
+                        <div
+                          className="row-amount"
+                          onClick={() => {
+                            setQuickEditBillId(bill.id);
+                            setQuickEditBillAmount(bill.amount || "");
+                          }}
+                          style={{ cursor: "pointer" }}
+                          title="Click to edit"
+                        >
+                          ${fmt(bill.amount)}
+                        </div>
+                      )}
                       {!isBillDue(bill) ? (
                         <button
                           onClick={() => markBillUnpaid(bill)}
@@ -1364,7 +1891,40 @@ function Dashboard() {
                       </div>
                     )}
                   </div>
-                  <div className="row-amount">${fmt(acct.current_balance)}</div>
+                  {quickEditAccountId === acct.id ? (
+                    <input
+                      type="number"
+                      value={quickEditBalance}
+                      onChange={(e) => setQuickEditBalance(e.target.value)}
+                      onBlur={() =>
+                        updateAccountBalance(acct.id, quickEditBalance)
+                      }
+                      autoFocus
+                      style={{
+                        background: "#1E2736",
+                        border: "1px solid #E8B84B",
+                        color: "#E8B84B",
+                        padding: "4px 8px",
+                        borderRadius: "6px",
+                        fontSize: "14px",
+                        fontFamily: "'DM Mono', monospace",
+                        width: "100px",
+                        textAlign: "right",
+                      }}
+                    />
+                  ) : (
+                    <div
+                      className="row-amount"
+                      onClick={() => {
+                        setQuickEditAccountId(acct.id);
+                        setQuickEditBalance(acct.current_balance || "");
+                      }}
+                      style={{ cursor: "pointer" }}
+                      title="Click to edit"
+                    >
+                      ${fmt(acct.current_balance)}
+                    </div>
+                  )}
                 </div>
               ))
             )}
