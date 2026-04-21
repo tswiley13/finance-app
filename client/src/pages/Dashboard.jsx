@@ -84,6 +84,15 @@ function Dashboard() {
   const [isVariable, setIsVariable] = useState(false);
   const [showBillForm, setShowBillForm] = useState(false);
   const [confirmingPaidBill, setConfirmingPaidBill] = useState(null);
+  const [editingIncome, setEditingIncome] = useState(null);
+  const [showIncomeForm, setShowIncomeForm] = useState(false);
+  const [incomeName, setIncomeName] = useState("");
+  const [incomeOwner, setIncomeOwner] = useState("joint");
+  const [incomeType, setIncomeType] = useState("salary");
+  const [incomeFrequency, setIncomeFrequency] = useState("biweekly");
+  const [fixedAmount, setFixedAmount] = useState("");
+  const [nextPayDate, setNextPayDate] = useState("");
+  const [depositAccountId, setDepositAccountId] = useState("");
 
   useEffect(() => {
     async function loadData() {
@@ -346,7 +355,151 @@ function Dashboard() {
     );
   }
 
-  const totalIncome = income.reduce((sum, i) => sum + (i.fixed_amount || 0), 0);
+  function getRemainingIncomeThisMonth() {
+    const today = new Date();
+    const endOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+    let total = 0;
+
+    income.forEach((inc) => {
+      if (!inc.next_pay_date || !inc.fixed_amount) return;
+
+      const baseDate = new Date(inc.next_pay_date);
+      const interval =
+        inc.frequency === "weekly" ? 7 : inc.frequency === "biweekly" ? 14 : 0;
+
+      if (interval === 0) {
+        // Monthly — check if next_pay_date is after today and before end of month
+        if (baseDate > today && baseDate <= endOfMonth) {
+          total += inc.fixed_amount;
+        }
+      } else {
+        // Biweekly or weekly — project forward
+        let payDate = new Date(baseDate);
+        while (payDate <= endOfMonth) {
+          if (payDate > today) {
+            total += inc.fixed_amount;
+          }
+          payDate.setDate(payDate.getDate() + interval);
+        }
+      }
+    });
+
+    return total;
+  }
+
+  async function addIncome() {
+    if (!incomeName || !fixedAmount || !nextPayDate) {
+      alert("Please fill in all required income fields.");
+      return;
+    }
+
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    const { data: householdData } = await supabase
+      .from("households")
+      .select("id")
+      .eq("created_by", user.id)
+      .single();
+
+    const { data: savedIncome, error } = await supabase
+      .from("income")
+      .insert({
+        household_id: householdData.id,
+        name: incomeName,
+        owner: incomeOwner,
+        type: incomeType,
+        frequency: incomeFrequency,
+        fixed_amount: parseFloat(fixedAmount),
+        next_pay_date: nextPayDate,
+        deposit_account_id: depositAccountId || null,
+        is_active: true,
+      })
+      .select()
+      .single();
+
+    if (error) {
+      console.log("Error:", error.message);
+      return;
+    }
+
+    setIncome([...income, savedIncome]);
+    setIncomeName("");
+    setIncomeOwner("joint");
+    setIncomeType("salary");
+    setIncomeFrequency("biweekly");
+    setFixedAmount("");
+    setNextPayDate("");
+    setDepositAccountId("");
+    setShowIncomeForm(false);
+  }
+
+  async function updateIncome() {
+    if (!incomeName || !fixedAmount) {
+      alert("Please fill in all required income fields.");
+      return;
+    }
+
+    const { error } = await supabase
+      .from("income")
+      .update({
+        name: incomeName,
+        owner: incomeOwner,
+        type: incomeType,
+        frequency: incomeFrequency,
+        fixed_amount: parseFloat(fixedAmount),
+        next_pay_date: nextPayDate,
+        deposit_account_id: depositAccountId || null,
+      })
+      .eq("id", editingIncome.id);
+
+    if (error) {
+      console.log("Error:", error.message);
+      return;
+    }
+
+    setIncome(
+      income.map((i) =>
+        i.id === editingIncome.id
+          ? {
+              ...i,
+              name: incomeName,
+              owner: incomeOwner,
+              type: incomeType,
+              frequency: incomeFrequency,
+              fixed_amount: parseFloat(fixedAmount),
+              next_pay_date: nextPayDate,
+              deposit_account_id: depositAccountId || null,
+            }
+          : i,
+      ),
+    );
+
+    setEditingIncome(null);
+    setIncomeName("");
+    setIncomeOwner("joint");
+    setIncomeType("salary");
+    setIncomeFrequency("biweekly");
+    setFixedAmount("");
+    setNextPayDate("");
+    setDepositAccountId("");
+  }
+
+  async function deleteIncome(incomeId) {
+    const { error } = await supabase.from("income").delete().eq("id", incomeId);
+    if (error) {
+      console.log("Error:", error.message);
+      return;
+    }
+    setIncome(income.filter((i) => i.id !== incomeId));
+  }
+
+  const totalIncome = income.reduce((sum, i) => {
+    const amount = i.fixed_amount || 0;
+    if (i.frequency === "biweekly") return sum + amount * 2;
+    if (i.frequency === "weekly") return sum + amount * 4;
+    return sum + amount; // monthly
+  }, 0);
   const totalBills = bills.reduce((sum, b) => sum + (b.amount || 0), 0);
   const remaining = totalIncome - totalBills;
 
@@ -375,6 +528,310 @@ function Dashboard() {
   const currentPeriod = getCurrentPayPeriod();
 
   function renderContent() {
+    if (activeNav === "income") {
+      return (
+        <div>
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              marginBottom: "24px",
+            }}
+          >
+            <h2 style={{ fontFamily: "'Syne', sans-serif", fontSize: "24px" }}>
+              Income
+            </h2>
+            <button
+              onClick={() => {
+                setShowIncomeForm(true);
+                setEditingIncome(null);
+                setIncomeName("");
+                setIncomeOwner("joint");
+                setIncomeType("salary");
+                setIncomeFrequency("biweekly");
+                setFixedAmount("");
+                setNextPayDate("");
+                setDepositAccountId("");
+              }}
+              style={{
+                background: "#E8B84B",
+                border: "none",
+                color: "#0F1218",
+                padding: "8px 16px",
+                borderRadius: "8px",
+                cursor: "pointer",
+                fontSize: "13px",
+                fontWeight: "600",
+                fontFamily: "'DM Sans', sans-serif",
+              }}
+            >
+              + Add Income
+            </button>
+          </div>
+
+          {(showIncomeForm || editingIncome) && (
+            <div className="panel" style={{ marginBottom: "16px" }}>
+              <div className="panel-header">
+                <div className="panel-title">
+                  {editingIncome ? "Edit Income" : "New Income"}
+                </div>
+              </div>
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "1fr 1fr",
+                  gap: "12px",
+                }}
+              >
+                <input
+                  placeholder="Income name (e.g. VA Disability)"
+                  value={incomeName}
+                  onChange={(e) => setIncomeName(e.target.value)}
+                  style={{
+                    background: "#1E2736",
+                    border: "1px solid #2D3748",
+                    color: "#E8E6E1",
+                    padding: "8px 12px",
+                    borderRadius: "6px",
+                    fontSize: "13px",
+                    fontFamily: "'DM Sans', sans-serif",
+                  }}
+                />
+                <input
+                  type="number"
+                  placeholder="Amount"
+                  value={fixedAmount}
+                  onChange={(e) => setFixedAmount(e.target.value)}
+                  style={{
+                    background: "#1E2736",
+                    border: "1px solid #2D3748",
+                    color: "#E8E6E1",
+                    padding: "8px 12px",
+                    borderRadius: "6px",
+                    fontSize: "13px",
+                    fontFamily: "'DM Sans', sans-serif",
+                  }}
+                />
+                <select
+                  value={incomeOwner}
+                  onChange={(e) => setIncomeOwner(e.target.value)}
+                  style={{
+                    background: "#1E2736",
+                    border: "1px solid #2D3748",
+                    color: "#E8E6E1",
+                    padding: "8px 12px",
+                    borderRadius: "6px",
+                    fontSize: "13px",
+                    fontFamily: "'DM Sans', sans-serif",
+                  }}
+                >
+                  <option value="joint">Joint</option>
+                  <option value="Travis">Travis</option>
+                  <option value="Shawna">Shawna</option>
+                </select>
+                <select
+                  value={incomeType}
+                  onChange={(e) => setIncomeType(e.target.value)}
+                  style={{
+                    background: "#1E2736",
+                    border: "1px solid #2D3748",
+                    color: "#E8E6E1",
+                    padding: "8px 12px",
+                    borderRadius: "6px",
+                    fontSize: "13px",
+                    fontFamily: "'DM Sans', sans-serif",
+                  }}
+                >
+                  <option value="salary">Salary</option>
+                  <option value="hourly">Hourly</option>
+                  <option value="benefits">Benefits</option>
+                  <option value="fixed">Fixed</option>
+                  <option value="variable">Variable</option>
+                </select>
+                <select
+                  value={incomeFrequency}
+                  onChange={(e) => setIncomeFrequency(e.target.value)}
+                  style={{
+                    background: "#1E2736",
+                    border: "1px solid #2D3748",
+                    color: "#E8E6E1",
+                    padding: "8px 12px",
+                    borderRadius: "6px",
+                    fontSize: "13px",
+                    fontFamily: "'DM Sans', sans-serif",
+                  }}
+                >
+                  <option value="biweekly">Biweekly</option>
+                  <option value="monthly">Monthly</option>
+                  <option value="weekly">Weekly</option>
+                </select>
+                <select
+                  value={depositAccountId}
+                  onChange={(e) => setDepositAccountId(e.target.value)}
+                  style={{
+                    background: "#1E2736",
+                    border: "1px solid #2D3748",
+                    color: "#E8E6E1",
+                    padding: "8px 12px",
+                    borderRadius: "6px",
+                    fontSize: "13px",
+                    fontFamily: "'DM Sans', sans-serif",
+                  }}
+                >
+                  <option value="">
+                    Which account does this deposit into?
+                  </option>
+                  {accounts.map((acct, i) => (
+                    <option key={i} value={acct.id}>
+                      {acct.name}
+                    </option>
+                  ))}
+                </select>
+                <div style={{ gridColumn: "1 / -1" }}>
+                  <label
+                    style={{
+                      color: "#8892A4",
+                      fontSize: "11px",
+                      letterSpacing: "0.1em",
+                      textTransform: "uppercase",
+                      display: "block",
+                      marginBottom: "6px",
+                    }}
+                  >
+                    Next Deposit Date
+                  </label>
+                  <input
+                    type="date"
+                    value={nextPayDate}
+                    onChange={(e) => setNextPayDate(e.target.value)}
+                    style={{
+                      background: "#1E2736",
+                      border: "1px solid #2D3748",
+                      color: "#E8E6E1",
+                      padding: "8px 12px",
+                      borderRadius: "6px",
+                      fontSize: "13px",
+                      fontFamily: "'DM Sans', sans-serif",
+                      width: "100%",
+                    }}
+                  />
+                </div>
+              </div>
+              <div style={{ display: "flex", gap: "8px", marginTop: "12px" }}>
+                <button
+                  onClick={editingIncome ? updateIncome : addIncome}
+                  style={{
+                    background: "#E8B84B",
+                    border: "none",
+                    color: "#0F1218",
+                    padding: "8px 16px",
+                    borderRadius: "6px",
+                    cursor: "pointer",
+                    fontSize: "13px",
+                    fontWeight: "600",
+                    fontFamily: "'DM Sans', sans-serif",
+                  }}
+                >
+                  {editingIncome ? "Save Changes" : "Add Income"}
+                </button>
+                <button
+                  onClick={() => {
+                    setShowIncomeForm(false);
+                    setEditingIncome(null);
+                  }}
+                  style={{
+                    background: "none",
+                    border: "1px solid #2D3748",
+                    color: "#8892A4",
+                    padding: "8px 16px",
+                    borderRadius: "6px",
+                    cursor: "pointer",
+                    fontSize: "13px",
+                    fontFamily: "'DM Sans', sans-serif",
+                  }}
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          )}
+
+          <div className="panel">
+            <div className="panel-header">
+              <div className="panel-title">Income Sources</div>
+              <div className="panel-count">{income.length} total</div>
+            </div>
+            {income.length === 0 ? (
+              <div className="empty-state">No income sources added yet</div>
+            ) : (
+              [...income]
+                .sort((a, b) => a.name.localeCompare(b.name))
+                .map((inc, i) => (
+                  <div className="row-item" key={i}>
+                    <div>
+                      <div className="row-name">{inc.name}</div>
+                      <div className="row-sub">
+                        {inc.owner} · {inc.frequency} · {inc.type}
+                      </div>
+                    </div>
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "8px",
+                      }}
+                    >
+                      <div className="row-amount">${fmt(inc.fixed_amount)}</div>
+                      <button
+                        onClick={() => {
+                          setEditingIncome(inc);
+                          setShowIncomeForm(false);
+                          setIncomeName(inc.name);
+                          setIncomeOwner(inc.owner || "joint");
+                          setIncomeType(inc.type);
+                          setIncomeFrequency(inc.frequency);
+                          setFixedAmount(inc.fixed_amount || "");
+                          setNextPayDate(inc.next_pay_date || "");
+                          setDepositAccountId(inc.deposit_account_id || "");
+                        }}
+                        style={{
+                          background: "none",
+                          border: "1px solid #2D3748",
+                          color: "#8892A4",
+                          padding: "4px 10px",
+                          borderRadius: "6px",
+                          cursor: "pointer",
+                          fontSize: "11px",
+                          fontFamily: "'DM Sans', sans-serif",
+                        }}
+                      >
+                        Edit
+                      </button>
+                      <button
+                        onClick={() => deleteIncome(inc.id)}
+                        style={{
+                          background: "none",
+                          border: "1px solid #2D3748",
+                          color: "#FC8181",
+                          padding: "4px 10px",
+                          borderRadius: "6px",
+                          cursor: "pointer",
+                          fontSize: "11px",
+                          fontFamily: "'DM Sans', sans-serif",
+                        }}
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  </div>
+                ))
+            )}
+          </div>
+        </div>
+      );
+    }
+
     if (activeNav === "bills") {
       return (
         <div>
@@ -539,6 +996,23 @@ function Dashboard() {
                     </option>
                   ))}
                 </select>
+                <label
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "8px",
+                    color: "#8892A4",
+                    fontSize: "13px",
+                    gridColumn: "1 / -1",
+                  }}
+                >
+                  <input
+                    type="checkbox"
+                    checked={isVariable}
+                    onChange={(e) => setIsVariable(e.target.checked)}
+                  />
+                  This bill varies month to month
+                </label>
               </div>
               <div style={{ display: "flex", gap: "8px", marginTop: "12px" }}>
                 <button
@@ -730,20 +1204,39 @@ function Dashboard() {
 
         <div className="stat-row">
           <div className="stat-card">
-            <div className="stat-label">Monthly Income</div>
-            <div className="stat-amount">${fmt(totalIncome)}</div>
-          </div>
-          <div className="stat-card">
-            <div className="stat-label">Monthly Bills</div>
-            <div className="stat-amount">${fmt(totalBills)}</div>
-          </div>
-          <div className="stat-card">
-            <div className="stat-label">Remaining</div>
-            <div
-              className={`stat-amount ${remaining < 0 ? "negative" : "neutral"}`}
-            >
-              {remaining < 0 ? "-" : ""}${fmt(Math.abs(remaining))}
+            <div className="stat-label">Income Remaining This Month</div>
+            <div className="stat-amount">
+              ${fmt(getRemainingIncomeThisMonth())}
             </div>
+          </div>
+          <div className="stat-card">
+            <div className="stat-label">Bills Remaining This Month</div>
+            <div className="stat-amount">
+              $
+              {fmt(
+                bills
+                  .filter(isBillDue)
+                  .reduce((sum, b) => sum + (b.amount || 0), 0),
+              )}
+            </div>
+          </div>
+          <div className="stat-card">
+            <div className="stat-label">Projected Balance</div>
+            {(() => {
+              const projectedRemaining =
+                getRemainingIncomeThisMonth() -
+                bills
+                  .filter(isBillDue)
+                  .reduce((sum, b) => sum + (b.amount || 0), 0);
+              return (
+                <div
+                  className={`stat-amount ${projectedRemaining < 0 ? "negative" : "neutral"}`}
+                >
+                  {projectedRemaining < 0 ? "-" : ""}$
+                  {fmt(Math.abs(projectedRemaining))}
+                </div>
+              );
+            })()}
           </div>
         </div>
 
