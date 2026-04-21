@@ -6,6 +6,7 @@ function Onboarding({ onComplete }) {
   const [householdName, setHouseholdName] = useState("");
   const [memberList, setMemberList] = useState([]);
   const [memberName, setMemberName] = useState("");
+  const [editingMember, setEditingMember] = useState(null);
   const [incomeList, setIncomeList] = useState([]);
   const [incomeName, setIncomeName] = useState("");
   const [incomeOwner, setIncomeOwner] = useState("");
@@ -17,6 +18,7 @@ function Onboarding({ onComplete }) {
   const [hoursPerWeek, setHoursPerWeek] = useState("");
   const [overtimeRate, setOvertimeRate] = useState("");
   const [taxRate, setTaxRate] = useState("");
+  const [editingIncome, setEditingIncome] = useState(null);
   const [nextPayDate, setNextPayDate] = useState("");
   const [accountList, setAccountList] = useState([]);
   const [accountName, setAccountName] = useState("");
@@ -29,6 +31,7 @@ function Onboarding({ onComplete }) {
   const [accumulationTarget, setAccumulationTarget] = useState("");
   const [resetType, setResetType] = useState("manual");
   const [resetDay, setResetDay] = useState("");
+  const [editingAccount, setEditingAccount] = useState(null);
   const [billList, setBillList] = useState([]);
   const [billName, setBillName] = useState("");
   const [billAmount, setBillAmount] = useState("");
@@ -38,6 +41,7 @@ function Onboarding({ onComplete }) {
   const [billOwner, setBillOwner] = useState("joint");
   const [billAccountId, setBillAccountId] = useState("");
   const [isVariable, setIsVariable] = useState(false);
+  const [editingBill, setEditingBill] = useState(null);
   const [payPeriodList, setPayPeriodList] = useState([]);
   const [depositAccountId, setDepositAccountId] = useState("");
   // console.log("current step:", step);
@@ -91,6 +95,32 @@ function Onboarding({ onComplete }) {
     setMemberName("");
   }
 
+  async function updateMember() {
+    if (!memberName) {
+      alert("Please enter a member name.");
+      return;
+    }
+
+    const { error } = await supabase
+      .from("household_members")
+      .update({ name: memberName })
+      .eq("id", editingMember.id);
+
+    if (error) {
+      console.log("Error:", error.message);
+      return;
+    }
+
+    setMemberList(
+      memberList.map((m) =>
+        m.id === editingMember.id ? { ...m, name: memberName } : m,
+      ),
+    );
+
+    setEditingMember(null);
+    setMemberName("");
+  }
+
   async function addIncome() {
     const {
       data: { user },
@@ -126,6 +156,65 @@ function Onboarding({ onComplete }) {
     }
 
     setIncomeList([...incomeList, newIncome]);
+    setIncomeName("");
+    setIncomeOwner("");
+    setFixedAmount("");
+    setHourlyRate("");
+    setHoursPerWeek("");
+    setOvertimeRate("");
+    setTaxRate("");
+    setNextPayDate("");
+    setDepositAccountId("");
+  }
+
+  async function updateIncome() {
+    if (!incomeName) {
+      alert("Please enter an income name.");
+      return;
+    }
+
+    const { error } = await supabase
+      .from("income")
+      .update({
+        name: incomeName,
+        owner: incomeOwner,
+        type: incomeType,
+        frequency: incomeFrequency,
+        fixed_amount: incomeType !== "hourly" ? parseFloat(fixedAmount) : null,
+        hourly_rate: incomeType === "hourly" ? parseFloat(hourlyRate) : null,
+        hours_per_week:
+          incomeType === "hourly" ? parseFloat(hoursPerWeek) : null,
+        overtime_rate:
+          incomeType === "hourly" ? parseFloat(overtimeRate) : null,
+        tax_rate: taxRate ? parseFloat(taxRate) : null,
+        next_pay_date: nextPayDate,
+        deposit_account_id: depositAccountId || null,
+      })
+      .eq("id", editingIncome.id);
+
+    if (error) {
+      console.log("Error:", error.message);
+      return;
+    }
+
+    setIncomeList(
+      incomeList.map((i) =>
+        i.id === editingIncome.id
+          ? {
+              ...i,
+              name: incomeName,
+              owner: incomeOwner,
+              type: incomeType,
+              frequency: incomeFrequency,
+              fixed_amount: parseFloat(fixedAmount) || null,
+              next_pay_date: nextPayDate,
+              deposit_account_id: depositAccountId || null,
+            }
+          : i,
+      ),
+    );
+
+    setEditingIncome(null);
     setIncomeName("");
     setIncomeOwner("");
     setFixedAmount("");
@@ -218,6 +307,80 @@ function Onboarding({ onComplete }) {
     setResetDay("");
   }
 
+  async function updateAccount() {
+    if (!accountName) {
+      alert("Please enter an account name.");
+      return;
+    }
+    if (!bankName) {
+      alert("Please enter your bank name.");
+      return;
+    }
+    if (!lastFour) {
+      alert("Please enter the last 4 digits of your account.");
+      return;
+    }
+    if (lastFour.length !== 4 || !/^\d{4}$/.test(lastFour)) {
+      alert("Last 4 digits must be exactly 4 numbers.");
+      return;
+    }
+
+    const { error } = await supabase
+      .from("accounts")
+      .update({
+        name: accountName,
+        bank_name: bankName,
+        last_four: lastFour,
+        account_type: accountType,
+        current_balance: currentBalance ? parseFloat(currentBalance) : 0,
+        is_primary: isPrimary,
+        is_accumulating: isAccumulating,
+        accumulation_target: accumulationTarget
+          ? parseFloat(accumulationTarget)
+          : null,
+        reset_type: resetType,
+        reset_day: resetDay ? parseInt(resetDay) : null,
+      })
+      .eq("id", editingAccount.id);
+
+    if (error) {
+      console.log("Error:", error.message);
+      return;
+    }
+
+    setAccountList(
+      accountList.map((a) =>
+        a.id === editingAccount.id
+          ? {
+              ...a,
+              name: accountName,
+              bank_name: bankName,
+              last_four: lastFour,
+              account_type: accountType,
+              current_balance: parseFloat(currentBalance) || 0,
+              is_primary: isPrimary,
+              is_accumulating: isAccumulating,
+              accumulation_target: parseFloat(accumulationTarget) || null,
+              reset_type: resetType,
+              reset_day: parseInt(resetDay) || null,
+            }
+          : a,
+      ),
+    );
+
+    setEditingAccount(null);
+    setAccountName("");
+    setBankName("");
+    setLastFour("");
+    setAccountType("checking");
+    setCurrentBalance("");
+    setIsPrimary(false);
+    setIsAccumulating(false);
+    setAccumulationTarget("");
+    setResetType("manual");
+    setResetDay("");
+  }
+
   async function addBill() {
     if (!billName) {
       alert("Please enter a bill name.");
@@ -265,14 +428,88 @@ function Onboarding({ onComplete }) {
       is_paid: false,
     };
 
-    const { error } = await supabase.from("bills").insert(newBill);
+    const { data: savedBill, error } = await supabase
+      .from("bills")
+      .insert(newBill)
+      .select()
+      .single();
 
     if (error) {
       console.log("Error:", error.message);
       return;
     }
 
-    setBillList([...billList, newBill]);
+    setBillList([...billList, savedBill]);
+    setBillName("");
+    setBillAmount("");
+    setDueDay("");
+    setPaymentMethod("auto");
+    setBillCategory("");
+    setBillOwner("joint");
+    setBillAccountId("");
+    setIsVariable(false);
+  }
+
+  async function updateBill() {
+    if (!billName) {
+      alert("Please enter a bill name.");
+      return;
+    }
+    if (!billAmount) {
+      alert("Please enter a bill amount.");
+      return;
+    }
+    if (!dueDay) {
+      alert("Please enter a due day.");
+      return;
+    }
+    if (!billCategory) {
+      alert("Please select a category.");
+      return;
+    }
+    if (!billAccountId) {
+      alert("Please select which account this bill comes from.");
+      return;
+    }
+
+    const { error } = await supabase
+      .from("bills")
+      .update({
+        name: billName,
+        amount: parseFloat(billAmount),
+        due_day: parseInt(dueDay),
+        payment_method: paymentMethod,
+        category: billCategory,
+        owner: billOwner,
+        account_id: billAccountId || null,
+        is_variable: isVariable,
+      })
+      .eq("id", editingBill.id);
+
+    if (error) {
+      console.log("Error:", error.message);
+      return;
+    }
+
+    setBillList(
+      billList.map((b) =>
+        b.id === editingBill.id
+          ? {
+              ...b,
+              name: billName,
+              amount: parseFloat(billAmount),
+              due_day: parseInt(dueDay),
+              payment_method: paymentMethod,
+              category: billCategory,
+              owner: billOwner,
+              account_id: billAccountId,
+              is_variable: isVariable,
+            }
+          : b,
+      ),
+    );
+
+    setEditingBill(null);
     setBillName("");
     setBillAmount("");
     setDueDay("");
@@ -421,13 +658,23 @@ function Onboarding({ onComplete }) {
           value={memberName}
           onChange={(e) => setMemberName(e.target.value)}
         />
-        <button onClick={addMember}>Add Member</button>
+        <button onClick={editingMember ? updateMember : addMember}>
+          {editingMember ? "Save Changes" : "Add Member"}
+        </button>
 
         <div>
           {memberList.map((member, index) => (
             <div key={index}>
               <p>
                 {member.name} - {member.role}
+                <button
+                  onClick={() => {
+                    setEditingMember(member);
+                    setMemberName(member.name);
+                  }}
+                >
+                  Edit
+                </button>
               </p>
             </div>
           ))}
@@ -519,7 +766,9 @@ function Onboarding({ onComplete }) {
           )}
         </div>
 
-        <button onClick={addAccount}>Add Account</button>
+        <button onClick={editingAccount ? updateAccount : addAccount}>
+          {editingAccount ? "Save Changes" : "Add Account"}
+        </button>
 
         <div>
           {accountList.map((account, index) => (
@@ -528,6 +777,23 @@ function Onboarding({ onComplete }) {
                 {account.name} — {account.account_type}
                 {account.is_primary ? " — Primary" : ""}
                 {account.is_accumulating ? " — Accumulating" : ""}
+                <button
+                  onClick={() => {
+                    setEditingAccount(account);
+                    setAccountName(account.name);
+                    setBankName(account.bank_name);
+                    setLastFour(account.last_four);
+                    setAccountType(account.account_type);
+                    setCurrentBalance(account.current_balance || "");
+                    setIsPrimary(account.is_primary);
+                    setIsAccumulating(account.is_accumulating);
+                    setAccumulationTarget(account.accumulation_target || "");
+                    setResetType(account.reset_type || "manual");
+                    setResetDay(account.reset_day || "");
+                  }}
+                >
+                  Edit
+                </button>
               </p>
             </div>
           ))}
@@ -714,7 +980,9 @@ function Onboarding({ onComplete }) {
           />
         </div>
 
-        <button onClick={addIncome}>Add Income Source</button>
+        <button onClick={editingIncome ? updateIncome : addIncome}>
+          {editingIncome ? "Save Changes" : "Add Income Source"}
+        </button>
 
         <div>
           {incomeList.map((income, index) => (
@@ -722,6 +990,25 @@ function Onboarding({ onComplete }) {
               <p>
                 {income.name} — {income.owner} — $
                 {income.fixed_amount || income.hourly_rate + "/hr"}
+                <button
+                  onClick={() => {
+                    setEditingIncome(income);
+                    setIncomeName(income.name);
+                    setIncomeOwner(income.owner || "");
+                    setIncomeType(income.type);
+                    setIncomeFrequency(income.frequency);
+                    setFixedAmount(income.fixed_amount || "");
+                    setHourlyRate(income.hourly_rate || "");
+                    setHoursPerWeek(income.hours_per_week || "");
+                    setOvertimeRate(income.overtime_rate || "");
+                    setTaxRate(income.tax_rate || "");
+                    setNextPayDate(income.next_pay_date || "");
+                    setDepositAccountId(income.deposit_account_id || "");
+                    setIncomeEntryMode("net");
+                  }}
+                >
+                  Edit
+                </button>
               </p>
             </div>
           ))}
@@ -823,7 +1110,9 @@ function Onboarding({ onComplete }) {
           </label>
         </div>
 
-        <button onClick={addBill}>Add Bill</button>
+        <button onClick={editingBill ? updateBill : addBill}>
+          {editingBill ? "Save Changes" : "Add Bill"}
+        </button>
 
         <div>
           {billList.map((bill, index) => (
@@ -838,6 +1127,21 @@ function Onboarding({ onComplete }) {
                       ? "rd"
                       : "th"}{" "}
                 — {bill.category}
+                <button
+                  onClick={() => {
+                    setEditingBill(bill);
+                    setBillName(bill.name);
+                    setBillAmount(bill.amount);
+                    setDueDay(bill.due_day);
+                    setPaymentMethod(bill.payment_method);
+                    setBillCategory(bill.category);
+                    setBillOwner(bill.owner);
+                    setBillAccountId(bill.account_id || "");
+                    setIsVariable(bill.is_variable);
+                  }}
+                >
+                  Edit
+                </button>
               </p>
             </div>
           ))}
