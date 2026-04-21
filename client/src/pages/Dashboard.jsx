@@ -112,6 +112,9 @@ function Dashboard() {
   const [quickEditBillAmount, setQuickEditBillAmount] = useState("");
   const [quickEditIncomeId, setQuickEditIncomeId] = useState(null);
   const [quickEditIncomeAmount, setQuickEditIncomeAmount] = useState("");
+  const [confirmDeleteBillId, setConfirmDeleteBillId] = useState(null);
+  const [confirmDeleteIncomeId, setConfirmDeleteIncomeId] = useState(null);
+  const [confirmDeleteAccountId, setConfirmDeleteAccountId] = useState(null);
 
   useEffect(() => {
     async function loadData() {
@@ -1053,21 +1056,59 @@ function Dashboard() {
                     >
                       Edit
                     </button>
-                    <button
-                      onClick={() => deleteAccount(acct.id)}
-                      style={{
-                        background: "none",
-                        border: "1px solid #2D3748",
-                        color: "#FC8181",
-                        padding: "4px 10px",
-                        borderRadius: "6px",
-                        cursor: "pointer",
-                        fontSize: "11px",
-                        fontFamily: "'DM Sans', sans-serif",
-                      }}
-                    >
-                      Delete
-                    </button>
+                    {confirmDeleteAccountId === acct.id ? (
+                      <>
+                        <button
+                          onClick={() => {
+                            deleteAccount(acct.id);
+                            setConfirmDeleteAccountId(null);
+                          }}
+                          style={{
+                            background: "none",
+                            border: "1px solid #FC8181",
+                            color: "#FC8181",
+                            padding: "4px 10px",
+                            borderRadius: "6px",
+                            cursor: "pointer",
+                            fontSize: "11px",
+                            fontFamily: "'DM Sans', sans-serif",
+                          }}
+                        >
+                          Confirm
+                        </button>
+                        <button
+                          onClick={() => setConfirmDeleteAccountId(null)}
+                          style={{
+                            background: "none",
+                            border: "1px solid #2D3748",
+                            color: "#8892A4",
+                            padding: "4px 10px",
+                            borderRadius: "6px",
+                            cursor: "pointer",
+                            fontSize: "11px",
+                            fontFamily: "'DM Sans', sans-serif",
+                          }}
+                        >
+                          Cancel
+                        </button>
+                      </>
+                    ) : (
+                      <button
+                        onClick={() => setConfirmDeleteAccountId(acct.id)}
+                        style={{
+                          background: "none",
+                          border: "1px solid #2D3748",
+                          color: "#FC8181",
+                          padding: "4px 10px",
+                          borderRadius: "6px",
+                          cursor: "pointer",
+                          fontSize: "11px",
+                          fontFamily: "'DM Sans', sans-serif",
+                        }}
+                      >
+                        Delete
+                      </button>
+                    )}
                   </div>
                 </div>
               ))
@@ -1392,21 +1433,59 @@ function Dashboard() {
                       >
                         Edit
                       </button>
-                      <button
-                        onClick={() => deleteIncome(inc.id)}
-                        style={{
-                          background: "none",
-                          border: "1px solid #2D3748",
-                          color: "#FC8181",
-                          padding: "4px 10px",
-                          borderRadius: "6px",
-                          cursor: "pointer",
-                          fontSize: "11px",
-                          fontFamily: "'DM Sans', sans-serif",
-                        }}
-                      >
-                        Delete
-                      </button>
+                      {confirmDeleteIncomeId === inc.id ? (
+                        <>
+                          <button
+                            onClick={() => {
+                              deleteIncome(inc.id);
+                              setConfirmDeleteIncomeId(null);
+                            }}
+                            style={{
+                              background: "none",
+                              border: "1px solid #FC8181",
+                              color: "#FC8181",
+                              padding: "4px 10px",
+                              borderRadius: "6px",
+                              cursor: "pointer",
+                              fontSize: "11px",
+                              fontFamily: "'DM Sans', sans-serif",
+                            }}
+                          >
+                            Confirm
+                          </button>
+                          <button
+                            onClick={() => setConfirmDeleteIncomeId(null)}
+                            style={{
+                              background: "none",
+                              border: "1px solid #2D3748",
+                              color: "#8892A4",
+                              padding: "4px 10px",
+                              borderRadius: "6px",
+                              cursor: "pointer",
+                              fontSize: "11px",
+                              fontFamily: "'DM Sans', sans-serif",
+                            }}
+                          >
+                            Cancel
+                          </button>
+                        </>
+                      ) : (
+                        <button
+                          onClick={() => setConfirmDeleteIncomeId(inc.id)}
+                          style={{
+                            background: "none",
+                            border: "1px solid #2D3748",
+                            color: "#FC8181",
+                            padding: "4px 10px",
+                            borderRadius: "6px",
+                            cursor: "pointer",
+                            fontSize: "11px",
+                            fontFamily: "'DM Sans', sans-serif",
+                          }}
+                        >
+                          Delete
+                        </button>
+                      )}
                     </div>
                   </div>
                 ))
@@ -1755,21 +1834,59 @@ function Dashboard() {
                           >
                             Edit
                           </button>
-                          <button
-                            onClick={() => deleteBill(bill.id)}
-                            style={{
-                              background: "none",
-                              border: "1px solid #2D3748",
-                              color: "#FC8181",
-                              padding: "4px 10px",
-                              borderRadius: "6px",
-                              cursor: "pointer",
-                              fontSize: "11px",
-                              fontFamily: "'DM Sans', sans-serif",
-                            }}
-                          >
-                            Delete
-                          </button>
+                          {confirmDeleteBillId === bill.id ? (
+                            <>
+                              <button
+                                onClick={() => {
+                                  deleteBill(bill.id);
+                                  setConfirmDeleteBillId(null);
+                                }}
+                                style={{
+                                  background: "none",
+                                  border: "1px solid #FC8181",
+                                  color: "#FC8181",
+                                  padding: "4px 10px",
+                                  borderRadius: "6px",
+                                  cursor: "pointer",
+                                  fontSize: "11px",
+                                  fontFamily: "'DM Sans', sans-serif",
+                                }}
+                              >
+                                Confirm
+                              </button>
+                              <button
+                                onClick={() => setConfirmDeleteBillId(null)}
+                                style={{
+                                  background: "none",
+                                  border: "1px solid #2D3748",
+                                  color: "#8892A4",
+                                  padding: "4px 10px",
+                                  borderRadius: "6px",
+                                  cursor: "pointer",
+                                  fontSize: "11px",
+                                  fontFamily: "'DM Sans', sans-serif",
+                                }}
+                              >
+                                Cancel
+                              </button>
+                            </>
+                          ) : (
+                            <button
+                              onClick={() => setConfirmDeleteBillId(bill.id)}
+                              style={{
+                                background: "none",
+                                border: "1px solid #2D3748",
+                                color: "#FC8181",
+                                padding: "4px 10px",
+                                borderRadius: "6px",
+                                cursor: "pointer",
+                                fontSize: "11px",
+                                fontFamily: "'DM Sans', sans-serif",
+                              }}
+                            >
+                              Delete
+                            </button>
+                          )}
                         </>
                       )}
                     </div>
