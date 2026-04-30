@@ -146,11 +146,12 @@ function Dashboard() {
           data: { user },
         } = await supabase.auth.getUser();
         setUserEmail(user.email || "");
-        const { data: memberRow } = await supabase
+        const { data: memberRow, error: memberError } = await supabase
           .from("household_members")
           .select("household_id")
           .eq("user_id", user.id)
-          .single();
+          .limit(1)
+          .maybeSingle();
 
         if (!memberRow) {
           setLoading(false);
