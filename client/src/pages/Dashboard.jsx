@@ -83,7 +83,6 @@ function Dashboard() {
   const [billAccountId, setBillAccountId] = useState("");
   const [isVariable, setIsVariable] = useState(false);
   const [showBillForm, setShowBillForm] = useState(false);
-  const [confirmingPaidBill, setConfirmingPaidBill] = useState(null);
   const [editingIncome, setEditingIncome] = useState(null);
   const [showIncomeForm, setShowIncomeForm] = useState(false);
   const [incomeName, setIncomeName] = useState("");
@@ -115,50 +114,72 @@ function Dashboard() {
   const [confirmDeleteBillId, setConfirmDeleteBillId] = useState(null);
   const [confirmDeleteIncomeId, setConfirmDeleteIncomeId] = useState(null);
   const [confirmDeleteAccountId, setConfirmDeleteAccountId] = useState(null);
+  const [categories, setCategories] = useState([]);
 
   useEffect(() => {
     async function loadData() {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      const { data: householdData } = await supabase
-        .from("households")
-        .select("id, name")
-        .eq("created_by", user.id)
-        .single();
-      if (!householdData) return;
-      setHousehold(householdData);
-      const [periodsRes, incomeRes, billsRes, accountsRes] = await Promise.all([
-        supabase
-          .from("pay_periods")
-          .select("*")
-          .eq("household_id", householdData.id)
-          .order("start_date"),
-        supabase
-          .from("income")
-          .select("*")
-          .eq("household_id", householdData.id),
-        supabase.from("bills").select("*").eq("household_id", householdData.id),
-        supabase
-          .from("accounts")
-          .select("*")
-          .eq("household_id", householdData.id),
-      ]);
-      setPayPeriods(periodsRes.data || []);
-      setIncome(incomeRes.data || []);
-      setBills(billsRes.data || []);
-      setAccounts(accountsRes.data || []);
-      setLoading(false);
+      try {
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
+        const { data: householdData } = await supabase
+          .from("households")
+          .select("id, name")
+          .eq("created_by", user.id)
+          .single();
+
+        if (!householdData) {
+          setLoading(false);
+          return;
+        }
+
+        setHousehold(householdData);
+
+        const [periodsRes, incomeRes, billsRes, accountsRes, categoriesRes] =
+          await Promise.all([
+            supabase
+              .from("pay_periods")
+              .select("*")
+              .eq("household_id", householdData.id)
+              .order("start_date"),
+            supabase
+              .from("income")
+              .select("*")
+              .eq("household_id", householdData.id),
+            supabase
+              .from("bills")
+              .select("*")
+              .eq("household_id", householdData.id),
+            supabase
+              .from("accounts")
+              .select("*")
+              .eq("household_id", householdData.id),
+            supabase
+              .from("categories")
+              .select("*")
+              .eq("household_id", householdData.id)
+              .order("name"),
+          ]);
+
+        setPayPeriods(periodsRes.data || []);
+        setIncome(incomeRes.data || []);
+        setBills(billsRes.data || []);
+        setAccounts(accountsRes.data || []);
+        setCategories(categoriesRes.data || []);
+        setLoading(false);
+      } catch (err) {
+        console.log("Load error:", err.message);
+        setLoading(false);
+      }
     }
     loadData();
   }, []);
 
   function getCurrentPayPeriod() {
     const today = new Date();
+    const todayStr = today.toLocaleDateString("en-CA");
     return payPeriods.find((p) => {
-      const s = new Date(p.start_date),
-        e = new Date(p.end_date);
-      return today >= s && today <= e;
+      return todayStr >= p.start_date && todayStr <= p.end_date;
     });
   }
 
@@ -177,7 +198,7 @@ function Dashboard() {
   }
 
   function fmtDate(s) {
-    return new Date(s).toLocaleDateString("en-US", {
+    return new Date(s + "T12:00:00").toLocaleDateString("en-US", {
       month: "short",
       day: "numeric",
     });
@@ -1921,7 +1942,7 @@ function Dashboard() {
             <div className="period-label">Current Pay Period</div>
             {currentPeriod ? (
               <>
-                <div className="period-name">{currentPeriod.name}</div>
+                <div className="period-name">Pay Period</div>
                 <div className="period-dates">
                   {fmtDate(currentPeriod.start_date)} —{" "}
                   {fmtDate(currentPeriod.end_date)}

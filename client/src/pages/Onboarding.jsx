@@ -598,6 +598,27 @@ function Onboarding({ onComplete }) {
     }
   }
 
+  async function saveDefaultCategories(householdId) {
+    const defaults = [
+      "Housing",
+      "Utilities",
+      "Insurance",
+      "Subscriptions",
+      "Loans",
+      "Transportation",
+      "Food & Gas",
+      "Savings",
+      "Other",
+    ];
+
+    for (const name of defaults) {
+      await supabase.from("categories").insert({
+        household_id: householdId,
+        name: name,
+      });
+    }
+  }
+
   function calculateTransfers() {
     const transfers = [];
 
@@ -1154,6 +1175,17 @@ function Onboarding({ onComplete }) {
             }
             const periods = calculatePayPeriods();
             await savePayPeriods(periods);
+
+            const {
+              data: { user },
+            } = await supabase.auth.getUser();
+            const { data: householdData } = await supabase
+              .from("households")
+              .select("id")
+              .eq("created_by", user.id)
+              .single();
+            await saveDefaultCategories(householdData.id);
+
             onComplete();
           }}
         >
