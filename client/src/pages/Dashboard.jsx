@@ -115,6 +115,11 @@ function Dashboard() {
   const [confirmDeleteIncomeId, setConfirmDeleteIncomeId] = useState(null);
   const [confirmDeleteAccountId, setConfirmDeleteAccountId] = useState(null);
   const [categories, setCategories] = useState([]);
+  const [newCategory, setNewCategory] = useState("");
+  const [showCategoryForm, setShowCategoryForm] = useState(false);
+  const [members, setMembers] = useState([]);
+  const [regenerating, setRegenerating] = useState(false);
+  const [confirmRegenerate, setConfirmRegenerate] = useState(false);
 
   useEffect(() => {
     async function loadData() {
@@ -135,37 +140,48 @@ function Dashboard() {
 
         setHousehold(householdData);
 
-        const [periodsRes, incomeRes, billsRes, accountsRes, categoriesRes] =
-          await Promise.all([
-            supabase
-              .from("pay_periods")
-              .select("*")
-              .eq("household_id", householdData.id)
-              .order("start_date"),
-            supabase
-              .from("income")
-              .select("*")
-              .eq("household_id", householdData.id),
-            supabase
-              .from("bills")
-              .select("*")
-              .eq("household_id", householdData.id),
-            supabase
-              .from("accounts")
-              .select("*")
-              .eq("household_id", householdData.id),
-            supabase
-              .from("categories")
-              .select("*")
-              .eq("household_id", householdData.id)
-              .order("name"),
-          ]);
+        const [
+          periodsRes,
+          incomeRes,
+          billsRes,
+          accountsRes,
+          categoriesRes,
+          membersRes,
+        ] = await Promise.all([
+          supabase
+            .from("pay_periods")
+            .select("*")
+            .eq("household_id", householdData.id)
+            .order("start_date"),
+          supabase
+            .from("income")
+            .select("*")
+            .eq("household_id", householdData.id),
+          supabase
+            .from("bills")
+            .select("*")
+            .eq("household_id", householdData.id),
+          supabase
+            .from("accounts")
+            .select("*")
+            .eq("household_id", householdData.id),
+          supabase
+            .from("categories")
+            .select("*")
+            .eq("household_id", householdData.id)
+            .order("name"),
+          supabase
+            .from("household_members")
+            .select("*")
+            .eq("household_id", householdData.id),
+        ]);
 
         setPayPeriods(periodsRes.data || []);
         setIncome(incomeRes.data || []);
         setBills(billsRes.data || []);
         setAccounts(accountsRes.data || []);
         setCategories(categoriesRes.data || []);
+        setMembers(membersRes.data || []);
         setLoading(false);
       } catch (err) {
         console.log("Load error:", err.message);
@@ -775,6 +791,126 @@ function Dashboard() {
     setQuickEditIncomeAmount("");
   }
 
+  async function addCategory() {
+    if (!newCategory) return;
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    const { data: householdData } = await supabase
+      .from("households")
+      .select("id")
+      .eq("created_by", user.id)
+      .single();
+    const { data: savedCategory, error } = await supabase
+      .from("categories")
+      .insert({ household_id: householdData.id, name: newCategory })
+      .select()
+      .single();
+    if (error) {
+      console.log("Error:", error.message);
+      return;
+    }
+    setCategories([...categories, savedCategory]);
+    setNewCategory("");
+  }
+
+  async function deleteCategory(categoryId) {
+    const { error } = await supabase
+      .from("categories")
+      .delete()
+      .eq("id", categoryId);
+    if (error) {
+      console.log("Error:", error.message);
+      return;
+    }
+    setCategories(categories.filter((c) => c.id !== categoryId));
+  }
+
+  async function regeneratePayPeriods() {
+    setRegenerating(true);
+
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    const { data: householdData } = await supabase
+      .from("households")
+      .select("id")
+      .eq("created_by", user.id)
+      .single();
+
+    // Delete all existing pay periods
+    await supabase
+      .from("pay_periods")
+      .delete()
+      .eq("household_id", householdData.id);
+
+    // Rebuild from current income next_pay_date values
+    const paychecks = income.filter(
+      (i) => i.frequency !== "monthly" && i.next_pay_date,
+    );
+
+    const allDates = [];
+    paychecks.forEach((inc) => {
+      const baseDate = new Date(inc.next_pay_date + "T12:00:00");
+      const interval = inc.frequency === "weekly" ? 7 : 14;
+      for (let i = 0; i < 8; i++) {
+        const date = new Date(baseDate);
+        date.setDate(baseDate.getDate() + i * interval);
+        allDates.push(date);
+      }
+    });
+
+    allDates.sort((a, b) => a - b);
+
+    const uniqueDates = allDates.filter(
+      (date, index, self) =>
+        index === 0 || date.toDateString() !== self[index - 1].toDateString(),
+    );
+
+    const periods = [];
+    for (let i = 0; i < uniqueDates.length; i++) {
+      const startDate = new Date(uniqueDates[i]);
+      let endDate;
+      if (i < uniqueDates.length - 1) {
+        endDate = new Date(uniqueDates[i + 1]);
+        endDate.setDate(endDate.getDate() - 1);
+      } else {
+        endDate = new Date(startDate);
+        endDate.setDate(startDate.getDate() + 13);
+      }
+
+      periods.push({
+        name: `Pay Period ${i + 1}`,
+        start_day: startDate.getDate(),
+        end_day: endDate.getDate(),
+        start_date: startDate.toISOString().split("T")[0],
+        end_date: endDate.toISOString().split("T")[0],
+      });
+    }
+
+    for (const period of periods) {
+      await supabase.from("pay_periods").insert({
+        household_id: householdData.id,
+        name: period.name,
+        start_day: period.start_day,
+        end_day: period.end_day,
+        start_date: period.start_date,
+        end_date: period.end_date,
+      });
+    }
+
+    // Refresh local state
+    const { data: newPeriods } = await supabase
+      .from("pay_periods")
+      .select("*")
+      .eq("household_id", householdData.id)
+      .order("start_date");
+
+    setPayPeriods(newPeriods || []);
+    setRegenerating(false);
+    setConfirmRegenerate(false);
+  }
+
   const totalIncome = income.reduce((sum, i) => {
     const amount = i.fixed_amount || 0;
     if (i.frequency === "biweekly") return sum + amount * 2;
@@ -809,6 +945,293 @@ function Dashboard() {
   const currentPeriod = getCurrentPayPeriod();
 
   function renderContent() {
+    if (activeNav === "payperiods") {
+      return (
+        <div>
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              marginBottom: "24px",
+            }}
+          >
+            <h2 style={{ fontFamily: "'Syne', sans-serif", fontSize: "24px" }}>
+              Pay Periods
+            </h2>
+            {confirmRegenerate ? (
+              <div style={{ display: "flex", gap: "8px" }}>
+                <button
+                  onClick={regeneratePayPeriods}
+                  disabled={regenerating}
+                  style={{
+                    background: "none",
+                    border: "1px solid #FC8181",
+                    color: "#FC8181",
+                    padding: "8px 16px",
+                    borderRadius: "8px",
+                    cursor: "pointer",
+                    fontSize: "13px",
+                    fontFamily: "'DM Sans', sans-serif",
+                  }}
+                >
+                  {regenerating ? "Regenerating..." : "Confirm Regenerate"}
+                </button>
+                <button
+                  onClick={() => setConfirmRegenerate(false)}
+                  style={{
+                    background: "none",
+                    border: "1px solid #2D3748",
+                    color: "#8892A4",
+                    padding: "8px 16px",
+                    borderRadius: "8px",
+                    cursor: "pointer",
+                    fontSize: "13px",
+                    fontFamily: "'DM Sans', sans-serif",
+                  }}
+                >
+                  Cancel
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={() => setConfirmRegenerate(true)}
+                style={{
+                  background: "#E8B84B",
+                  border: "none",
+                  color: "#0F1218",
+                  padding: "8px 16px",
+                  borderRadius: "8px",
+                  cursor: "pointer",
+                  fontSize: "13px",
+                  fontWeight: "600",
+                  fontFamily: "'DM Sans', sans-serif",
+                }}
+              >
+                Regenerate Pay Periods
+              </button>
+            )}
+          </div>
+
+          <div
+            className="panel"
+            style={{
+              marginBottom: "16px",
+              background: "#1E2736",
+              border: "1px solid #2D3748",
+            }}
+          >
+            <div
+              style={{ fontSize: "12px", color: "#8892A4", lineHeight: "1.6" }}
+            >
+              Pay periods are calculated automatically from your income deposit
+              dates. If your pay schedule changes, update your income's next
+              deposit date on the{" "}
+              <span
+                style={{ color: "#E8B84B", cursor: "pointer" }}
+                onClick={() => setActiveNav("income")}
+              >
+                Income page
+              </span>
+              , then come back here and regenerate.
+            </div>
+          </div>
+
+          <div className="panel">
+            <div className="panel-header">
+              <div className="panel-title">All Pay Periods</div>
+              <div className="panel-count">{payPeriods.length} total</div>
+            </div>
+            {payPeriods.length === 0 ? (
+              <div className="empty-state">
+                No pay periods found — try regenerating
+              </div>
+            ) : (
+              [...payPeriods]
+                .sort((a, b) => new Date(a.start_date) - new Date(b.start_date))
+                .map((period, i) => {
+                  const today = new Date().toLocaleDateString("en-CA");
+                  const isCurrent =
+                    today >= period.start_date && today <= period.end_date;
+                  const isPast = today > period.end_date;
+                  return (
+                    <div className="row-item" key={i}>
+                      <div>
+                        <div
+                          className="row-name"
+                          style={{ color: isPast ? "#4A5568" : "#CBD5E0" }}
+                        >
+                          {fmtDate(period.start_date)} —{" "}
+                          {fmtDate(period.end_date)}
+                          {isCurrent && (
+                            <span
+                              style={{
+                                marginLeft: "10px",
+                                fontSize: "9px",
+                                background: "#E8B84B",
+                                color: "#0F1218",
+                                padding: "2px 8px",
+                                borderRadius: "4px",
+                                letterSpacing: "0.1em",
+                                textTransform: "uppercase",
+                                fontWeight: "700",
+                              }}
+                            >
+                              Current
+                            </span>
+                          )}
+                        </div>
+                        <div className="row-sub">{period.name}</div>
+                      </div>
+                      <div
+                        style={{
+                          fontSize: "11px",
+                          color: isPast
+                            ? "#4A5568"
+                            : isCurrent
+                              ? "#E8B84B"
+                              : "#8892A4",
+                          fontFamily: "'DM Mono', monospace",
+                        }}
+                      >
+                        {isPast ? "Past" : isCurrent ? "Active" : "Upcoming"}
+                      </div>
+                    </div>
+                  );
+                })
+            )}
+          </div>
+        </div>
+      );
+    }
+
+    if (activeNav === "categories") {
+      return (
+        <div>
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              marginBottom: "24px",
+            }}
+          >
+            <h2 style={{ fontFamily: "'Syne', sans-serif", fontSize: "24px" }}>
+              Categories
+            </h2>
+            <button
+              onClick={() => setShowCategoryForm(!showCategoryForm)}
+              style={{
+                background: "#E8B84B",
+                border: "none",
+                color: "#0F1218",
+                padding: "8px 16px",
+                borderRadius: "8px",
+                cursor: "pointer",
+                fontSize: "13px",
+                fontWeight: "600",
+                fontFamily: "'DM Sans', sans-serif",
+              }}
+            >
+              + Add Category
+            </button>
+          </div>
+
+          {showCategoryForm && (
+            <div className="panel" style={{ marginBottom: "16px" }}>
+              <div className="panel-header">
+                <div className="panel-title">New Category</div>
+              </div>
+              <div style={{ display: "flex", gap: "8px" }}>
+                <input
+                  placeholder="Category name"
+                  value={newCategory}
+                  onChange={(e) => setNewCategory(e.target.value)}
+                  style={{
+                    flex: 1,
+                    background: "#1E2736",
+                    border: "1px solid #2D3748",
+                    color: "#E8E6E1",
+                    padding: "8px 12px",
+                    borderRadius: "6px",
+                    fontSize: "13px",
+                    fontFamily: "'DM Sans', sans-serif",
+                  }}
+                />
+                <button
+                  onClick={addCategory}
+                  style={{
+                    background: "#E8B84B",
+                    border: "none",
+                    color: "#0F1218",
+                    padding: "8px 16px",
+                    borderRadius: "6px",
+                    cursor: "pointer",
+                    fontSize: "13px",
+                    fontWeight: "600",
+                    fontFamily: "'DM Sans', sans-serif",
+                  }}
+                >
+                  Save
+                </button>
+                <button
+                  onClick={() => {
+                    setShowCategoryForm(false);
+                    setNewCategory("");
+                  }}
+                  style={{
+                    background: "none",
+                    border: "1px solid #2D3748",
+                    color: "#8892A4",
+                    padding: "8px 16px",
+                    borderRadius: "6px",
+                    cursor: "pointer",
+                    fontSize: "13px",
+                    fontFamily: "'DM Sans', sans-serif",
+                  }}
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          )}
+
+          <div className="panel">
+            <div className="panel-header">
+              <div className="panel-title">Your Categories</div>
+              <div className="panel-count">{categories.length} total</div>
+            </div>
+            {categories.length === 0 ? (
+              <div className="empty-state">
+                No categories yet — add one above
+              </div>
+            ) : (
+              categories.map((cat, i) => (
+                <div className="row-item" key={i}>
+                  <div className="row-name">{cat.name}</div>
+                  <button
+                    onClick={() => deleteCategory(cat.id)}
+                    style={{
+                      background: "none",
+                      border: "1px solid #2D3748",
+                      color: "#FC8181",
+                      padding: "4px 10px",
+                      borderRadius: "6px",
+                      cursor: "pointer",
+                      fontSize: "11px",
+                      fontFamily: "'DM Sans', sans-serif",
+                    }}
+                  >
+                    Delete
+                  </button>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      );
+    }
+
     if (activeNav === "accounts") {
       return (
         <div>
@@ -1238,8 +1661,11 @@ function Dashboard() {
                   }}
                 >
                   <option value="joint">Joint</option>
-                  <option value="Travis">Travis</option>
-                  <option value="Shawna">Shawna</option>
+                  {members.map((m, i) => (
+                    <option key={i} value={m.name}>
+                      {m.name}
+                    </option>
+                  ))}
                 </select>
                 <select
                   value={incomeType}
@@ -1650,15 +2076,11 @@ function Dashboard() {
                   }}
                 >
                   <option value="">Select category</option>
-                  <option value="housing">Housing</option>
-                  <option value="utilities">Utilities</option>
-                  <option value="insurance">Insurance</option>
-                  <option value="subscriptions">Subscriptions</option>
-                  <option value="loans">Loans</option>
-                  <option value="transportation">Transportation</option>
-                  <option value="food">Food & Gas</option>
-                  <option value="savings">Savings</option>
-                  <option value="other">Other</option>
+                  {categories.map((cat, i) => (
+                    <option key={i} value={cat.name}>
+                      {cat.name}
+                    </option>
+                  ))}
                 </select>
                 <select
                   value={billAccountId}
@@ -2296,18 +2718,20 @@ function Dashboard() {
         </div>
         <nav className="nav">
           <div className="nav-label">Main</div>
-          {["dashboard", "bills", "income", "accounts"].map((item) => (
-            <button
-              key={item}
-              className={`nav-item ${activeNav === item ? "active" : ""}`}
-              onClick={() => setActiveNav(item)}
-            >
-              <span
-                className={activeNav === item ? "nav-dot" : "nav-dot-muted"}
-              />
-              {item.charAt(0).toUpperCase() + item.slice(1)}
-            </button>
-          ))}
+          {["dashboard", "bills", "income", "accounts", "categories"].map(
+            (item) => (
+              <button
+                key={item}
+                className={`nav-item ${activeNav === item ? "active" : ""}`}
+                onClick={() => setActiveNav(item)}
+              >
+                <span
+                  className={activeNav === item ? "nav-dot" : "nav-dot-muted"}
+                />
+                {item.charAt(0).toUpperCase() + item.slice(1)}
+              </button>
+            ),
+          )}
           <div className="nav-label">Planning</div>
           {["payperiods", "debts"].map((item) => (
             <button
