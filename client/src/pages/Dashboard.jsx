@@ -120,6 +120,24 @@ function Dashboard() {
   const [members, setMembers] = useState([]);
   const [regenerating, setRegenerating] = useState(false);
   const [confirmRegenerate, setConfirmRegenerate] = useState(false);
+  const [debts, setDebts] = useState([]);
+  const [showDebtForm, setShowDebtForm] = useState(false);
+  const [editingDebt, setEditingDebt] = useState(null);
+  const [debtName, setDebtName] = useState("");
+  const [debtOwner, setDebtOwner] = useState("joint");
+  const [debtCategory, setDebtCategory] = useState("Credit Card");
+  const [debtBalance, setDebtBalance] = useState("");
+  const [debtInterestRate, setDebtInterestRate] = useState("");
+  const [debtMinPayment, setDebtMinPayment] = useState("");
+  const [debtPayoffOrder, setDebtPayoffOrder] = useState("");
+  const [confirmDeleteDebtId, setConfirmDeleteDebtId] = useState(null);
+  const [confirmPayoffDebtId, setConfirmPayoffDebtId] = useState(null);
+  const [editingHouseholdName, setEditingHouseholdName] = useState(false);
+  const [newHouseholdName, setNewHouseholdName] = useState("");
+  const [newMemberName, setNewMemberName] = useState("");
+  const [showAddMember, setShowAddMember] = useState(false);
+  const [confirmDeleteMemberId, setConfirmDeleteMemberId] = useState(null);
+  const [userEmail, setUserEmail] = useState("");
 
   useEffect(() => {
     async function loadData() {
@@ -127,6 +145,7 @@ function Dashboard() {
         const {
           data: { user },
         } = await supabase.auth.getUser();
+        setUserEmail(user.email || "");
         const { data: householdData } = await supabase
           .from("households")
           .select("id, name")
@@ -147,6 +166,7 @@ function Dashboard() {
           accountsRes,
           categoriesRes,
           membersRes,
+          debtsRes,
         ] = await Promise.all([
           supabase
             .from("pay_periods")
@@ -174,9 +194,15 @@ function Dashboard() {
             .from("household_members")
             .select("*")
             .eq("household_id", householdData.id),
+          supabase
+            .from("debts")
+            .select("*")
+            .eq("household_id", householdData.id)
+            .order("payoff_order"),
         ]);
 
         setPayPeriods(periodsRes.data || []);
+        setDebts(debtsRes.data || []);
         setIncome(incomeRes.data || []);
         setBills(billsRes.data || []);
         setAccounts(accountsRes.data || []);
@@ -826,6 +852,239 @@ function Dashboard() {
     setCategories(categories.filter((c) => c.id !== categoryId));
   }
 
+  async function addDebt() {
+    if (!debtName || !debtBalance || !debtMinPayment) {
+      alert("Please fill in all required debt fields.");
+      return;
+    }
+
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    const { data: householdData } = await supabase
+      .from("households")
+      .select("id")
+      .eq("created_by", user.id)
+      .single();
+
+    const { data: savedDebt, error } = await supabase
+      .from("debts")
+      .insert({
+        household_id: householdData.id,
+        name: debtName,
+        owner: debtOwner,
+        category: debtCategory,
+        balance: parseFloat(debtBalance),
+        interest_rate: debtInterestRate
+          ? parseFloat(debtInterestRate) / 100
+          : null,
+        minimum_payment: parseFloat(debtMinPayment),
+        payoff_order: debtPayoffOrder ? parseInt(debtPayoffOrder) : null,
+        is_paid_off: false,
+      })
+      .select()
+      .single();
+
+    if (error) {
+      console.log("Error:", error.message);
+      return;
+    }
+
+    setDebts([...debts, savedDebt]);
+    setDebtName("");
+    setDebtOwner("joint");
+    setDebtCategory("Credit Card");
+    setDebtBalance("");
+    setDebtInterestRate("");
+    setDebtMinPayment("");
+    setDebtPayoffOrder("");
+    setShowDebtForm(false);
+  }
+
+  async function updateDebt() {
+    if (!debtName || !debtBalance || !debtMinPayment) {
+      alert("Please fill in all required debt fields.");
+      return;
+    }
+
+    const { error } = await supabase
+      .from("debts")
+      .update({
+        name: debtName,
+        owner: debtOwner,
+        category: debtCategory,
+        balance: parseFloat(debtBalance),
+        interest_rate: debtInterestRate
+          ? parseFloat(debtInterestRate) / 100
+          : null,
+        minimum_payment: parseFloat(debtMinPayment),
+        payoff_order: debtPayoffOrder ? parseInt(debtPayoffOrder) : null,
+      })
+      .eq("id", editingDebt.id);
+
+    if (error) {
+      console.log("Error:", error.message);
+      return;
+    }
+
+    setDebts(
+      debts.map((d) =>
+        d.id === editingDebt.id
+          ? {
+              ...d,
+              name: debtName,
+              owner: debtOwner,
+              category: debtCategory,
+              balance: parseFloat(debtBalance),
+              interest_rate: debtInterestRate
+                ? parseFloat(debtInterestRate) / 100
+                : null,
+              minimum_payment: parseFloat(debtMinPayment),
+              payoff_order: debtPayoffOrder ? parseInt(debtPayoffOrder) : null,
+            }
+          : d,
+      ),
+    );
+
+    setEditingDebt(null);
+    setDebtName("");
+    setDebtOwner("joint");
+    setDebtCategory("Credit Card");
+    setDebtBalance("");
+    setDebtInterestRate("");
+    setDebtMinPayment("");
+    setDebtPayoffOrder("");
+  }
+
+  async function deleteDebt(debtId) {
+    const { error } = await supabase.from("debts").delete().eq("id", debtId);
+    if (error) {
+      console.log("Error:", error.message);
+      return;
+    }
+    setDebts(debts.filter((d) => d.id !== debtId));
+  }
+
+  async function markDebtPaidOff(debt) {
+    const today = new Date().toISOString().split("T")[0];
+
+    const { error } = await supabase
+      .from("debts")
+      .update({
+        is_paid_off: true,
+        paid_off_date: today,
+        payment_freed_up: debt.minimum_payment,
+      })
+      .eq("id", debt.id);
+
+    if (error) {
+      console.log("Error:", error.message);
+      return;
+    }
+
+    setDebts(
+      debts.map((d) =>
+        d.id === debt.id
+          ? {
+              ...d,
+              is_paid_off: true,
+              paid_off_date: today,
+              payment_freed_up: debt.minimum_payment,
+            }
+          : d,
+      ),
+    );
+
+    setConfirmPayoffDebtId(null);
+  }
+
+  async function autoSortDebts(strategy) {
+    const activeDebts = debts.filter((d) => !d.is_paid_off);
+
+    const sorted = [...activeDebts].sort((a, b) => {
+      if (strategy === "snowball") {
+        return (a.balance || 0) - (b.balance || 0);
+      } else {
+        return (b.interest_rate || 0) - (a.interest_rate || 0);
+      }
+    });
+
+    for (let i = 0; i < sorted.length; i++) {
+      await supabase
+        .from("debts")
+        .update({ payoff_order: i + 1 })
+        .eq("id", sorted[i].id);
+    }
+
+    const updated = debts.map((d) => {
+      const index = sorted.findIndex((s) => s.id === d.id);
+      return index !== -1 ? { ...d, payoff_order: index + 1 } : d;
+    });
+
+    setDebts(updated);
+  }
+
+  async function updateHouseholdName() {
+    if (!newHouseholdName) return;
+
+    const { error } = await supabase
+      .from("households")
+      .update({ name: newHouseholdName })
+      .eq("id", household.id);
+
+    if (error) {
+      console.log("Error:", error.message);
+      return;
+    }
+
+    setHousehold({ ...household, name: newHouseholdName });
+    setEditingHouseholdName(false);
+    setNewHouseholdName("");
+  }
+
+  async function addMember() {
+    if (!newMemberName) return;
+
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    const { data: savedMember, error } = await supabase
+      .from("household_members")
+      .insert({
+        household_id: household.id,
+        user_id: user.id,
+        name: newMemberName,
+        role: "member",
+      })
+      .select()
+      .single();
+
+    if (error) {
+      console.log("Error:", error.message);
+      return;
+    }
+
+    setMembers([...members, savedMember]);
+    setNewMemberName("");
+    setShowAddMember(false);
+  }
+
+  async function deleteMember(memberId) {
+    const { error } = await supabase
+      .from("household_members")
+      .delete()
+      .eq("id", memberId);
+
+    if (error) {
+      console.log("Error:", error.message);
+      return;
+    }
+
+    setMembers(members.filter((m) => m.id !== memberId));
+    setConfirmDeleteMemberId(null);
+  }
+
   async function regeneratePayPeriods() {
     setRegenerating(true);
 
@@ -945,6 +1204,514 @@ function Dashboard() {
   const currentPeriod = getCurrentPayPeriod();
 
   function renderContent() {
+    if (activeNav === "debts") {
+      const activeDebts = debts
+        .filter((d) => !d.is_paid_off)
+        .sort((a, b) => (a.payoff_order || 99) - (b.payoff_order || 99));
+      const paidOffDebts = debts.filter((d) => d.is_paid_off);
+      const totalBalance = activeDebts.reduce(
+        (sum, d) => sum + (d.balance || 0),
+        0,
+      );
+      const totalMinPayment = activeDebts.reduce(
+        (sum, d) => sum + (d.minimum_payment || 0),
+        0,
+      );
+
+      return (
+        <div>
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              marginBottom: "24px",
+            }}
+          >
+            <h2 style={{ fontFamily: "'Syne', sans-serif", fontSize: "24px" }}>
+              Debts
+            </h2>
+            <div style={{ display: "flex", gap: "8px" }}>
+              <button
+                onClick={() => autoSortDebts("snowball")}
+                style={{
+                  background: "none",
+                  border: "1px solid #2D3748",
+                  color: "#8892A4",
+                  padding: "8px 16px",
+                  borderRadius: "8px",
+                  cursor: "pointer",
+                  fontSize: "13px",
+                  fontFamily: "'DM Sans', sans-serif",
+                }}
+              >
+                Snowball
+              </button>
+              <button
+                onClick={() => autoSortDebts("avalanche")}
+                style={{
+                  background: "none",
+                  border: "1px solid #2D3748",
+                  color: "#8892A4",
+                  padding: "8px 16px",
+                  borderRadius: "8px",
+                  cursor: "pointer",
+                  fontSize: "13px",
+                  fontFamily: "'DM Sans', sans-serif",
+                }}
+              >
+                Avalanche
+              </button>
+              <button
+                onClick={() => {
+                  setShowDebtForm(true);
+                  setEditingDebt(null);
+                  setDebtName("");
+                  setDebtOwner("joint");
+                  setDebtCategory("Credit Card");
+                  setDebtBalance("");
+                  setDebtInterestRate("");
+                  setDebtMinPayment("");
+                  setDebtPayoffOrder("");
+                }}
+                style={{
+                  background: "#E8B84B",
+                  border: "none",
+                  color: "#0F1218",
+                  padding: "8px 16px",
+                  borderRadius: "8px",
+                  cursor: "pointer",
+                  fontSize: "13px",
+                  fontWeight: "600",
+                  fontFamily: "'DM Sans', sans-serif",
+                }}
+              >
+                + Add Debt
+              </button>
+            </div>
+          </div>
+
+          {/* Summary Cards */}
+          <div className="stat-row" style={{ marginBottom: "16px" }}>
+            <div className="stat-card">
+              <div className="stat-label">Total Debt</div>
+              <div className="stat-amount negative">${fmt(totalBalance)}</div>
+            </div>
+            <div className="stat-card">
+              <div className="stat-label">Min Monthly Payment</div>
+              <div className="stat-amount neutral">${fmt(totalMinPayment)}</div>
+            </div>
+            <div className="stat-card">
+              <div className="stat-label">Debts Remaining</div>
+              <div className="stat-amount neutral">{activeDebts.length}</div>
+            </div>
+          </div>
+
+          {/* Add / Edit Form */}
+          {(showDebtForm || editingDebt) && (
+            <div className="panel" style={{ marginBottom: "16px" }}>
+              <div className="panel-header">
+                <div className="panel-title">
+                  {editingDebt ? "Edit Debt" : "New Debt"}
+                </div>
+              </div>
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "1fr 1fr",
+                  gap: "12px",
+                }}
+              >
+                <input
+                  placeholder="Debt name (e.g. Chase Visa)"
+                  value={debtName}
+                  onChange={(e) => setDebtName(e.target.value)}
+                  style={{
+                    background: "#1E2736",
+                    border: "1px solid #2D3748",
+                    color: "#E8E6E1",
+                    padding: "8px 12px",
+                    borderRadius: "6px",
+                    fontSize: "13px",
+                    fontFamily: "'DM Sans', sans-serif",
+                  }}
+                />
+                <select
+                  value={debtCategory}
+                  onChange={(e) => setDebtCategory(e.target.value)}
+                  style={{
+                    background: "#1E2736",
+                    border: "1px solid #2D3748",
+                    color: "#E8E6E1",
+                    padding: "8px 12px",
+                    borderRadius: "6px",
+                    fontSize: "13px",
+                    fontFamily: "'DM Sans', sans-serif",
+                  }}
+                >
+                  <option value="Credit Card">Credit Card</option>
+                  <option value="Auto Loan">Auto Loan</option>
+                  <option value="Student Loan">Student Loan</option>
+                  <option value="Personal Loan">Personal Loan</option>
+                  <option value="Medical">Medical</option>
+                  <option value="Mortgage">Mortgage</option>
+                  <option value="Other">Other</option>
+                </select>
+                <select
+                  value={debtOwner}
+                  onChange={(e) => setDebtOwner(e.target.value)}
+                  style={{
+                    background: "#1E2736",
+                    border: "1px solid #2D3748",
+                    color: "#E8E6E1",
+                    padding: "8px 12px",
+                    borderRadius: "6px",
+                    fontSize: "13px",
+                    fontFamily: "'DM Sans', sans-serif",
+                  }}
+                >
+                  <option value="joint">Joint</option>
+                  {members.map((m, i) => (
+                    <option key={i} value={m.name}>
+                      {m.name}
+                    </option>
+                  ))}
+                </select>
+                <input
+                  type="number"
+                  placeholder="Current balance"
+                  value={debtBalance}
+                  onChange={(e) => setDebtBalance(e.target.value)}
+                  style={{
+                    background: "#1E2736",
+                    border: "1px solid #2D3748",
+                    color: "#E8E6E1",
+                    padding: "8px 12px",
+                    borderRadius: "6px",
+                    fontSize: "13px",
+                    fontFamily: "'DM Sans', sans-serif",
+                  }}
+                />
+                <input
+                  type="number"
+                  placeholder="Minimum payment"
+                  value={debtMinPayment}
+                  onChange={(e) => setDebtMinPayment(e.target.value)}
+                  style={{
+                    background: "#1E2736",
+                    border: "1px solid #2D3748",
+                    color: "#E8E6E1",
+                    padding: "8px 12px",
+                    borderRadius: "6px",
+                    fontSize: "13px",
+                    fontFamily: "'DM Sans', sans-serif",
+                  }}
+                />
+                <input
+                  type="number"
+                  placeholder="Interest rate (e.g. 24.99)"
+                  value={debtInterestRate}
+                  onChange={(e) => setDebtInterestRate(e.target.value)}
+                  style={{
+                    background: "#1E2736",
+                    border: "1px solid #2D3748",
+                    color: "#E8E6E1",
+                    padding: "8px 12px",
+                    borderRadius: "6px",
+                    fontSize: "13px",
+                    fontFamily: "'DM Sans', sans-serif",
+                  }}
+                />
+              </div>
+              <div style={{ display: "flex", gap: "8px", marginTop: "12px" }}>
+                <button
+                  onClick={editingDebt ? updateDebt : addDebt}
+                  style={{
+                    background: "#E8B84B",
+                    border: "none",
+                    color: "#0F1218",
+                    padding: "8px 16px",
+                    borderRadius: "6px",
+                    cursor: "pointer",
+                    fontSize: "13px",
+                    fontWeight: "600",
+                    fontFamily: "'DM Sans', sans-serif",
+                  }}
+                >
+                  {editingDebt ? "Save Changes" : "Add Debt"}
+                </button>
+                <button
+                  onClick={() => {
+                    setShowDebtForm(false);
+                    setEditingDebt(null);
+                  }}
+                  style={{
+                    background: "none",
+                    border: "1px solid #2D3748",
+                    color: "#8892A4",
+                    padding: "8px 16px",
+                    borderRadius: "6px",
+                    cursor: "pointer",
+                    fontSize: "13px",
+                    fontFamily: "'DM Sans', sans-serif",
+                  }}
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Active Debts */}
+          <div className="panel" style={{ marginBottom: "16px" }}>
+            <div className="panel-header">
+              <div className="panel-title">Active Debts</div>
+              <div className="panel-count">{activeDebts.length} total</div>
+            </div>
+            {activeDebts.length === 0 ? (
+              <div className="empty-state">No active debts — great work!</div>
+            ) : (
+              activeDebts.map((debt, i) => (
+                <div className="row-item" key={i}>
+                  <div>
+                    <div className="row-name">
+                      {debt.payoff_order && (
+                        <span
+                          style={{
+                            fontSize: "10px",
+                            background: "#E8B84B",
+                            color: "#0F1218",
+                            padding: "1px 6px",
+                            borderRadius: "4px",
+                            marginRight: "8px",
+                            fontWeight: "700",
+                          }}
+                        >
+                          #{debt.payoff_order}
+                        </span>
+                      )}
+                      {debt.name}
+                    </div>
+                    <div className="row-sub">
+                      {debt.category} · {debt.owner}
+                      {debt.interest_rate &&
+                        ` · ${(debt.interest_rate * 100).toFixed(2)}% APR`}
+                    </div>
+                  </div>
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "8px",
+                    }}
+                  >
+                    <div style={{ textAlign: "right" }}>
+                      <div className="row-amount" style={{ color: "#FC8181" }}>
+                        ${fmt(debt.balance)}
+                      </div>
+                      <div style={{ fontSize: "10px", color: "#4A5568" }}>
+                        min ${fmt(debt.minimum_payment)}/mo
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => {
+                        setEditingDebt(debt);
+                        setShowDebtForm(false);
+                        setDebtName(debt.name);
+                        setDebtOwner(debt.owner);
+                        setDebtCategory(debt.category);
+                        setDebtBalance(debt.balance);
+                        setDebtInterestRate(
+                          debt.interest_rate
+                            ? (debt.interest_rate * 100).toFixed(2)
+                            : "",
+                        );
+                        setDebtMinPayment(debt.minimum_payment);
+                        setDebtPayoffOrder(debt.payoff_order || "");
+                      }}
+                      style={{
+                        background: "none",
+                        border: "1px solid #2D3748",
+                        color: "#8892A4",
+                        padding: "4px 10px",
+                        borderRadius: "6px",
+                        cursor: "pointer",
+                        fontSize: "11px",
+                        fontFamily: "'DM Sans', sans-serif",
+                      }}
+                    >
+                      Edit
+                    </button>
+                    {confirmPayoffDebtId === debt.id ? (
+                      <>
+                        <button
+                          onClick={() => markDebtPaidOff(debt)}
+                          style={{
+                            background: "none",
+                            border: "1px solid #68D391",
+                            color: "#68D391",
+                            padding: "4px 10px",
+                            borderRadius: "6px",
+                            cursor: "pointer",
+                            fontSize: "11px",
+                            fontFamily: "'DM Sans', sans-serif",
+                          }}
+                        >
+                          Confirm
+                        </button>
+                        <button
+                          onClick={() => setConfirmPayoffDebtId(null)}
+                          style={{
+                            background: "none",
+                            border: "1px solid #2D3748",
+                            color: "#8892A4",
+                            padding: "4px 10px",
+                            borderRadius: "6px",
+                            cursor: "pointer",
+                            fontSize: "11px",
+                            fontFamily: "'DM Sans', sans-serif",
+                          }}
+                        >
+                          Cancel
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        <button
+                          onClick={() => setConfirmPayoffDebtId(debt.id)}
+                          style={{
+                            background: "none",
+                            border: "1px solid #68D391",
+                            color: "#68D391",
+                            padding: "4px 10px",
+                            borderRadius: "6px",
+                            cursor: "pointer",
+                            fontSize: "11px",
+                            fontFamily: "'DM Sans', sans-serif",
+                          }}
+                        >
+                          Paid Off
+                        </button>
+                        {confirmDeleteDebtId === debt.id ? (
+                          <>
+                            <button
+                              onClick={() => {
+                                deleteDebt(debt.id);
+                                setConfirmDeleteDebtId(null);
+                              }}
+                              style={{
+                                background: "none",
+                                border: "1px solid #FC8181",
+                                color: "#FC8181",
+                                padding: "4px 10px",
+                                borderRadius: "6px",
+                                cursor: "pointer",
+                                fontSize: "11px",
+                                fontFamily: "'DM Sans', sans-serif",
+                              }}
+                            >
+                              Confirm
+                            </button>
+                            <button
+                              onClick={() => setConfirmDeleteDebtId(null)}
+                              style={{
+                                background: "none",
+                                border: "1px solid #2D3748",
+                                color: "#8892A4",
+                                padding: "4px 10px",
+                                borderRadius: "6px",
+                                cursor: "pointer",
+                                fontSize: "11px",
+                                fontFamily: "'DM Sans', sans-serif",
+                              }}
+                            >
+                              Cancel
+                            </button>
+                          </>
+                        ) : (
+                          <button
+                            onClick={() => setConfirmDeleteDebtId(debt.id)}
+                            style={{
+                              background: "none",
+                              border: "1px solid #2D3748",
+                              color: "#FC8181",
+                              padding: "4px 10px",
+                              borderRadius: "6px",
+                              cursor: "pointer",
+                              fontSize: "11px",
+                              fontFamily: "'DM Sans', sans-serif",
+                            }}
+                          >
+                            Delete
+                          </button>
+                        )}
+                      </>
+                    )}
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+
+          {/* Paid Off Debts */}
+          {paidOffDebts.length > 0 && (
+            <div className="panel">
+              <div className="panel-header">
+                <div className="panel-title">Paid Off</div>
+                <div className="panel-count">{paidOffDebts.length} total</div>
+              </div>
+              {paidOffDebts.map((debt, i) => (
+                <div className="row-item" key={i}>
+                  <div>
+                    <div
+                      className="row-name"
+                      style={{
+                        color: "#4A5568",
+                        textDecoration: "line-through",
+                      }}
+                    >
+                      {debt.name}
+                    </div>
+                    <div className="row-sub">
+                      {debt.category} · Paid off {fmtDate(debt.paid_off_date)}
+                      {debt.payment_freed_up &&
+                        ` · $${fmt(debt.payment_freed_up)}/mo freed up`}
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setConfirmDeleteDebtId(debt.id)}
+                    style={{
+                      background: "none",
+                      border: "1px solid #2D3748",
+                      color: "#FC8181",
+                      padding: "4px 10px",
+                      borderRadius: "6px",
+                      cursor: "pointer",
+                      fontSize: "11px",
+                      fontFamily: "'DM Sans', sans-serif",
+                    }}
+                  >
+                    {confirmDeleteDebtId === debt.id ? (
+                      <span
+                        onClick={() => {
+                          deleteDebt(debt.id);
+                          setConfirmDeleteDebtId(null);
+                        }}
+                      >
+                        Confirm
+                      </span>
+                    ) : (
+                      "Delete"
+                    )}
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      );
+    }
+
     if (activeNav === "payperiods") {
       return (
         <div>
@@ -1100,6 +1867,355 @@ function Dashboard() {
                   );
                 })
             )}
+          </div>
+        </div>
+      );
+    }
+
+    if (activeNav === "settings") {
+      return (
+        <div>
+          <div style={{ marginBottom: "24px" }}>
+            <h2 style={{ fontFamily: "'Syne', sans-serif", fontSize: "24px" }}>
+              Settings
+            </h2>
+          </div>
+
+          {/* Household */}
+          <div className="panel" style={{ marginBottom: "16px" }}>
+            <div
+              style={{
+                fontSize: "11px",
+                color: "#E8B84B",
+                letterSpacing: "0.18em",
+                textTransform: "uppercase",
+                fontWeight: "500",
+                marginBottom: "16px",
+              }}
+            >
+              Household
+            </div>
+            <div className="row-item">
+              <div className="row-name">Household Name</div>
+              {editingHouseholdName ? (
+                <div
+                  style={{ display: "flex", gap: "8px", alignItems: "center" }}
+                >
+                  <input
+                    value={newHouseholdName}
+                    onChange={(e) => setNewHouseholdName(e.target.value)}
+                    autoFocus
+                    style={{
+                      background: "#1E2736",
+                      border: "1px solid #E8B84B",
+                      color: "#E8E6E1",
+                      padding: "4px 8px",
+                      borderRadius: "6px",
+                      fontSize: "13px",
+                      fontFamily: "'DM Sans', sans-serif",
+                    }}
+                  />
+                  <button
+                    onClick={updateHouseholdName}
+                    style={{
+                      background: "#E8B84B",
+                      border: "none",
+                      color: "#0F1218",
+                      padding: "4px 12px",
+                      borderRadius: "6px",
+                      cursor: "pointer",
+                      fontSize: "12px",
+                      fontWeight: "600",
+                      fontFamily: "'DM Sans', sans-serif",
+                    }}
+                  >
+                    Save
+                  </button>
+                  <button
+                    onClick={() => {
+                      setEditingHouseholdName(false);
+                      setNewHouseholdName("");
+                    }}
+                    style={{
+                      background: "none",
+                      border: "1px solid #2D3748",
+                      color: "#8892A4",
+                      padding: "4px 12px",
+                      borderRadius: "6px",
+                      cursor: "pointer",
+                      fontSize: "12px",
+                      fontFamily: "'DM Sans', sans-serif",
+                    }}
+                  >
+                    Cancel
+                  </button>
+                </div>
+              ) : (
+                <div
+                  style={{ display: "flex", alignItems: "center", gap: "12px" }}
+                >
+                  <span style={{ color: "#8892A4", fontSize: "13px" }}>
+                    {household?.name}
+                  </span>
+                  <button
+                    onClick={() => {
+                      setEditingHouseholdName(true);
+                      setNewHouseholdName(household?.name || "");
+                    }}
+                    style={{
+                      background: "none",
+                      border: "1px solid #2D3748",
+                      color: "#8892A4",
+                      padding: "4px 10px",
+                      borderRadius: "6px",
+                      cursor: "pointer",
+                      fontSize: "11px",
+                      fontFamily: "'DM Sans', sans-serif",
+                    }}
+                  >
+                    Edit
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Members */}
+          <div className="panel" style={{ marginBottom: "16px" }}>
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                marginBottom: "16px",
+              }}
+            >
+              <div
+                style={{
+                  fontSize: "11px",
+                  color: "#E8B84B",
+                  letterSpacing: "0.18em",
+                  textTransform: "uppercase",
+                  fontWeight: "500",
+                }}
+              >
+                Members
+              </div>
+              <button
+                onClick={() => setShowAddMember(!showAddMember)}
+                style={{
+                  background: "none",
+                  border: "1px solid #2D3748",
+                  color: "#8892A4",
+                  padding: "4px 10px",
+                  borderRadius: "6px",
+                  cursor: "pointer",
+                  fontSize: "11px",
+                  fontFamily: "'DM Sans', sans-serif",
+                }}
+              >
+                + Add
+              </button>
+            </div>
+            {showAddMember && (
+              <div
+                style={{ display: "flex", gap: "8px", marginBottom: "16px" }}
+              >
+                <input
+                  placeholder="Member name"
+                  value={newMemberName}
+                  onChange={(e) => setNewMemberName(e.target.value)}
+                  autoFocus
+                  style={{
+                    flex: 1,
+                    background: "#1E2736",
+                    border: "1px solid #2D3748",
+                    color: "#E8E6E1",
+                    padding: "8px 12px",
+                    borderRadius: "6px",
+                    fontSize: "13px",
+                    fontFamily: "'DM Sans', sans-serif",
+                  }}
+                />
+                <button
+                  onClick={addMember}
+                  style={{
+                    background: "#E8B84B",
+                    border: "none",
+                    color: "#0F1218",
+                    padding: "8px 16px",
+                    borderRadius: "6px",
+                    cursor: "pointer",
+                    fontSize: "13px",
+                    fontWeight: "600",
+                    fontFamily: "'DM Sans', sans-serif",
+                  }}
+                >
+                  Save
+                </button>
+                <button
+                  onClick={() => {
+                    setShowAddMember(false);
+                    setNewMemberName("");
+                  }}
+                  style={{
+                    background: "none",
+                    border: "1px solid #2D3748",
+                    color: "#8892A4",
+                    padding: "8px 16px",
+                    borderRadius: "6px",
+                    cursor: "pointer",
+                    fontSize: "13px",
+                    fontFamily: "'DM Sans', sans-serif",
+                  }}
+                >
+                  Cancel
+                </button>
+              </div>
+            )}
+            {members.length === 0 ? (
+              <div className="empty-state">No members yet</div>
+            ) : (
+              members.map((m, i) => (
+                <div className="row-item" key={i}>
+                  <div>
+                    <div className="row-name">{m.name}</div>
+                    <div className="row-sub">{m.role}</div>
+                  </div>
+                  {confirmDeleteMemberId === m.id ? (
+                    <div style={{ display: "flex", gap: "8px" }}>
+                      <button
+                        onClick={() => deleteMember(m.id)}
+                        style={{
+                          background: "none",
+                          border: "1px solid #FC8181",
+                          color: "#FC8181",
+                          padding: "4px 10px",
+                          borderRadius: "6px",
+                          cursor: "pointer",
+                          fontSize: "11px",
+                          fontFamily: "'DM Sans', sans-serif",
+                        }}
+                      >
+                        Confirm
+                      </button>
+                      <button
+                        onClick={() => setConfirmDeleteMemberId(null)}
+                        style={{
+                          background: "none",
+                          border: "1px solid #2D3748",
+                          color: "#8892A4",
+                          padding: "4px 10px",
+                          borderRadius: "6px",
+                          cursor: "pointer",
+                          fontSize: "11px",
+                          fontFamily: "'DM Sans', sans-serif",
+                        }}
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={() => setConfirmDeleteMemberId(m.id)}
+                      style={{
+                        background: "none",
+                        border: "1px solid #2D3748",
+                        color: "#FC8181",
+                        padding: "4px 10px",
+                        borderRadius: "6px",
+                        cursor: "pointer",
+                        fontSize: "11px",
+                        fontFamily: "'DM Sans', sans-serif",
+                      }}
+                    >
+                      Remove
+                    </button>
+                  )}
+                </div>
+              ))
+            )}
+          </div>
+
+          {/* Account */}
+          <div className="panel" style={{ marginBottom: "16px" }}>
+            <div
+              style={{
+                fontSize: "11px",
+                color: "#E8B84B",
+                letterSpacing: "0.18em",
+                textTransform: "uppercase",
+                fontWeight: "500",
+                marginBottom: "16px",
+              }}
+            >
+              Account
+            </div>
+            <div className="row-item">
+              <div className="row-name">Email</div>
+              <div style={{ fontSize: "13px", color: "#8892A4" }}>
+                {userEmail}
+              </div>
+            </div>
+            <div className="row-item">
+              <div className="row-name">Sign Out</div>
+              <button
+                onClick={() => supabase.auth.signOut()}
+                style={{
+                  background: "none",
+                  border: "1px solid #2D3748",
+                  color: "#8892A4",
+                  padding: "4px 10px",
+                  borderRadius: "6px",
+                  cursor: "pointer",
+                  fontSize: "11px",
+                  fontFamily: "'DM Sans', sans-serif",
+                }}
+              >
+                Sign Out
+              </button>
+            </div>
+          </div>
+
+          {/* Danger Zone */}
+          <div className="panel" style={{ border: "1px solid #4A1C1C" }}>
+            <div
+              style={{
+                fontSize: "11px",
+                color: "#FC8181",
+                letterSpacing: "0.18em",
+                textTransform: "uppercase",
+                fontWeight: "500",
+                marginBottom: "16px",
+              }}
+            >
+              Danger Zone
+            </div>
+            <div className="row-item">
+              <div>
+                <div className="row-name" style={{ color: "#FC8181" }}>
+                  Delete Household
+                </div>
+                <div className="row-sub">
+                  Permanently deletes all your data. This cannot be undone.
+                </div>
+              </div>
+              <button
+                onClick={() => alert("This feature is coming soon.")}
+                style={{
+                  background: "none",
+                  border: "1px solid #FC8181",
+                  color: "#FC8181",
+                  padding: "4px 10px",
+                  borderRadius: "6px",
+                  cursor: "pointer",
+                  fontSize: "11px",
+                  fontFamily: "'DM Sans', sans-serif",
+                }}
+              >
+                Delete
+              </button>
+            </div>
           </div>
         </div>
       );
