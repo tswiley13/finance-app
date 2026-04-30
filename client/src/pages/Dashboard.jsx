@@ -72,7 +72,9 @@ function Dashboard() {
   const [bills, setBills] = useState([]);
   const [accounts, setAccounts] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [activeNav, setActiveNav] = useState("dashboard");
+  const [activeNav, setActiveNav] = useState(
+    localStorage.getItem("activeNav") || "dashboard",
+  );
   const [editingBill, setEditingBill] = useState(null);
   const [billName, setBillName] = useState("");
   const [billAmount, setBillAmount] = useState("");
@@ -138,6 +140,11 @@ function Dashboard() {
   const [showAddMember, setShowAddMember] = useState(false);
   const [confirmDeleteMemberId, setConfirmDeleteMemberId] = useState(null);
   const [userEmail, setUserEmail] = useState("");
+
+  function navigate(page) {
+    localStorage.setItem("activeNav", page);
+    setActiveNav(page);
+  }
 
   useEffect(() => {
     async function loadData() {
@@ -1808,7 +1815,7 @@ function Dashboard() {
               deposit date on the{" "}
               <span
                 style={{ color: "#E8B84B", cursor: "pointer" }}
-                onClick={() => setActiveNav("income")}
+                onClick={() => navigate("income")}
               >
                 Income page
               </span>
@@ -3851,7 +3858,7 @@ function Dashboard() {
               <button
                 key={item}
                 className={`nav-item ${activeNav === item ? "active" : ""}`}
-                onClick={() => setActiveNav(item)}
+                onClick={() => navigate(item)}
               >
                 <span
                   className={activeNav === item ? "nav-dot" : "nav-dot-muted"}
@@ -3865,7 +3872,7 @@ function Dashboard() {
             <button
               key={item}
               className={`nav-item ${activeNav === item ? "active" : ""}`}
-              onClick={() => setActiveNav(item)}
+              onClick={() => navigate(item)}
             >
               <span
                 className={activeNav === item ? "nav-dot" : "nav-dot-muted"}
@@ -3876,7 +3883,7 @@ function Dashboard() {
           <div className="nav-label">Account</div>
           <button
             className={`nav-item ${activeNav === "settings" ? "active" : ""}`}
-            onClick={() => setActiveNav("settings")}
+            onClick={() => navigate("settings")}
           >
             <span
               className={activeNav === "settings" ? "nav-dot" : "nav-dot-muted"}

@@ -5,9 +5,9 @@ import Onboarding from "./pages/Onboarding";
 import Dashboard from "./pages/Dashboard";
 
 function App() {
-  const [session, setSession] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [session, setSession] = useState(undefined);
   const [hasHousehold, setHasHousehold] = useState(false);
+  const [checkingHousehold, setCheckingHousehold] = useState(false);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -20,43 +20,38 @@ function App() {
   }, []);
 
   useEffect(() => {
-    if (!session) {
-      setLoading(false);
-      return;
-    }
+    if (session === undefined) return;
+    if (!session) return;
 
+    setCheckingHousehold(true);
     async function checkHousehold() {
       const { data } = await supabase
-        .from("households")
-        .select("id")
-        .eq("created_by", session.user.id)
+        .from("household_members")
+        .select("household_id")
+        .eq("user_id", session.user.id)
+        .limit(1)
         .maybeSingle();
 
-      if (data) {
-        setHasHousehold(true);
-      }
-
-      setLoading(false);
+      setHasHousehold(!!data);
+      setCheckingHousehold(false);
     }
 
     checkHousehold();
   }, [session]);
 
+  // Don't render anything until we know the session status
+  if (session === undefined || checkingHousehold) {
+    return (
+      <div style={{ minHeight: "100vh", background: "#0F1218", opacity: 0 }} />
+    );
+  }
+
   if (!session) {
     return <AuthPage />;
   }
 
-  if (loading) {
-    return <div>Loading...</div>;
-  }
-
   if (hasHousehold) {
-    return (
-      <div>
-        <Dashboard />
-        <button onClick={() => supabase.auth.signOut()}>Sign Out</button>
-      </div>
-    );
+    return <Dashboard />;
   }
 
   return <Onboarding onComplete={() => setHasHousehold(true)} />;
