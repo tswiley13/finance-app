@@ -146,10 +146,21 @@ function Dashboard() {
           data: { user },
         } = await supabase.auth.getUser();
         setUserEmail(user.email || "");
+        const { data: memberRow } = await supabase
+          .from("household_members")
+          .select("household_id")
+          .eq("user_id", user.id)
+          .single();
+
+        if (!memberRow) {
+          setLoading(false);
+          return;
+        }
+
         const { data: householdData } = await supabase
           .from("households")
           .select("id, name")
-          .eq("created_by", user.id)
+          .eq("id", memberRow.household_id)
           .single();
 
         if (!householdData) {
