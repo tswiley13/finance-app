@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { supabase } from "../supabase";
+import QRCode from "qrcode.react";
 
 const css = `
   @import url('https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&family=DM+Mono:wght@400;500&display=swap');
@@ -167,8 +168,9 @@ function Dashboard() {
 
         const { data: householdData } = await supabase
           .from("households")
-          .select("id, name")
+          .select("id, name, invite_code")
           .eq("id", memberRow.household_id)
+
           .single();
 
         if (!householdData) {
@@ -1996,6 +1998,61 @@ function Dashboard() {
                   </button>
                 </div>
               )}
+            </div>
+
+            <div className="row-item">
+              <div>
+                <div className="row-name">Invite Code</div>
+                <div className="row-sub">
+                  Share this with your household member to join
+                </div>
+              </div>
+              <div
+                style={{ display: "flex", alignItems: "center", gap: "12px" }}
+              >
+                <span
+                  style={{
+                    fontFamily: "'DM Mono', monospace",
+                    fontSize: "14px",
+                    color: "#E8B84B",
+                    letterSpacing: "0.1em",
+                  }}
+                >
+                  {household?.invite_code}
+                </span>
+                <button
+                  onClick={() =>
+                    navigator.clipboard.writeText(household?.invite_code)
+                  }
+                  style={{
+                    background: "none",
+                    border: "1px solid #2D3748",
+                    color: "#8892A4",
+                    padding: "4px 10px",
+                    borderRadius: "6px",
+                    cursor: "pointer",
+                    fontSize: "11px",
+                    fontFamily: "'DM Sans', sans-serif",
+                  }}
+                >
+                  Copy
+                </button>
+              </div>
+            </div>
+            <div className="row-item">
+              <div className="row-name">QR Code</div>
+              <div
+                style={{
+                  background: "#ffffff",
+                  padding: "8px",
+                  borderRadius: "8px",
+                }}
+              >
+                <QRCode
+                  value={`${window.location.origin}/join?code=${household?.invite_code}`}
+                  size={120}
+                />
+              </div>
             </div>
           </div>
 

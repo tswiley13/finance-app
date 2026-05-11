@@ -51,9 +51,18 @@ function Onboarding({ onComplete }) {
       data: { user },
     } = await supabase.auth.getUser();
 
+    const inviteCode =
+      householdName
+        .toUpperCase()
+        .replace(/[^A-Z]/g, "")
+        .slice(0, 5) +
+      "-" +
+      Math.floor(1000 + Math.random() * 9000);
+
     const { error } = await supabase.from("households").insert({
       name: householdName,
       created_by: user.id,
+      invite_code: inviteCode,
     });
 
     if (error) {
