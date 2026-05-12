@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { supabase } from "../supabase";
-import QRCode from "qrcode.react";
+import { QRCodeSVG as QRCode } from "qrcode.react";
 
 const css = `
   @import url('https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&family=DM+Mono:wght@400;500&display=swap');
@@ -298,14 +298,7 @@ function Dashboard() {
       return;
     }
 
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    const { data: householdData } = await supabase
-      .from("households")
-      .select("id")
-      .eq("created_by", user.id)
-      .single();
+    const householdData = household;
 
     const { data: savedBill, error } = await supabase
       .from("bills")
@@ -591,14 +584,7 @@ function Dashboard() {
       return;
     }
 
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    const { data: householdData } = await supabase
-      .from("households")
-      .select("id")
-      .eq("created_by", user.id)
-      .single();
+    const householdData = household;
 
     const { data: savedIncome, error } = await supabase
       .from("income")
@@ -840,14 +826,7 @@ function Dashboard() {
 
   async function addCategory() {
     if (!newCategory) return;
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    const { data: householdData } = await supabase
-      .from("households")
-      .select("id")
-      .eq("created_by", user.id)
-      .single();
+    const householdData = household;
     const { data: savedCategory, error } = await supabase
       .from("categories")
       .insert({ household_id: householdData.id, name: newCategory })
@@ -879,14 +858,7 @@ function Dashboard() {
       return;
     }
 
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    const { data: householdData } = await supabase
-      .from("households")
-      .select("id")
-      .eq("created_by", user.id)
-      .single();
+    const householdData = household;
 
     const { data: savedDebt, error } = await supabase
       .from("debts")
@@ -1109,14 +1081,7 @@ function Dashboard() {
   async function regeneratePayPeriods() {
     setRegenerating(true);
 
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    const { data: householdData } = await supabase
-      .from("households")
-      .select("id")
-      .eq("created_by", user.id)
-      .single();
+    const householdData = household;
 
     // Delete all existing pay periods
     await supabase

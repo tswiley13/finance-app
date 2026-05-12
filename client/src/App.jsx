@@ -3,43 +3,56 @@ import { supabase } from "./supabase";
 import AuthPage from "./components/Auth";
 import Onboarding from "./pages/Onboarding";
 import Dashboard from "./pages/Dashboard";
+import JoinHousehold from "./pages/JoinHousehold";
 
 function App() {
   const [session, setSession] = useState(undefined);
   const [hasHousehold, setHasHousehold] = useState(false);
   const [checkingHousehold, setCheckingHousehold] = useState(false);
 
+  const params = new URLSearchParams(window.location.search);
+  const inviteCode = params.get("code");
+
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
     });
 
-    supabase.auth.onAuthStateChange((_event, session) => {
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
     });
+
+    return () => subscription.unsubscribe();
   }, []);
 
   useEffect(() => {
     if (session === undefined) return;
     if (!session) return;
 
-    setCheckingHousehold(true);
-    async function checkHousehold() {
-      const { data } = await supabase
-        .from("household_members")
-        .select("household_id")
-        .eq("user_id", session.user.id)
-        .limit(1)
-        .maybeSingle();
+    setTimeout(() => {
+      setCheckingHousehold(true);
+      async function checkHousehold() {
+        const { data } = await supabase
+          .from("household_members")
+          .select("household_id")
+          .eq("user_id", session.user.id)
+          .limit(1)
+          .maybeSingle();
 
-      setHasHousehold(!!data);
-      setCheckingHousehold(false);
-    }
+        setHasHousehold(!!data);
+        setCheckingHousehold(false);
+      }
 
-    checkHousehold();
+      checkHousehold();
+    }, 0);
   }, [session]);
 
-  // Don't render anything until we know the session status
+  if (inviteCode) {
+    return <JoinHousehold />;
+  }
+
   if (session === undefined || checkingHousehold) {
     return (
       <div style={{ minHeight: "100vh", background: "#0F1218", opacity: 0 }} />
