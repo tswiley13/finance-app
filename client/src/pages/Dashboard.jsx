@@ -2015,7 +2015,7 @@ function Dashboard() {
               >
                 <QRCode
                   value={`${import.meta.env.VITE_APP_URL || window.location.origin}/join?code=${household?.invite_code}`}
-                  size={120}
+                  size={180}
                 />
               </div>
             </div>
