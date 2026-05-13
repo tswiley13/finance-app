@@ -3,67 +3,67 @@ import { supabase } from "../supabase";
 import { QRCodeSVG as QRCode } from "qrcode.react";
 
 const css = `
-  @import url('https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&family=DM+Mono:wght@400;500&display=swap');
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap');
 
   * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { background: #0F1218; color: #E8E6E1; font-family: 'DM Sans', sans-serif; }
+  body { background: #0F1118; color: #F0EEE9; font-family: 'Inter', sans-serif; }
 
   .app-shell { display: flex; min-height: 100vh; }
 
-  .sidebar { width: 220px; flex-shrink: 0; background: #161B26; border-right: 1px solid #2D3748; display: flex; flex-direction: column; padding: 28px 0; position: fixed; top: 0; left: 0; bottom: 0; }
+  .sidebar { width: 240px; flex-shrink: 0; background: #13111A; border-right: 1px solid rgba(255,255,255,0.06); display: flex; flex-direction: column; padding: 0; position: fixed; top: 0; left: 0; bottom: 0; }
 
-  .sidebar-logo { padding: 0 24px 32px; border-bottom: 1px solid #2D3748; }
-  .logo-text { font-family: 'Syne', sans-serif; font-size: 22px; font-weight: 800; letter-spacing: 0.12em; color: #E8E6E1; text-transform: uppercase; }
-  .logo-tag { font-size: 10px; color: #E8B84B; letter-spacing: 0.25em; text-transform: uppercase; margin-top: 3px; font-weight: 300; }
+  .sidebar-logo { padding: 28px 24px; border-bottom: 1px solid rgba(255,255,255,0.06); }
+  .logo-text { font-family: 'Inter', sans-serif; font-size: 18px; font-weight: 700; letter-spacing: 0.08em; color: #F0EEE9; text-transform: uppercase; }
+  .logo-tag { font-size: 10px; color: #E8B84B; letter-spacing: 0.2em; text-transform: uppercase; margin-top: 3px; font-weight: 400; opacity: 0.8; }
 
-  .nav { padding: 24px 12px; flex: 1; display: flex; flex-direction: column; gap: 2px; }
-  .nav-label { font-size: 10px; color: #4A5568; letter-spacing: 0.2em; text-transform: uppercase; padding: 0 12px; margin: 12px 0 6px; font-weight: 500; }
-  .nav-item { display: flex; align-items: center; gap: 10px; padding: 9px 12px; border-radius: 8px; cursor: pointer; font-size: 13px; color: #8892A4; font-weight: 400; transition: all 0.15s ease; border: none; background: none; width: 100%; text-align: left; font-family: 'DM Sans', sans-serif; }
-  .nav-item:hover { background: #1E2736; color: #CBD5E0; }
-  .nav-item.active { background: #1E2736; color: #E8E6E1; font-weight: 500; }
-  .nav-dot { width: 6px; height: 6px; border-radius: 50%; background: #E8B84B; flex-shrink: 0; }
-  .nav-dot-muted { width: 6px; height: 6px; border-radius: 50%; background: #4A5568; flex-shrink: 0; }
+  .nav { padding: 16px 12px; flex: 1; display: flex; flex-direction: column; gap: 1px; overflow-y: auto; }
+  .nav-label { font-size: 10px; color: rgba(255,255,255,0.25); letter-spacing: 0.15em; text-transform: uppercase; padding: 0 12px; margin: 16px 0 6px; font-weight: 600; }
+  .nav-item { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 8px; cursor: pointer; font-size: 13.5px; color: rgba(255,255,255,0.5); font-weight: 400; transition: all 0.12s ease; border: none; background: none; width: 100%; text-align: left; font-family: 'Inter', sans-serif; }
+  .nav-item:hover { background: rgba(255,255,255,0.06); color: rgba(255,255,255,0.85); }
+  .nav-item.active { background: rgba(232,184,75,0.12); color: #E8B84B; font-weight: 500; }
+  .nav-dot { width: 5px; height: 5px; border-radius: 50%; background: #E8B84B; flex-shrink: 0; }
+  .nav-dot-muted { width: 5px; height: 5px; border-radius: 50%; background: rgba(255,255,255,0.2); flex-shrink: 0; }
 
-  .sidebar-footer { padding: 20px 12px 0; border-top: 1px solid #2D3748; }
-  .signout-btn { display: flex; align-items: center; gap: 10px; padding: 9px 12px; border-radius: 8px; cursor: pointer; font-size: 13px; color: #8892A4; border: none; background: none; width: 100%; text-align: left; font-family: 'DM Sans', sans-serif; transition: all 0.15s ease; }
-  .signout-btn:hover { background: #1E2736; color: #CBD5E0; }
+  .sidebar-footer { padding: 16px 12px; border-top: 1px solid rgba(255,255,255,0.06); }
+  .signout-btn { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 8px; cursor: pointer; font-size: 13.5px; color: rgba(255,255,255,0.4); border: none; background: none; width: 100%; text-align: left; font-family: 'Inter', sans-serif; transition: all 0.12s ease; }
+  .signout-btn:hover { background: rgba(255,255,255,0.06); color: rgba(255,255,255,0.7); }
 
-  .main { margin-left: 220px; flex: 1; padding: 40px 40px 60px; max-width: calc(100% - 220px); }
+  .main { margin-left: 240px; flex: 1; padding: 40px 48px 80px; min-width: 0; }
 
-  .topbar { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 40px; }
-  .welcome-name { font-family: 'Syne', sans-serif; font-size: 32px; font-weight: 700; color: #E8E6E1; line-height: 1; }
-  .welcome-date { font-size: 12px; color: #8892A4; margin-top: 6px; letter-spacing: 0.05em; }
+  .topbar { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 36px; }
+  .welcome-name { font-size: 28px; font-weight: 700; color: #F0EEE9; line-height: 1; letter-spacing: -0.02em; }
+  .welcome-date { font-size: 13px; color: rgba(255,255,255,0.35); margin-top: 6px; }
 
-  .period-badge { background: #1E2736; border: 1px solid #2D3748; border-radius: 8px; padding: 10px 16px; text-align: right; }
-  .period-label { font-size: 10px; color: #8892A4; letter-spacing: 0.15em; text-transform: uppercase; }
-  .period-name { font-family: 'Syne', sans-serif; font-size: 14px; font-weight: 700; color: #E8E6E1; margin-top: 4px; }
-  .period-dates { font-size: 11px; color: #E8B84B; margin-top: 2px; font-family: 'DM Mono', monospace; }
+  .period-badge { background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); border-radius: 10px; padding: 12px 18px; text-align: right; }
+  .period-label { font-size: 10px; color: rgba(255,255,255,0.35); letter-spacing: 0.12em; text-transform: uppercase; font-weight: 600; }
+  .period-name { font-size: 14px; font-weight: 600; color: #F0EEE9; margin-top: 4px; }
+  .period-dates { font-size: 12px; color: #E8B84B; margin-top: 3px; font-family: 'DM Mono', monospace; }
 
-  .stat-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 20px; }
-  .stat-card { background: #161B26; border: 1px solid #2D3748; border-radius: 12px; padding: 20px 24px; position: relative; overflow: hidden; }
-  .stat-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px; background: linear-gradient(90deg, #E8B84B, transparent); opacity: 0.6; }
-  .stat-label { font-size: 10px; color: #8892A4; letter-spacing: 0.18em; text-transform: uppercase; margin-bottom: 10px; }
-  .stat-amount { font-family: 'DM Mono', monospace; font-size: 26px; font-weight: 500; color: #E8B84B; line-height: 1; }
-  .stat-amount.neutral { color: #E8E6E1; }
-  .stat-amount.negative { color: #FC8181; }
+  .stat-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 24px; }
+  .stat-card { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.07); border-radius: 14px; padding: 24px; position: relative; overflow: hidden; }
+  .stat-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 1px; background: linear-gradient(90deg, #E8B84B, transparent); opacity: 0.5; }
+  .stat-label { font-size: 11px; color: rgba(255,255,255,0.4); letter-spacing: 0.1em; text-transform: uppercase; font-weight: 600; margin-bottom: 12px; }
+  .stat-amount { font-family: 'DM Mono', monospace; font-size: 28px; font-weight: 500; color: #E8B84B; line-height: 1; }
+  .stat-amount.neutral { color: #F0EEE9; }
+  .stat-amount.negative { color: #F87171; }
 
-  .content-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-  .panel { background: #161B26; border: 1px solid #2D3748; border-radius: 12px; padding: 24px; }
+  .content-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  .panel { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.07); border-radius: 14px; padding: 24px; }
   .panel-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
-  .panel-title { font-size: 11px; color: #8892A4; letter-spacing: 0.18em; text-transform: uppercase; font-weight: 500; }
-  .panel-count { font-size: 11px; color: #4A5568; font-family: 'DM Mono', monospace; }
+  .panel-title { font-size: 11px; color: rgba(255,255,255,0.4); letter-spacing: 0.12em; text-transform: uppercase; font-weight: 600; }
+  .panel-count { font-size: 12px; color: rgba(255,255,255,0.25); font-family: 'DM Mono', monospace; }
 
-  .row-item { display: flex; justify-content: space-between; align-items: center; padding: 11px 0; border-bottom: 1px solid #1E2736; }
+  .row-item { display: flex; justify-content: space-between; align-items: center; padding: 13px 0; border-bottom: 1px solid rgba(255,255,255,0.05); }
   .row-item:last-child { border-bottom: none; }
-  .row-name { font-size: 13px; color: #CBD5E0; font-weight: 500; }
-  .row-sub { font-size: 11px; color: #4A5568; margin-top: 2px; letter-spacing: 0.05em; }
+  .row-name { font-size: 14px; color: #F0EEE9; font-weight: 500; }
+  .row-sub { font-size: 12px; color: rgba(255,255,255,0.35); margin-top: 3px; }
   .row-amount { font-family: 'DM Mono', monospace; font-size: 14px; color: #E8B84B; font-weight: 500; }
-  .empty-state { font-size: 13px; color: #4A5568; font-style: italic; padding: 8px 0; }
+  .empty-state { font-size: 13px; color: rgba(255,255,255,0.25); font-style: italic; padding: 12px 0; }
 
-  .accumulating-bar { height: 3px; background: #1E2736; border-radius: 2px; margin-top: 8px; overflow: hidden; }
+  .accumulating-bar { height: 3px; background: rgba(255,255,255,0.06); border-radius: 2px; margin-top: 8px; overflow: hidden; }
   .accumulating-fill { height: 100%; background: linear-gradient(90deg, #E8B84B, #F5D07A); border-radius: 2px; }
 
-  .tag { display: inline-block; font-size: 9px; letter-spacing: 0.12em; text-transform: uppercase; padding: 2px 7px; border-radius: 4px; background: #1E2736; color: #4A5568; margin-left: 8px; vertical-align: middle; }
+  .tag { display: inline-block; font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; padding: 2px 8px; border-radius: 4px; background: rgba(255,255,255,0.06); color: rgba(255,255,255,0.4); margin-left: 8px; vertical-align: middle; font-weight: 500; }
 `;
 
 function Dashboard() {
