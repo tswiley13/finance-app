@@ -2470,11 +2470,47 @@ function Dashboard() {
               marginBottom: "24px",
             }}
           >
-            <h2 style={{ fontFamily: "'Syne', sans-serif", fontSize: "24px" }}>
+            <h2
+              style={{
+                fontFamily: "'Inter', sans-serif",
+                fontSize: "24px",
+                fontWeight: "700",
+                color: "#F2F0EB",
+              }}
+            >
               Accounts
             </h2>
+            <button
+              onClick={() => {
+                setEditingAccount(null);
+                setAccountName("");
+                setBankName("");
+                setLastFour("");
+                setAccountType("checking");
+                setCurrentBalance("");
+                setIsPrimary(false);
+                setIsAccumulating(false);
+                setAccumulationTarget("");
+                setAccumulationCurrent("");
+                setResetType("manual");
+                setResetDay("");
+                setShowAccountForm(true);
+              }}
+              style={{
+                background: "#E8B84B",
+                border: "none",
+                color: "#0C0E14",
+                padding: "8px 16px",
+                borderRadius: "8px",
+                cursor: "pointer",
+                fontSize: "13px",
+                fontWeight: "600",
+                fontFamily: "'Inter', sans-serif",
+              }}
+            >
+              + Add Account
+            </button>
           </div>
-
           {editingAccount && (
             <div className="panel" style={{ marginBottom: "16px" }}>
               <div className="panel-header">
@@ -2606,6 +2642,221 @@ function Dashboard() {
                     cursor: "pointer",
                     fontSize: "13px",
                     fontFamily: "'DM Sans', sans-serif",
+                  }}
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          )}
+
+          {showAccountForm && (
+            <div className="panel" style={{ marginBottom: "16px" }}>
+              <div className="panel-header">
+                <div className="panel-title">New Account</div>
+              </div>
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "1fr 1fr",
+                  gap: "12px",
+                }}
+              >
+                <input
+                  placeholder="Account name"
+                  value={accountName}
+                  onChange={(e) => setAccountName(e.target.value)}
+                  style={{
+                    background: "rgba(255,255,255,0.06)",
+                    border: "1px solid rgba(255,255,255,0.1)",
+                    color: "#F2F0EB",
+                    padding: "8px 12px",
+                    borderRadius: "6px",
+                    fontSize: "13px",
+                    fontFamily: "'Inter', sans-serif",
+                  }}
+                />
+                <input
+                  placeholder="Bank name"
+                  value={bankName}
+                  onChange={(e) => setBankName(e.target.value)}
+                  style={{
+                    background: "rgba(255,255,255,0.06)",
+                    border: "1px solid rgba(255,255,255,0.1)",
+                    color: "#F2F0EB",
+                    padding: "8px 12px",
+                    borderRadius: "6px",
+                    fontSize: "13px",
+                    fontFamily: "'Inter', sans-serif",
+                  }}
+                />
+                <input
+                  placeholder="Last 4 digits"
+                  value={lastFour}
+                  onChange={(e) => setLastFour(e.target.value)}
+                  style={{
+                    background: "rgba(255,255,255,0.06)",
+                    border: "1px solid rgba(255,255,255,0.1)",
+                    color: "#F2F0EB",
+                    padding: "8px 12px",
+                    borderRadius: "6px",
+                    fontSize: "13px",
+                    fontFamily: "'Inter', sans-serif",
+                  }}
+                />
+                <select
+                  value={accountType}
+                  onChange={(e) => setAccountType(e.target.value)}
+                  style={{
+                    background: "rgba(255,255,255,0.06)",
+                    border: "1px solid rgba(255,255,255,0.1)",
+                    color: "#F2F0EB",
+                    padding: "8px 12px",
+                    borderRadius: "6px",
+                    fontSize: "13px",
+                    fontFamily: "'Inter', sans-serif",
+                  }}
+                >
+                  <option value="checking">Checking</option>
+                  <option value="savings">Savings</option>
+                </select>
+                <input
+                  type="number"
+                  placeholder="Current balance"
+                  value={currentBalance}
+                  onChange={(e) => setCurrentBalance(e.target.value)}
+                  style={{
+                    background: "rgba(255,255,255,0.06)",
+                    border: "1px solid rgba(255,255,255,0.1)",
+                    color: "#F2F0EB",
+                    padding: "8px 12px",
+                    borderRadius: "6px",
+                    fontSize: "13px",
+                    fontFamily: "'Inter', sans-serif",
+                  }}
+                />
+                <div
+                  style={{ display: "flex", alignItems: "center", gap: "8px" }}
+                >
+                  <label
+                    style={{
+                      color: "rgba(255,255,255,0.6)",
+                      fontSize: "13px",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "6px",
+                    }}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={isPrimary}
+                      onChange={(e) => setIsPrimary(e.target.checked)}
+                    />
+                    Primary
+                  </label>
+                  <label
+                    style={{
+                      color: "rgba(255,255,255,0.6)",
+                      fontSize: "13px",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "6px",
+                    }}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={isAccumulating}
+                      onChange={(e) => setIsAccumulating(e.target.checked)}
+                    />
+                    Accumulating
+                  </label>
+                </div>
+                {isAccumulating && (
+                  <input
+                    type="number"
+                    placeholder="Accumulation target"
+                    value={accumulationTarget}
+                    onChange={(e) => setAccumulationTarget(e.target.value)}
+                    style={{
+                      background: "rgba(255,255,255,0.06)",
+                      border: "1px solid rgba(255,255,255,0.1)",
+                      color: "#F2F0EB",
+                      padding: "8px 12px",
+                      borderRadius: "6px",
+                      fontSize: "13px",
+                      fontFamily: "'Inter', sans-serif",
+                    }}
+                  />
+                )}
+              </div>
+              <div style={{ display: "flex", gap: "8px", marginTop: "12px" }}>
+                <button
+                  onClick={async () => {
+                    if (!accountName || !bankName || !lastFour) {
+                      alert("Please fill in all required fields.");
+                      return;
+                    }
+                    const { data: savedAccount, error } = await supabase
+                      .from("accounts")
+                      .insert({
+                        household_id: household.id,
+                        name: accountName,
+                        bank_name: bankName,
+                        last_four: lastFour,
+                        account_type: accountType,
+                        current_balance: parseFloat(currentBalance) || 0,
+                        is_primary: isPrimary,
+                        is_accumulating: isAccumulating,
+                        accumulation_target: accumulationTarget
+                          ? parseFloat(accumulationTarget)
+                          : null,
+                        accumulation_current: 0,
+                        reset_type: resetType,
+                        reset_day: resetDay ? parseInt(resetDay) : null,
+                      })
+                      .select()
+                      .single();
+                    if (error) {
+                      console.log("Error:", error.message);
+                      return;
+                    }
+                    setAccounts([...accounts, savedAccount]);
+                    setAccountName("");
+                    setBankName("");
+                    setLastFour("");
+                    setAccountType("checking");
+                    setCurrentBalance("");
+                    setIsPrimary(false);
+                    setIsAccumulating(false);
+                    setAccumulationTarget("");
+                    setAccumulationCurrent("");
+                    setShowAccountForm(false);
+                  }}
+                  style={{
+                    background: "#E8B84B",
+                    border: "none",
+                    color: "#0C0E14",
+                    padding: "8px 16px",
+                    borderRadius: "6px",
+                    cursor: "pointer",
+                    fontSize: "13px",
+                    fontWeight: "600",
+                    fontFamily: "'Inter', sans-serif",
+                  }}
+                >
+                  Save Account
+                </button>
+                <button
+                  onClick={() => setShowAccountForm(false)}
+                  style={{
+                    background: "none",
+                    border: "1px solid rgba(255,255,255,0.1)",
+                    color: "rgba(255,255,255,0.5)",
+                    padding: "8px 16px",
+                    borderRadius: "6px",
+                    cursor: "pointer",
+                    fontSize: "13px",
+                    fontFamily: "'Inter', sans-serif",
                   }}
                 >
                   Cancel
