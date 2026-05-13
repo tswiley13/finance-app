@@ -69,11 +69,11 @@ const css = `
 
   .period-badge { 
     background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.07); 
-    border-radius: 10px; padding: 10px 16px; text-align: right; 
+    border-radius: 10px; padding: 10px 16px; text-align: center; 
   }
-  .period-label { font-size: 9px; color: rgba(255,255,255,0.3); letter-spacing: 0.12em; text-transform: uppercase; font-weight: 600; }
+  .period-label { font-size: 13px; font-weight: 600; color: #F2F0EB; margin-bottom: 4px; }
   .period-name { font-size: 13px; font-weight: 600; color: #F2F0EB; margin-top: 3px; }
-  .period-dates { font-size: 11px; color: #E8B84B; margin-top: 2px; font-family: 'DM Mono', monospace; }
+  .period-dates { font-size: 13px; color: #E8B84B; margin-top: 6px; font-family: 'DM Mono', monospace; }
 
   /* ── CONTENT AREA ── */
   .content-area { padding: 28px 32px 60px; width: 100% }
@@ -3842,7 +3842,6 @@ function Dashboard() {
             <div className="period-label">Current Pay Period</div>
             {currentPeriod ? (
               <>
-                <div className="period-name">Pay Period</div>
                 <div className="period-dates">
                   {fmtDate(currentPeriod.start_date)} —{" "}
                   {fmtDate(currentPeriod.end_date)}
