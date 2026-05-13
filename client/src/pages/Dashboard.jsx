@@ -3968,6 +3968,48 @@ function Dashboard() {
                   ))
                 )}
               </div>
+              <div className="panel">
+                <div className="panel-header">
+                  <div className="panel-title">Where the Money Goes</div>
+                  <div className="panel-count">This pay period</div>
+                </div>
+                {(() => {
+                  const currentBreakdown = getPayPeriodBreakdown().find(
+                    (item) => item.isCurrentPeriod,
+                  );
+                  if (
+                    !currentBreakdown ||
+                    currentBreakdown.bills.length === 0
+                  ) {
+                    return (
+                      <div className="empty-state">
+                        No bills due this period
+                      </div>
+                    );
+                  }
+
+                  const grouped = {};
+                  currentBreakdown.bills.forEach((bill) => {
+                    const acct = accounts.find((a) => a.id === bill.account_id);
+                    const key = acct ? acct.name : "Unassigned";
+                    if (!grouped[key]) grouped[key] = { total: 0, bills: [] };
+                    grouped[key].total += bill.amount || 0;
+                    grouped[key].bills.push(bill);
+                  });
+
+                  return Object.entries(grouped).map(([acctName, data], i) => (
+                    <div className="row-item" key={i}>
+                      <div>
+                        <div className="row-name">{acctName}</div>
+                        <div className="row-sub">
+                          {data.bills.map((b) => b.name).join(" · ")}
+                        </div>
+                      </div>
+                      <div className="row-amount">${fmt(data.total)}</div>
+                    </div>
+                  ));
+                })()}
+              </div>
             </div>
           </div>
         </div>
