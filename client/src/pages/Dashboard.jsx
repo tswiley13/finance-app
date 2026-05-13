@@ -3,67 +3,137 @@ import { supabase } from "../supabase";
 import { QRCodeSVG as QRCode } from "qrcode.react";
 
 const css = `
-  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap');
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap');
 
   * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { background: #0F1118; color: #F0EEE9; font-family: 'Inter', sans-serif; }
+  body { background: #0C0E14; color: #F2F0EB; font-family: 'Inter', sans-serif; -webkit-font-smoothing: antialiased; }
 
   .app-shell { display: flex; min-height: 100vh; }
 
-  .sidebar { width: 240px; flex-shrink: 0; background: #13111A; border-right: 1px solid rgba(255,255,255,0.06); display: flex; flex-direction: column; padding: 0; position: fixed; top: 0; left: 0; bottom: 0; }
+  /* ── SIDEBAR ── */
+  .sidebar { 
+    width: 260px; flex-shrink: 0; background: #0C0E14; 
+    border-right: 1px solid rgba(255,255,255,0.06); 
+    display: flex; flex-direction: column; 
+    position: fixed; top: 0; left: 0; bottom: 0; 
+  }
 
-  .sidebar-logo { padding: 28px 24px; border-bottom: 1px solid rgba(255,255,255,0.06); }
-  .logo-text { font-family: 'Inter', sans-serif; font-size: 18px; font-weight: 700; letter-spacing: 0.08em; color: #F0EEE9; text-transform: uppercase; }
-  .logo-tag { font-size: 10px; color: #E8B84B; letter-spacing: 0.2em; text-transform: uppercase; margin-top: 3px; font-weight: 400; opacity: 0.8; }
+  .sidebar-logo { padding: 24px 20px 20px; }
+  .logo-text { 
+    font-size: 17px; font-weight: 800; letter-spacing: 0.06em; 
+    color: #F2F0EB; text-transform: uppercase; 
+  }
+  .logo-tag { 
+    font-size: 9px; color: #E8B84B; letter-spacing: 0.2em; 
+    text-transform: uppercase; margin-top: 2px; font-weight: 500; opacity: 0.7; 
+  }
 
-  .nav { padding: 16px 12px; flex: 1; display: flex; flex-direction: column; gap: 1px; overflow-y: auto; }
-  .nav-label { font-size: 10px; color: rgba(255,255,255,0.25); letter-spacing: 0.15em; text-transform: uppercase; padding: 0 12px; margin: 16px 0 6px; font-weight: 600; }
-  .nav-item { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 8px; cursor: pointer; font-size: 13.5px; color: rgba(255,255,255,0.5); font-weight: 400; transition: all 0.12s ease; border: none; background: none; width: 100%; text-align: left; font-family: 'Inter', sans-serif; }
-  .nav-item:hover { background: rgba(255,255,255,0.06); color: rgba(255,255,255,0.85); }
-  .nav-item.active { background: rgba(232,184,75,0.12); color: #E8B84B; font-weight: 500; }
+  .nav { padding: 8px 12px; flex: 1; display: flex; flex-direction: column; gap: 1px; overflow-y: auto; }
+  .nav-label { 
+    font-size: 9px; color: rgba(255,255,255,0.2); letter-spacing: 0.15em; 
+    text-transform: uppercase; padding: 0 8px; margin: 20px 0 4px; font-weight: 600; 
+  }
+  .nav-item { 
+    display: flex; align-items: center; gap: 10px; padding: 8px 10px; 
+    border-radius: 7px; cursor: pointer; font-size: 13px; 
+    color: rgba(255,255,255,0.45); font-weight: 400; 
+    transition: all 0.1s ease; border: none; background: none; 
+    width: 100%; text-align: left; font-family: 'Inter', sans-serif; 
+  }
+  .nav-item:hover { background: rgba(255,255,255,0.05); color: rgba(255,255,255,0.8); }
+  .nav-item.active { background: rgba(232,184,75,0.1); color: #E8B84B; font-weight: 500; }
   .nav-dot { width: 5px; height: 5px; border-radius: 50%; background: #E8B84B; flex-shrink: 0; }
-  .nav-dot-muted { width: 5px; height: 5px; border-radius: 50%; background: rgba(255,255,255,0.2); flex-shrink: 0; }
+  .nav-dot-muted { width: 5px; height: 5px; border-radius: 50%; background: rgba(255,255,255,0.15); flex-shrink: 0; }
 
-  .sidebar-footer { padding: 16px 12px; border-top: 1px solid rgba(255,255,255,0.06); }
-  .signout-btn { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 8px; cursor: pointer; font-size: 13.5px; color: rgba(255,255,255,0.4); border: none; background: none; width: 100%; text-align: left; font-family: 'Inter', sans-serif; transition: all 0.12s ease; }
-  .signout-btn:hover { background: rgba(255,255,255,0.06); color: rgba(255,255,255,0.7); }
+  .sidebar-footer { padding: 12px; border-top: 1px solid rgba(255,255,255,0.05); }
+  .signout-btn { 
+    display: flex; align-items: center; gap: 10px; padding: 8px 10px; 
+    border-radius: 7px; cursor: pointer; font-size: 13px; 
+    color: rgba(255,255,255,0.3); border: none; background: none; 
+    width: 100%; text-align: left; font-family: 'Inter', sans-serif; 
+    transition: all 0.1s ease; 
+  }
+  .signout-btn:hover { background: rgba(255,255,255,0.05); color: rgba(255,255,255,0.6); }
 
-  .main { margin-left: 240px; flex: 1; padding: 40px 48px 80px; min-width: 0; }
+  /* ── MAIN ── */
+  .main { margin-left: 260px; flex: 1; min-width: 0; padding: 0; }
 
-  .topbar { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 36px; }
-  .welcome-name { font-size: 28px; font-weight: 700; color: #F0EEE9; line-height: 1; letter-spacing: -0.02em; }
-  .welcome-date { font-size: 13px; color: rgba(255,255,255,0.35); margin-top: 6px; }
+  /* ── TOPBAR ── */
+  .topbar { 
+    display: flex; justify-content: space-between; align-items: center; 
+    padding: 24px 32px; border-bottom: 1px solid rgba(255,255,255,0.05);
+    margin-bottom: 0;
+  }
+  .welcome-name { font-size: 20px; font-weight: 700; color: #F2F0EB; letter-spacing: -0.02em; }
+  .welcome-date { font-size: 12px; color: rgba(255,255,255,0.3); margin-top: 3px; }
 
-  .period-badge { background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); border-radius: 10px; padding: 12px 18px; text-align: right; }
-  .period-label { font-size: 10px; color: rgba(255,255,255,0.35); letter-spacing: 0.12em; text-transform: uppercase; font-weight: 600; }
-  .period-name { font-size: 14px; font-weight: 600; color: #F0EEE9; margin-top: 4px; }
-  .period-dates { font-size: 12px; color: #E8B84B; margin-top: 3px; font-family: 'DM Mono', monospace; }
+  .period-badge { 
+    background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.07); 
+    border-radius: 10px; padding: 10px 16px; text-align: right; 
+  }
+  .period-label { font-size: 9px; color: rgba(255,255,255,0.3); letter-spacing: 0.12em; text-transform: uppercase; font-weight: 600; }
+  .period-name { font-size: 13px; font-weight: 600; color: #F2F0EB; margin-top: 3px; }
+  .period-dates { font-size: 11px; color: #E8B84B; margin-top: 2px; font-family: 'DM Mono', monospace; }
 
-  .stat-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 24px; }
-  .stat-card { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.07); border-radius: 14px; padding: 24px; position: relative; overflow: hidden; }
-  .stat-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 1px; background: linear-gradient(90deg, #E8B84B, transparent); opacity: 0.5; }
-  .stat-label { font-size: 11px; color: rgba(255,255,255,0.4); letter-spacing: 0.1em; text-transform: uppercase; font-weight: 600; margin-bottom: 12px; }
-  .stat-amount { font-family: 'DM Mono', monospace; font-size: 28px; font-weight: 500; color: #E8B84B; line-height: 1; }
-  .stat-amount.neutral { color: #F0EEE9; }
+  /* ── CONTENT AREA ── */
+  .content-area { padding: 28px 32px 60px; width: 100% }
+
+  /* ── STAT CARDS ── */
+  .stat-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 28px; }
+  .stat-card { 
+    background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.07); 
+    border-radius: 12px; padding: 20px 22px; position: relative; overflow: hidden; 
+  }
+  .stat-card::before { 
+    content: ''; position: absolute; top: 0; left: 0; right: 0; height: 1px; 
+    background: linear-gradient(90deg, rgba(232,184,75,0.6), transparent); 
+  }
+  .stat-label { 
+    font-size: 10px; color: rgba(255,255,255,0.35); letter-spacing: 0.1em; 
+    text-transform: uppercase; font-weight: 600; margin-bottom: 10px; 
+  }
+  .stat-amount { font-family: 'DM Mono', monospace; font-size: 26px; font-weight: 500; color: #E8B84B; line-height: 1; }
+  .stat-amount.neutral { color: #F2F0EB; }
   .stat-amount.negative { color: #F87171; }
 
-  .content-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
-  .panel { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.07); border-radius: 14px; padding: 24px; }
-  .panel-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
-  .panel-title { font-size: 11px; color: rgba(255,255,255,0.4); letter-spacing: 0.12em; text-transform: uppercase; font-weight: 600; }
-  .panel-count { font-size: 12px; color: rgba(255,255,255,0.25); font-family: 'DM Mono', monospace; }
+  /* ── DASHBOARD GRID ── */
+  .dashboard-grid { display: grid; grid-template-columns: calc((100% - 24px) / 3 * 2 + 12px) calc((100% - 24px) / 3); gap: 12px; align-items: start; width: 100%; }
+  .dashboard-left { display: flex; flex-direction: column; gap: 16px; }
+  .dashboard-right { display: flex; flex-direction: column; gap: 16px; }
 
-  .row-item { display: flex; justify-content: space-between; align-items: center; padding: 13px 0; border-bottom: 1px solid rgba(255,255,255,0.05); }
+  /* ── PANELS ── */
+  .panel { 
+    background: rgba(255,255,255,0.025); border: 1px solid rgba(255,255,255,0.07); 
+    border-radius: 12px; padding: 20px; 
+  }
+  .panel-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+  .panel-title { font-size: 11px; color: rgba(255,255,255,0.4); letter-spacing: 0.1em; text-transform: uppercase; font-weight: 600; }
+  .panel-count { font-size: 11px; color: rgba(255,255,255,0.2); font-family: 'DM Mono', monospace; }
+
+  /* ── ROWS ── */
+  .row-item { 
+    display: flex; justify-content: space-between; align-items: center; 
+    padding: 12px 0; border-bottom: 1px solid rgba(255,255,255,0.04); 
+  }
   .row-item:last-child { border-bottom: none; }
-  .row-name { font-size: 14px; color: #F0EEE9; font-weight: 500; }
-  .row-sub { font-size: 12px; color: rgba(255,255,255,0.35); margin-top: 3px; }
+  .row-name { font-size: 13.5px; color: #F2F0EB; font-weight: 500; }
+  .row-sub { font-size: 11px; color: rgba(255,255,255,0.3); margin-top: 3px; }
   .row-amount { font-family: 'DM Mono', monospace; font-size: 14px; color: #E8B84B; font-weight: 500; }
-  .empty-state { font-size: 13px; color: rgba(255,255,255,0.25); font-style: italic; padding: 12px 0; }
+  .empty-state { font-size: 13px; color: rgba(255,255,255,0.2); font-style: italic; padding: 16px 0; }
 
-  .accumulating-bar { height: 3px; background: rgba(255,255,255,0.06); border-radius: 2px; margin-top: 8px; overflow: hidden; }
+  /* ── ACCUMULATING BAR ── */
+  .accumulating-bar { height: 2px; background: rgba(255,255,255,0.06); border-radius: 2px; margin-top: 8px; overflow: hidden; }
   .accumulating-fill { height: 100%; background: linear-gradient(90deg, #E8B84B, #F5D07A); border-radius: 2px; }
 
-  .tag { display: inline-block; font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; padding: 2px 8px; border-radius: 4px; background: rgba(255,255,255,0.06); color: rgba(255,255,255,0.4); margin-left: 8px; vertical-align: middle; font-weight: 500; }
+  /* ── TAGS ── */
+  .tag { 
+    display: inline-block; font-size: 9px; letter-spacing: 0.08em; text-transform: uppercase; 
+    padding: 2px 7px; border-radius: 4px; background: rgba(255,255,255,0.07); 
+    color: rgba(255,255,255,0.35); margin-left: 8px; vertical-align: middle; font-weight: 600; 
+  }
+
+  /* ── CONTENT GRID (non-dashboard pages) ── */
+  .content-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
 `;
 
 function Dashboard() {
@@ -3530,7 +3600,11 @@ function Dashboard() {
             ) : (
               <div
                 className="period-name"
-                style={{ color: "#8892A4", fontSize: "13px", fontWeight: 400 }}
+                style={{
+                  color: "rgba(255,255,255,0.3)",
+                  fontSize: "13px",
+                  fontWeight: 400,
+                }}
               >
                 No active period
               </div>
@@ -3538,327 +3612,364 @@ function Dashboard() {
           </div>
         </div>
 
-        <div className="stat-row">
-          <div className="stat-card">
-            <div className="stat-label">Income Remaining</div>
-            <div className="stat-amount">
-              ${fmt(getRemainingIncomeThisMonth())}
+        <div className="content-area">
+          <div className="stat-row">
+            <div className="stat-card">
+              <div className="stat-label">Income Remaining</div>
+              <div className="stat-amount">
+                ${fmt(getRemainingIncomeThisMonth())}
+              </div>
+            </div>
+            <div className="stat-card">
+              <div className="stat-label">Bills Remaining</div>
+              <div className="stat-amount">
+                $
+                {fmt(
+                  bills
+                    .filter(isBillDue)
+                    .reduce((sum, b) => sum + (b.amount || 0), 0),
+                )}
+              </div>
+            </div>
+            <div className="stat-card">
+              <div className="stat-label">Left After Bills</div>
+              {(() => {
+                const left =
+                  getRemainingIncomeThisMonth() -
+                  bills
+                    .filter(isBillDue)
+                    .reduce((sum, b) => sum + (b.amount || 0), 0);
+                return (
+                  <div
+                    className={`stat-amount ${left < 0 ? "negative" : "neutral"}`}
+                  >
+                    {left < 0 ? "-" : ""}${fmt(Math.abs(left))}
+                  </div>
+                );
+              })()}
             </div>
           </div>
-          <div className="stat-card">
-            <div className="stat-label">Bills Remaining</div>
-            <div className="stat-amount">
-              $
-              {fmt(
-                bills
-                  .filter(isBillDue)
-                  .reduce((sum, b) => sum + (b.amount || 0), 0),
-              )}
-            </div>
-          </div>
-          <div className="stat-card">
-            <div className="stat-label">Left After Bills</div>
-            {(() => {
-              const left =
-                getRemainingIncomeThisMonth() -
-                bills
-                  .filter(isBillDue)
-                  .reduce((sum, b) => sum + (b.amount || 0), 0);
-              return (
-                <div
-                  className={`stat-amount ${left < 0 ? "negative" : "neutral"}`}
-                >
-                  {left < 0 ? "-" : ""}${fmt(Math.abs(left))}
-                </div>
-              );
-            })()}
-          </div>
-        </div>
 
-        <div>
-          <div className="panel">
-            <div className="panel-header">
-              <div className="panel-title">Accounts</div>
-              <div className="panel-count">{accounts.length} total</div>
-            </div>
-            {accounts.length === 0 ? (
-              <div className="empty-state">No accounts added yet</div>
-            ) : (
-              accounts.map((acct, i) => (
-                <div className="row-item" key={i}>
-                  <div>
-                    <div className="row-name">
-                      {acct.name}
-                      {acct.is_primary && <span className="tag">Primary</span>}
-                      {acct.is_accumulating && (
-                        <span className="tag">Accumulating</span>
-                      )}
-                    </div>
-                    <div className="row-sub">
-                      {acct.bank_name} ···{acct.last_four} · {acct.account_type}
-                    </div>
-                    {acct.is_accumulating && acct.accumulation_target > 0 && (
-                      <div className="accumulating-bar">
+          <div className="dashboard-grid">
+            <div className="dashboard-left">
+              {getPayPeriodBreakdown().length === 0 ? (
+                <div className="panel">
+                  <div className="empty-state">No pay periods found</div>
+                </div>
+              ) : (
+                getPayPeriodBreakdown().map((item, i) => (
+                  <div key={i} className="panel">
+                    <div
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                        marginBottom: "16px",
+                      }}
+                    >
+                      <div>
                         <div
-                          className="accumulating-fill"
                           style={{
-                            width: `${Math.min(100, ((acct.accumulation_current || 0) / acct.accumulation_target) * 100)}%`,
+                            fontSize: "14px",
+                            fontWeight: "600",
+                            color: "#F2F0EB",
                           }}
-                        />
+                        >
+                          {fmtDate(item.period.start_date)} —{" "}
+                          {fmtDate(item.period.end_date)}
+                          {item.isCurrentPeriod && (
+                            <span
+                              style={{
+                                marginLeft: "10px",
+                                fontSize: "9px",
+                                background: "#E8B84B",
+                                color: "#0C0E14",
+                                padding: "2px 8px",
+                                borderRadius: "4px",
+                                letterSpacing: "0.08em",
+                                textTransform: "uppercase",
+                                fontWeight: "700",
+                              }}
+                            >
+                              Current
+                            </span>
+                          )}
+                        </div>
+                        {item.incomeItems.length > 0 && (
+                          <div
+                            style={{
+                              fontSize: "11px",
+                              color: "rgba(255,255,255,0.3)",
+                              marginTop: "4px",
+                            }}
+                          >
+                            {item.incomeItems.map((inc, j) => (
+                              <span key={j}>
+                                {inc.name} deposits
+                                {j < item.incomeItems.length - 1 ? " · " : ""}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                      <div style={{ textAlign: "right" }}>
+                        <div
+                          style={{
+                            fontSize: "9px",
+                            color: "rgba(255,255,255,0.3)",
+                            letterSpacing: "0.12em",
+                            textTransform: "uppercase",
+                            marginBottom: "4px",
+                            fontWeight: "600",
+                          }}
+                        >
+                          Left Over
+                        </div>
+                        <div
+                          style={{
+                            fontFamily: "'DM Mono', monospace",
+                            fontSize: "22px",
+                            fontWeight: "500",
+                            color: item.leftOver < 0 ? "#F87171" : "#F2F0EB",
+                          }}
+                        >
+                          {item.leftOver < 0 ? "-" : ""}$
+                          {fmt(Math.abs(item.leftOver))}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div
+                      style={{
+                        display: "grid",
+                        gridTemplateColumns: "1fr 1fr",
+                        gap: "8px",
+                        marginBottom: item.bills.length > 0 ? "12px" : "0",
+                      }}
+                    >
+                      <div
+                        style={{
+                          background: "rgba(255,255,255,0.03)",
+                          borderRadius: "8px",
+                          padding: "10px 12px",
+                        }}
+                      >
+                        <div
+                          style={{
+                            fontSize: "9px",
+                            color: "rgba(255,255,255,0.3)",
+                            letterSpacing: "0.12em",
+                            textTransform: "uppercase",
+                            marginBottom: "4px",
+                            fontWeight: "600",
+                          }}
+                        >
+                          Income
+                        </div>
+                        <div
+                          style={{
+                            fontFamily: "'DM Mono', monospace",
+                            fontSize: "16px",
+                            color: "#4ADE80",
+                          }}
+                        >
+                          ${fmt(item.income)}
+                        </div>
+                      </div>
+                      <div
+                        style={{
+                          background: "rgba(255,255,255,0.03)",
+                          borderRadius: "8px",
+                          padding: "10px 12px",
+                        }}
+                      >
+                        <div
+                          style={{
+                            fontSize: "9px",
+                            color: "rgba(255,255,255,0.3)",
+                            letterSpacing: "0.12em",
+                            textTransform: "uppercase",
+                            marginBottom: "4px",
+                            fontWeight: "600",
+                          }}
+                        >
+                          Bills Due
+                        </div>
+                        <div
+                          style={{
+                            fontFamily: "'DM Mono', monospace",
+                            fontSize: "16px",
+                            color:
+                              item.billsTotal > 0
+                                ? "#F87171"
+                                : "rgba(255,255,255,0.2)",
+                          }}
+                        >
+                          ${fmt(item.billsTotal)}
+                        </div>
+                      </div>
+                    </div>
+
+                    {item.bills.length > 0 && (
+                      <div
+                        style={{
+                          borderTop: "1px solid rgba(255,255,255,0.05)",
+                          paddingTop: "12px",
+                        }}
+                      >
+                        {item.bills.map((bill, j) => (
+                          <div
+                            key={j}
+                            style={{
+                              display: "flex",
+                              justifyContent: "space-between",
+                              alignItems: "center",
+                              padding: "7px 0",
+                              borderBottom:
+                                j < item.bills.length - 1
+                                  ? "1px solid rgba(255,255,255,0.04)"
+                                  : "none",
+                            }}
+                          >
+                            <div>
+                              <div
+                                style={{
+                                  fontSize: "13px",
+                                  color: "rgba(255,255,255,0.7)",
+                                  fontWeight: "500",
+                                }}
+                              >
+                                {bill.name}
+                              </div>
+                              <div
+                                style={{
+                                  fontSize: "11px",
+                                  color: "rgba(255,255,255,0.25)",
+                                  marginTop: "2px",
+                                }}
+                              >
+                                Due the {bill.due_day}
+                                {getSuffix(bill.due_day)}
+                              </div>
+                            </div>
+                            <div
+                              style={{
+                                display: "flex",
+                                alignItems: "center",
+                                gap: "10px",
+                              }}
+                            >
+                              <span
+                                style={{
+                                  fontFamily: "'DM Mono', monospace",
+                                  fontSize: "13px",
+                                  color: "rgba(255,255,255,0.5)",
+                                }}
+                              >
+                                ${fmt(bill.amount)}
+                              </span>
+                              <button
+                                onClick={() => markBillPaid(bill)}
+                                style={{
+                                  background: "rgba(74,222,128,0.1)",
+                                  border: "1px solid rgba(74,222,128,0.3)",
+                                  color: "#4ADE80",
+                                  padding: "3px 10px",
+                                  borderRadius: "5px",
+                                  cursor: "pointer",
+                                  fontSize: "11px",
+                                  fontFamily: "'Inter', sans-serif",
+                                  fontWeight: "500",
+                                }}
+                              >
+                                Paid
+                              </button>
+                            </div>
+                          </div>
+                        ))}
                       </div>
                     )}
                   </div>
-                  {quickEditAccountId === acct.id ? (
-                    <input
-                      type="number"
-                      value={quickEditBalance}
-                      onChange={(e) => setQuickEditBalance(e.target.value)}
-                      onBlur={() =>
-                        updateAccountBalance(acct.id, quickEditBalance)
-                      }
-                      autoFocus
-                      style={{
-                        background: "#1E2736",
-                        border: "1px solid #E8B84B",
-                        color: "#E8B84B",
-                        padding: "4px 8px",
-                        borderRadius: "6px",
-                        fontSize: "14px",
-                        fontFamily: "'DM Mono', monospace",
-                        width: "100px",
-                        textAlign: "right",
-                      }}
-                    />
-                  ) : (
-                    <div
-                      className="row-amount"
-                      onClick={() => {
-                        setQuickEditAccountId(acct.id);
-                        setQuickEditBalance(acct.current_balance || "");
-                      }}
-                      style={{ cursor: "pointer" }}
-                      title="Click to edit"
-                    >
-                      ${fmt(acct.current_balance)}
-                    </div>
-                  )}
+                ))
+              )}
+            </div>
+
+            <div className="dashboard-right">
+              <div className="panel">
+                <div className="panel-header">
+                  <div className="panel-title">Accounts</div>
+                  <div className="panel-count">{accounts.length} total</div>
                 </div>
-              ))
-            )}
-          </div>
-        </div>
-        {/* Pay Period Breakdown */}
-        <div style={{ marginTop: "16px" }}>
-          {getPayPeriodBreakdown().length === 0
-            ? null
-            : getPayPeriodBreakdown().map((item, i) => (
-                <div key={i} className="panel" style={{ marginBottom: "12px" }}>
-                  <div
-                    style={{
-                      display: "flex",
-                      justifyContent: "space-between",
-                      alignItems: "center",
-                      marginBottom: "16px",
-                    }}
-                  >
-                    <div>
-                      <div
-                        style={{
-                          fontFamily: "'Syne', sans-serif",
-                          fontSize: "15px",
-                          fontWeight: "700",
-                          color: "#E8E6E1",
-                        }}
-                      >
-                        {fmtDate(item.period.start_date)} —{" "}
-                        {fmtDate(item.period.end_date)}
-                        {item.isCurrentPeriod && (
-                          <span
-                            style={{
-                              marginLeft: "10px",
-                              fontSize: "9px",
-                              background: "#E8B84B",
-                              color: "#0F1218",
-                              padding: "2px 8px",
-                              borderRadius: "4px",
-                              letterSpacing: "0.1em",
-                              textTransform: "uppercase",
-                              fontWeight: "700",
-                            }}
-                          >
-                            Current
-                          </span>
-                        )}
+                {accounts.length === 0 ? (
+                  <div className="empty-state">No accounts added yet</div>
+                ) : (
+                  accounts.map((acct, i) => (
+                    <div className="row-item" key={i}>
+                      <div>
+                        <div className="row-name">
+                          {acct.name}
+                          {acct.is_primary && (
+                            <span className="tag">Primary</span>
+                          )}
+                          {acct.is_accumulating && (
+                            <span className="tag">Saving</span>
+                          )}
+                        </div>
+                        <div className="row-sub">
+                          {acct.bank_name} ···{acct.last_four}
+                        </div>
+                        {acct.is_accumulating &&
+                          acct.accumulation_target > 0 && (
+                            <div className="accumulating-bar">
+                              <div
+                                className="accumulating-fill"
+                                style={{
+                                  width: `${Math.min(100, ((acct.accumulation_current || 0) / acct.accumulation_target) * 100)}%`,
+                                }}
+                              />
+                            </div>
+                          )}
                       </div>
-                      {item.incomeItems.length > 0 && (
-                        <div
+                      {quickEditAccountId === acct.id ? (
+                        <input
+                          type="number"
+                          value={quickEditBalance}
+                          onChange={(e) => setQuickEditBalance(e.target.value)}
+                          onBlur={() =>
+                            updateAccountBalance(acct.id, quickEditBalance)
+                          }
+                          autoFocus
                           style={{
-                            fontSize: "11px",
-                            color: "#68D391",
-                            marginTop: "4px",
+                            background: "rgba(255,255,255,0.06)",
+                            border: "1px solid #E8B84B",
+                            color: "#E8B84B",
+                            padding: "4px 8px",
+                            borderRadius: "6px",
+                            fontSize: "14px",
+                            fontFamily: "'DM Mono', monospace",
+                            width: "90px",
+                            textAlign: "right",
                           }}
+                        />
+                      ) : (
+                        <div
+                          className="row-amount"
+                          onClick={() => {
+                            setQuickEditAccountId(acct.id);
+                            setQuickEditBalance(acct.current_balance || "");
+                          }}
+                          style={{ cursor: "pointer" }}
+                          title="Click to edit"
                         >
-                          {item.incomeItems.map((inc, j) => (
-                            <span key={j}>
-                              {inc.name} deposits
-                              {j < item.incomeItems.length - 1 ? " · " : ""}
-                            </span>
-                          ))}
+                          ${fmt(acct.current_balance)}
                         </div>
                       )}
                     </div>
-                    <div style={{ textAlign: "right" }}>
-                      <div
-                        style={{
-                          fontSize: "10px",
-                          color: "#4A5568",
-                          letterSpacing: "0.15em",
-                          textTransform: "uppercase",
-                          marginBottom: "4px",
-                        }}
-                      >
-                        Left Over
-                      </div>
-                      <div
-                        style={{
-                          fontFamily: "'DM Mono', monospace",
-                          fontSize: "20px",
-                          fontWeight: "500",
-                          color: item.leftOver < 0 ? "#FC8181" : "#E8E6E1",
-                        }}
-                      >
-                        {item.leftOver < 0 ? "-" : ""}$
-                        {fmt(Math.abs(item.leftOver))}
-                      </div>
-                    </div>
-                  </div>
-
-                  <div
-                    style={{
-                      display: "grid",
-                      gridTemplateColumns: "1fr 1fr",
-                      gap: "8px",
-                      marginBottom: item.bills.length > 0 ? "12px" : "0",
-                    }}
-                  >
-                    <div
-                      style={{
-                        background: "#1E2736",
-                        borderRadius: "8px",
-                        padding: "10px 12px",
-                      }}
-                    >
-                      <div
-                        style={{
-                          fontSize: "10px",
-                          color: "#4A5568",
-                          letterSpacing: "0.15em",
-                          textTransform: "uppercase",
-                          marginBottom: "4px",
-                        }}
-                      >
-                        Income
-                      </div>
-                      <div
-                        style={{
-                          fontFamily: "'DM Mono', monospace",
-                          fontSize: "16px",
-                          color: "#68D391",
-                        }}
-                      >
-                        ${fmt(item.income)}
-                      </div>
-                    </div>
-                    <div
-                      style={{
-                        background: "#1E2736",
-                        borderRadius: "8px",
-                        padding: "10px 12px",
-                      }}
-                    >
-                      <div
-                        style={{
-                          fontSize: "10px",
-                          color: "#4A5568",
-                          letterSpacing: "0.15em",
-                          textTransform: "uppercase",
-                          marginBottom: "4px",
-                        }}
-                      >
-                        Bills Due
-                      </div>
-                      <div
-                        style={{
-                          fontFamily: "'DM Mono', monospace",
-                          fontSize: "16px",
-                          color: item.billsTotal > 0 ? "#FC8181" : "#4A5568",
-                        }}
-                      >
-                        ${fmt(item.billsTotal)}
-                      </div>
-                    </div>
-                  </div>
-
-                  {item.bills.length > 0 && (
-                    <div
-                      style={{
-                        borderTop: "1px solid #1E2736",
-                        paddingTop: "12px",
-                      }}
-                    >
-                      {item.bills.map((bill, j) => (
-                        <div
-                          key={j}
-                          style={{
-                            display: "flex",
-                            justifyContent: "space-between",
-                            alignItems: "center",
-                            padding: "6px 0",
-                            fontSize: "12px",
-                            borderBottom:
-                              j < item.bills.length - 1
-                                ? "1px solid #1E2736"
-                                : "none",
-                          }}
-                        >
-                          <span style={{ color: "#8892A4" }}>{bill.name}</span>
-                          <div
-                            style={{
-                              display: "flex",
-                              alignItems: "center",
-                              gap: "8px",
-                            }}
-                          >
-                            <span
-                              style={{
-                                fontFamily: "'DM Mono', monospace",
-                                color: "#4A5568",
-                              }}
-                            >
-                              ${fmt(bill.amount)}
-                            </span>
-                            <button
-                              onClick={() => markBillPaid(bill)}
-                              style={{
-                                background: "none",
-                                border: "1px solid #2D3748",
-                                color: "#68D391",
-                                padding: "2px 8px",
-                                borderRadius: "4px",
-                                cursor: "pointer",
-                                fontSize: "10px",
-                                fontFamily: "'DM Sans', sans-serif",
-                              }}
-                            >
-                              Paid
-                            </button>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              ))}
+                  ))
+                )}
+              </div>
+            </div>
+          </div>
         </div>
       </>
     );
@@ -3923,7 +4034,13 @@ function Dashboard() {
         </div>
       </aside>
 
-      <main className="main">{renderContent()}</main>
+      <main className="main">
+        {activeNav === "dashboard" ? (
+          renderContent()
+        ) : (
+          <div className="content-area">{renderContent()}</div>
+        )}
+      </main>
     </div>
   );
 }
