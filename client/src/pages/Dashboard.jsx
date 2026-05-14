@@ -2474,159 +2474,6 @@ function Dashboard() {
               + Add Account
             </button>
           </div>
-          {editingAccount && (
-            <div className="panel" style={{ marginBottom: "16px" }}>
-              <div className="panel-header">
-                <div className="panel-title">Edit Account</div>
-              </div>
-              <div
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: "1fr 1fr",
-                  gap: "12px",
-                }}
-              >
-                <input
-                  placeholder="Account name"
-                  value={accountName}
-                  onChange={(e) => setAccountName(e.target.value)}
-                  style={{
-                    background: "#1E2736",
-                    border: "1px solid #2D3748",
-                    color: "#E8E6E1",
-                    padding: "8px 12px",
-                    borderRadius: "6px",
-                    fontSize: "13px",
-                    fontFamily: "'DM Sans', sans-serif",
-                  }}
-                />
-                <input
-                  placeholder="Bank name"
-                  value={bankName}
-                  onChange={(e) => setBankName(e.target.value)}
-                  style={{
-                    background: "#1E2736",
-                    border: "1px solid #2D3748",
-                    color: "#E8E6E1",
-                    padding: "8px 12px",
-                    borderRadius: "6px",
-                    fontSize: "13px",
-                    fontFamily: "'DM Sans', sans-serif",
-                  }}
-                />
-                <input
-                  placeholder="Last 4 digits"
-                  value={lastFour}
-                  onChange={(e) => setLastFour(e.target.value)}
-                  style={{
-                    background: "#1E2736",
-                    border: "1px solid #2D3748",
-                    color: "#E8E6E1",
-                    padding: "8px 12px",
-                    borderRadius: "6px",
-                    fontSize: "13px",
-                    fontFamily: "'DM Sans', sans-serif",
-                  }}
-                />
-                <select
-                  value={accountType}
-                  onChange={(e) => setAccountType(e.target.value)}
-                  style={{
-                    background: "#1E2736",
-                    border: "1px solid #2D3748",
-                    color: "#E8E6E1",
-                    padding: "8px 12px",
-                    borderRadius: "6px",
-                    fontSize: "13px",
-                    fontFamily: "'DM Sans', sans-serif",
-                  }}
-                >
-                  <option value="checking">Checking</option>
-                  <option value="savings">Savings</option>
-                </select>
-                <input
-                  type="number"
-                  placeholder="Current balance"
-                  value={currentBalance}
-                  onChange={(e) => setCurrentBalance(e.target.value)}
-                  style={{
-                    background: "#1E2736",
-                    border: "1px solid #2D3748",
-                    color: "#E8E6E1",
-                    padding: "8px 12px",
-                    borderRadius: "6px",
-                    fontSize: "13px",
-                    fontFamily: "'DM Sans', sans-serif",
-                  }}
-                />
-                <input
-                  type="number"
-                  placeholder="Minimum buffer (e.g. 100)"
-                  value={minimumBuffer}
-                  onChange={(e) => setMinimumBuffer(e.target.value)}
-                  style={{
-                    background: "#2D2B45",
-                    border: "1px solid rgba(255,255,255,0.1)",
-                    color: "#F0F6FC",
-                    padding: "8px 12px",
-                    borderRadius: "6px",
-                    fontSize: "13px",
-                    fontFamily: "'Inter', sans-serif",
-                  }}
-                />
-                {isAccumulating && (
-                  <input
-                    type="number"
-                    placeholder="Amount accumulated so far"
-                    value={accumulationCurrent}
-                    onChange={(e) => setAccumulationCurrent(e.target.value)}
-                    style={{
-                      background: "#1E2736",
-                      border: "1px solid #2D3748",
-                      color: "#E8E6E1",
-                      padding: "8px 12px",
-                      borderRadius: "6px",
-                      fontSize: "13px",
-                      fontFamily: "'DM Sans', sans-serif",
-                    }}
-                  />
-                )}
-              </div>
-              <div style={{ display: "flex", gap: "8px", marginTop: "12px" }}>
-                <button
-                  onClick={updateAccount}
-                  style={{
-                    background: "00D4AA",
-                    border: "none",
-                    color: "#0F1218",
-                    padding: "8px 16px",
-                    borderRadius: "6px",
-                    cursor: "pointer",
-                    fontSize: "13px",
-                    fontWeight: "600",
-                    fontFamily: "'DM Sans', sans-serif",
-                  }}
-                >
-                  Save Changes
-                </button>
-                <button
-                  onClick={() => setEditingAccount(null)}
-                  style={{
-                    background: "none",
-                    border: "1px solid #2D3748",
-                    color: "#8892A4",
-                    padding: "8px 16px",
-                    borderRadius: "6px",
-                    cursor: "pointer",
-                    fontSize: "13px",
-                    fontFamily: "'DM Sans', sans-serif",
-                  }}
-                >
-                  Cancel
-                </button>
-              </div>
-            </div>
-          )}
 
           {showAccountForm && (
             <div className="panel" style={{ marginBottom: "16px" }}>
@@ -2852,165 +2699,407 @@ function Dashboard() {
               <div className="empty-state">No accounts added yet</div>
             ) : (
               accounts.map((acct, i) => (
-                <div className="row-item" key={i}>
-                  <div>
-                    <div className="row-name">
-                      {acct.name}
-                      {acct.is_primary && <span className="tag">Primary</span>}
-                      {acct.is_accumulating && (
-                        <span className="tag">Accumulating</span>
+                <div key={i}>
+                  <div className="row-item">
+                    <div>
+                      <div className="row-name">
+                        {acct.name}
+                        {acct.is_primary && (
+                          <span className="tag">Primary</span>
+                        )}
+                        {acct.is_accumulating && (
+                          <span className="tag">Accumulating</span>
+                        )}
+                      </div>
+                      <div className="row-sub">
+                        {acct.bank_name} ···{acct.last_four} ·{" "}
+                        {acct.account_type}
+                      </div>
+                      {acct.is_accumulating && acct.accumulation_target > 0 && (
+                        <>
+                          <div className="accumulating-bar">
+                            <div
+                              className="accumulating-fill"
+                              style={{
+                                width: `${Math.min(100, ((acct.accumulation_current || 0) / acct.accumulation_target) * 100)}%`,
+                              }}
+                            />
+                          </div>
+                          <div
+                            style={{
+                              fontSize: "10px",
+                              color: "#8B8FA8",
+                              marginTop: "4px",
+                            }}
+                          >
+                            ${fmt(acct.accumulation_current || 0)} of $
+                            {fmt(acct.accumulation_target)}
+                          </div>
+                        </>
                       )}
                     </div>
-                    <div className="row-sub">
-                      {acct.bank_name} ···{acct.last_four} · {acct.account_type}
-                    </div>
-                    {acct.is_accumulating && acct.accumulation_target > 0 && (
-                      <>
-                        <div className="accumulating-bar">
-                          <div
-                            className="accumulating-fill"
-                            style={{
-                              width: `${Math.min(100, ((acct.accumulation_current || 0) / acct.accumulation_target) * 100)}%`,
-                            }}
-                          />
-                        </div>
-                        <div
-                          style={{
-                            fontSize: "10px",
-                            color: "#8B8FA8",
-                            marginTop: "4px",
-                          }}
-                        >
-                          ${fmt(acct.accumulation_current || 0)} of $
-                          {fmt(acct.accumulation_target)}
-                        </div>
-                      </>
-                    )}
-                  </div>
-                  <div
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "8px",
-                    }}
-                  >
-                    {quickEditAccountId === acct.id ? (
-                      <input
-                        type="number"
-                        value={quickEditBalance}
-                        onChange={(e) => setQuickEditBalance(e.target.value)}
-                        onBlur={() =>
-                          updateAccountBalance(acct.id, quickEditBalance)
-                        }
-                        autoFocus
-                        style={{
-                          background: "#2D2B45",
-                          border: "1px solid #6C63FF",
-                          color: "#F0F6FC",
-                          padding: "4px 8px",
-                          borderRadius: "6px",
-                          fontSize: "14px",
-                          fontFamily: "'DM Mono', monospace",
-                          width: "100px",
-                          textAlign: "right",
-                        }}
-                      />
-                    ) : (
-                      <div
-                        className="row-amount"
-                        onClick={() => {
-                          setQuickEditAccountId(acct.id);
-                          setQuickEditBalance(acct.current_balance || "");
-                        }}
-                        style={{ cursor: "pointer" }}
-                        title="Click to edit"
-                      >
-                        ${fmt(acct.current_balance)}
-                      </div>
-                    )}
-                    <button
-                      onClick={() => {
-                        setEditingAccount(acct);
-                        setAccountName(acct.name);
-                        setBankName(acct.bank_name);
-                        setLastFour(acct.last_four);
-                        setAccountType(acct.account_type);
-                        setCurrentBalance(acct.current_balance || "");
-                        setIsPrimary(acct.is_primary);
-                        setIsAccumulating(acct.is_accumulating);
-                        setAccumulationTarget(acct.accumulation_target || "");
-                        setAccumulationCurrent(acct.accumulation_current || "");
-                        setResetType(acct.reset_type || "manual");
-                        setResetDay(acct.reset_day || "");
-                        setMinimumBuffer("");
-                      }}
+                    <div
                       style={{
-                        background: "none",
-                        border: "1px solid #2D3748",
-                        color: "#8892A4",
-                        padding: "4px 10px",
-                        borderRadius: "6px",
-                        cursor: "pointer",
-                        fontSize: "11px",
-                        fontFamily: "'DM Sans', sans-serif",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "8px",
                       }}
                     >
-                      Edit
-                    </button>
-                    {confirmDeleteAccountId === acct.id ? (
-                      <>
-                        <button
+                      {quickEditAccountId === acct.id ? (
+                        <input
+                          type="number"
+                          value={quickEditBalance}
+                          onChange={(e) => setQuickEditBalance(e.target.value)}
+                          onBlur={() =>
+                            updateAccountBalance(acct.id, quickEditBalance)
+                          }
+                          autoFocus
+                          style={{
+                            background: "#2D2B45",
+                            border: "1px solid #6C63FF",
+                            color: "#F0F6FC",
+                            padding: "4px 8px",
+                            borderRadius: "6px",
+                            fontSize: "14px",
+                            fontFamily: "'DM Mono', monospace",
+                            width: "100px",
+                            textAlign: "right",
+                          }}
+                        />
+                      ) : (
+                        <div
+                          className="row-amount"
                           onClick={() => {
-                            deleteAccount(acct.id);
-                            setConfirmDeleteAccountId(null);
+                            setQuickEditAccountId(acct.id);
+                            setQuickEditBalance(acct.current_balance || "");
                           }}
-                          style={{
-                            background: "none",
-                            border: "1px solid #FC8181",
-                            color: "#FC8181",
-                            padding: "4px 10px",
-                            borderRadius: "6px",
-                            cursor: "pointer",
-                            fontSize: "11px",
-                            fontFamily: "'DM Sans', sans-serif",
-                          }}
+                          style={{ cursor: "pointer" }}
+                          title="Click to edit"
                         >
-                          Confirm
-                        </button>
-                        <button
-                          onClick={() => setConfirmDeleteAccountId(null)}
-                          style={{
-                            background: "none",
-                            border: "1px solid #2D3748",
-                            color: "#8892A4",
-                            padding: "4px 10px",
-                            borderRadius: "6px",
-                            cursor: "pointer",
-                            fontSize: "11px",
-                            fontFamily: "'DM Sans', sans-serif",
-                          }}
-                        >
-                          Cancel
-                        </button>
-                      </>
-                    ) : (
+                          ${fmt(acct.current_balance)}
+                        </div>
+                      )}
                       <button
-                        onClick={() => setConfirmDeleteAccountId(acct.id)}
+                        onClick={() => {
+                          if (editingAccount?.id === acct.id) {
+                            setEditingAccount(null);
+                          } else {
+                            setEditingAccount(acct);
+                            setAccountName(acct.name);
+                            setBankName(acct.bank_name);
+                            setLastFour(acct.last_four);
+                            setAccountType(acct.account_type);
+                            setCurrentBalance(acct.current_balance || "");
+                            setIsPrimary(acct.is_primary);
+                            setIsAccumulating(acct.is_accumulating);
+                            setAccumulationTarget(
+                              acct.accumulation_target || "",
+                            );
+                            setAccumulationCurrent(
+                              acct.accumulation_current || "",
+                            );
+                            setResetType(acct.reset_type || "manual");
+                            setResetDay(acct.reset_day || "");
+                            setMinimumBuffer(acct.minimum_buffer || "");
+                          }
+                        }}
                         style={{
                           background: "none",
                           border: "1px solid #2D3748",
-                          color: "#FC8181",
+                          color: "#8B8FA8",
                           padding: "4px 10px",
                           borderRadius: "6px",
                           cursor: "pointer",
                           fontSize: "11px",
-                          fontFamily: "'DM Sans', sans-serif",
+                          fontFamily: "'Inter', sans-serif",
                         }}
                       >
-                        Delete
+                        {editingAccount?.id === acct.id ? "Cancel" : "Edit"}
                       </button>
-                    )}
+                      {confirmDeleteAccountId === acct.id ? (
+                        <>
+                          <button
+                            onClick={() => {
+                              deleteAccount(acct.id);
+                              setConfirmDeleteAccountId(null);
+                            }}
+                            style={{
+                              background: "none",
+                              border: "1px solid #F87171",
+                              color: "#F87171",
+                              padding: "4px 10px",
+                              borderRadius: "6px",
+                              cursor: "pointer",
+                              fontSize: "11px",
+                              fontFamily: "'Inter', sans-serif",
+                            }}
+                          >
+                            Confirm
+                          </button>
+                          <button
+                            onClick={() => setConfirmDeleteAccountId(null)}
+                            style={{
+                              background: "none",
+                              border: "1px solid #2D3748",
+                              color: "#8B8FA8",
+                              padding: "4px 10px",
+                              borderRadius: "6px",
+                              cursor: "pointer",
+                              fontSize: "11px",
+                              fontFamily: "'Inter', sans-serif",
+                            }}
+                          >
+                            Cancel
+                          </button>
+                        </>
+                      ) : (
+                        <button
+                          onClick={() => setConfirmDeleteAccountId(acct.id)}
+                          style={{
+                            background: "none",
+                            border: "1px solid #2D3748",
+                            color: "#F87171",
+                            padding: "4px 10px",
+                            borderRadius: "6px",
+                            cursor: "pointer",
+                            fontSize: "11px",
+                            fontFamily: "'Inter', sans-serif",
+                          }}
+                        >
+                          Delete
+                        </button>
+                      )}
+                    </div>
                   </div>
+
+                  {editingAccount?.id === acct.id && (
+                    <div
+                      style={{
+                        background: "#13111F",
+                        border: "1px solid rgba(108,99,255,0.3)",
+                        borderRadius: "8px",
+                        padding: "16px",
+                        margin: "8px 0 4px",
+                      }}
+                    >
+                      <div
+                        style={{
+                          display: "grid",
+                          gridTemplateColumns: "1fr 1fr",
+                          gap: "12px",
+                        }}
+                      >
+                        <input
+                          placeholder="Account name"
+                          value={accountName}
+                          onChange={(e) => setAccountName(e.target.value)}
+                          style={{
+                            background: "#2D2B45",
+                            border: "1px solid rgba(255,255,255,0.1)",
+                            color: "#F0F6FC",
+                            padding: "8px 12px",
+                            borderRadius: "6px",
+                            fontSize: "13px",
+                            fontFamily: "'Inter', sans-serif",
+                          }}
+                        />
+                        <input
+                          placeholder="Bank name"
+                          value={bankName}
+                          onChange={(e) => setBankName(e.target.value)}
+                          style={{
+                            background: "#2D2B45",
+                            border: "1px solid rgba(255,255,255,0.1)",
+                            color: "#F0F6FC",
+                            padding: "8px 12px",
+                            borderRadius: "6px",
+                            fontSize: "13px",
+                            fontFamily: "'Inter', sans-serif",
+                          }}
+                        />
+                        <input
+                          placeholder="Last 4 digits"
+                          value={lastFour}
+                          onChange={(e) => setLastFour(e.target.value)}
+                          style={{
+                            background: "#2D2B45",
+                            border: "1px solid rgba(255,255,255,0.1)",
+                            color: "#F0F6FC",
+                            padding: "8px 12px",
+                            borderRadius: "6px",
+                            fontSize: "13px",
+                            fontFamily: "'Inter', sans-serif",
+                          }}
+                        />
+                        <select
+                          value={accountType}
+                          onChange={(e) => setAccountType(e.target.value)}
+                          style={{
+                            background: "#2D2B45",
+                            border: "1px solid rgba(255,255,255,0.1)",
+                            color: "#F0F6FC",
+                            padding: "8px 12px",
+                            borderRadius: "6px",
+                            fontSize: "13px",
+                            fontFamily: "'Inter', sans-serif",
+                          }}
+                        >
+                          <option value="checking">Checking</option>
+                          <option value="savings">Savings</option>
+                        </select>
+                        <input
+                          type="number"
+                          placeholder="Current balance"
+                          value={currentBalance}
+                          onChange={(e) => setCurrentBalance(e.target.value)}
+                          style={{
+                            background: "#2D2B45",
+                            border: "1px solid rgba(255,255,255,0.1)",
+                            color: "#F0F6FC",
+                            padding: "8px 12px",
+                            borderRadius: "6px",
+                            fontSize: "13px",
+                            fontFamily: "'Inter', sans-serif",
+                          }}
+                        />
+                        <input
+                          type="number"
+                          placeholder="Minimum buffer (e.g. 100)"
+                          value={minimumBuffer}
+                          onChange={(e) => setMinimumBuffer(e.target.value)}
+                          style={{
+                            background: "#2D2B45",
+                            border: "1px solid rgba(255,255,255,0.1)",
+                            color: "#F0F6FC",
+                            padding: "8px 12px",
+                            borderRadius: "6px",
+                            fontSize: "13px",
+                            fontFamily: "'Inter', sans-serif",
+                          }}
+                        />
+                        <div
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "16px",
+                            gridColumn: "1 / -1",
+                          }}
+                        >
+                          <label
+                            style={{
+                              color: "#8B8FA8",
+                              fontSize: "13px",
+                              display: "flex",
+                              alignItems: "center",
+                              gap: "6px",
+                            }}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={isPrimary}
+                              onChange={(e) => setIsPrimary(e.target.checked)}
+                            />
+                            Primary
+                          </label>
+                          <label
+                            style={{
+                              color: "#8B8FA8",
+                              fontSize: "13px",
+                              display: "flex",
+                              alignItems: "center",
+                              gap: "6px",
+                            }}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={isAccumulating}
+                              onChange={(e) =>
+                                setIsAccumulating(e.target.checked)
+                              }
+                            />
+                            Accumulating
+                          </label>
+                        </div>
+                        {isAccumulating && (
+                          <>
+                            <input
+                              type="number"
+                              placeholder="Accumulation target"
+                              value={accumulationTarget}
+                              onChange={(e) =>
+                                setAccumulationTarget(e.target.value)
+                              }
+                              style={{
+                                background: "#2D2B45",
+                                border: "1px solid rgba(255,255,255,0.1)",
+                                color: "#F0F6FC",
+                                padding: "8px 12px",
+                                borderRadius: "6px",
+                                fontSize: "13px",
+                                fontFamily: "'Inter', sans-serif",
+                              }}
+                            />
+                            <input
+                              type="number"
+                              placeholder="Amount accumulated so far"
+                              value={accumulationCurrent}
+                              onChange={(e) =>
+                                setAccumulationCurrent(e.target.value)
+                              }
+                              style={{
+                                background: "#2D2B45",
+                                border: "1px solid rgba(255,255,255,0.1)",
+                                color: "#F0F6FC",
+                                padding: "8px 12px",
+                                borderRadius: "6px",
+                                fontSize: "13px",
+                                fontFamily: "'Inter', sans-serif",
+                              }}
+                            />
+                          </>
+                        )}
+                      </div>
+                      <div
+                        style={{
+                          display: "flex",
+                          gap: "8px",
+                          marginTop: "12px",
+                        }}
+                      >
+                        <button
+                          onClick={updateAccount}
+                          style={{
+                            background: "#6C63FF",
+                            border: "none",
+                            color: "#F0F6FC",
+                            padding: "8px 16px",
+                            borderRadius: "6px",
+                            cursor: "pointer",
+                            fontSize: "13px",
+                            fontWeight: "600",
+                            fontFamily: "'Inter', sans-serif",
+                          }}
+                        >
+                          Save Changes
+                        </button>
+                        <button
+                          onClick={() => setEditingAccount(null)}
+                          style={{
+                            background: "none",
+                            border: "1px solid rgba(255,255,255,0.1)",
+                            color: "#8B8FA8",
+                            padding: "8px 16px",
+                            borderRadius: "6px",
+                            cursor: "pointer",
+                            fontSize: "13px",
+                            fontFamily: "'Inter', sans-serif",
+                          }}
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               ))
             )}
@@ -3061,196 +3150,6 @@ function Dashboard() {
             </button>
           </div>
 
-          {(showIncomeForm || editingIncome) && (
-            <div className="panel" style={{ marginBottom: "16px" }}>
-              <div className="panel-header">
-                <div className="panel-title">
-                  {editingIncome ? "Edit Income" : "New Income"}
-                </div>
-              </div>
-              <div
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: "1fr 1fr",
-                  gap: "12px",
-                }}
-              >
-                <input
-                  placeholder="Income name (e.g. VA Disability)"
-                  value={incomeName}
-                  onChange={(e) => setIncomeName(e.target.value)}
-                  style={{
-                    background: "#1E2736",
-                    border: "1px solid #2D3748",
-                    color: "#E8E6E1",
-                    padding: "8px 12px",
-                    borderRadius: "6px",
-                    fontSize: "13px",
-                    fontFamily: "'DM Sans', sans-serif",
-                  }}
-                />
-                <input
-                  type="number"
-                  placeholder="Amount"
-                  value={fixedAmount}
-                  onChange={(e) => setFixedAmount(e.target.value)}
-                  style={{
-                    background: "#1E2736",
-                    border: "1px solid #2D3748",
-                    color: "#E8E6E1",
-                    padding: "8px 12px",
-                    borderRadius: "6px",
-                    fontSize: "13px",
-                    fontFamily: "'DM Sans', sans-serif",
-                  }}
-                />
-                <select
-                  value={incomeOwner}
-                  onChange={(e) => setIncomeOwner(e.target.value)}
-                  style={{
-                    background: "#1E2736",
-                    border: "1px solid #2D3748",
-                    color: "#E8E6E1",
-                    padding: "8px 12px",
-                    borderRadius: "6px",
-                    fontSize: "13px",
-                    fontFamily: "'DM Sans', sans-serif",
-                  }}
-                >
-                  <option value="joint">Joint</option>
-                  {members.map((m, i) => (
-                    <option key={i} value={m.name}>
-                      {m.name}
-                    </option>
-                  ))}
-                </select>
-                <select
-                  value={incomeType}
-                  onChange={(e) => setIncomeType(e.target.value)}
-                  style={{
-                    background: "#1E2736",
-                    border: "1px solid #2D3748",
-                    color: "#E8E6E1",
-                    padding: "8px 12px",
-                    borderRadius: "6px",
-                    fontSize: "13px",
-                    fontFamily: "'DM Sans', sans-serif",
-                  }}
-                >
-                  <option value="salary">Salary</option>
-                  <option value="hourly">Hourly</option>
-                  <option value="benefits">Benefits</option>
-                  <option value="fixed">Fixed</option>
-                  <option value="variable">Variable</option>
-                </select>
-                <select
-                  value={incomeFrequency}
-                  onChange={(e) => setIncomeFrequency(e.target.value)}
-                  style={{
-                    background: "#1E2736",
-                    border: "1px solid #2D3748",
-                    color: "#E8E6E1",
-                    padding: "8px 12px",
-                    borderRadius: "6px",
-                    fontSize: "13px",
-                    fontFamily: "'DM Sans', sans-serif",
-                  }}
-                >
-                  <option value="biweekly">Biweekly</option>
-                  <option value="monthly">Monthly</option>
-                  <option value="weekly">Weekly</option>
-                </select>
-                <select
-                  value={depositAccountId}
-                  onChange={(e) => setDepositAccountId(e.target.value)}
-                  style={{
-                    background: "#1E2736",
-                    border: "1px solid #2D3748",
-                    color: "#E8E6E1",
-                    padding: "8px 12px",
-                    borderRadius: "6px",
-                    fontSize: "13px",
-                    fontFamily: "'DM Sans', sans-serif",
-                  }}
-                >
-                  <option value="">
-                    Which account does this deposit into?
-                  </option>
-                  {accounts.map((acct, i) => (
-                    <option key={i} value={acct.id}>
-                      {acct.name}
-                    </option>
-                  ))}
-                </select>
-                <div style={{ gridColumn: "1 / -1" }}>
-                  <label
-                    style={{
-                      color: "#8892A4",
-                      fontSize: "11px",
-                      letterSpacing: "0.1em",
-                      textTransform: "uppercase",
-                      display: "block",
-                      marginBottom: "6px",
-                    }}
-                  >
-                    Next Deposit Date
-                  </label>
-                  <input
-                    type="date"
-                    value={nextPayDate}
-                    onChange={(e) => setNextPayDate(e.target.value)}
-                    style={{
-                      background: "#1E2736",
-                      border: "1px solid #2D3748",
-                      color: "#E8E6E1",
-                      padding: "8px 12px",
-                      borderRadius: "6px",
-                      fontSize: "13px",
-                      fontFamily: "'DM Sans', sans-serif",
-                      width: "100%",
-                    }}
-                  />
-                </div>
-              </div>
-              <div style={{ display: "flex", gap: "8px", marginTop: "12px" }}>
-                <button
-                  onClick={editingIncome ? updateIncome : addIncome}
-                  style={{
-                    background: "00D4AA",
-                    border: "none",
-                    color: "#0F1218",
-                    padding: "8px 16px",
-                    borderRadius: "6px",
-                    cursor: "pointer",
-                    fontSize: "13px",
-                    fontWeight: "600",
-                    fontFamily: "'DM Sans', sans-serif",
-                  }}
-                >
-                  {editingIncome ? "Save Changes" : "Add Income"}
-                </button>
-                <button
-                  onClick={() => {
-                    setShowIncomeForm(false);
-                    setEditingIncome(null);
-                  }}
-                  style={{
-                    background: "none",
-                    border: "1px solid #2D3748",
-                    color: "#8892A4",
-                    padding: "8px 16px",
-                    borderRadius: "6px",
-                    cursor: "pointer",
-                    fontSize: "13px",
-                    fontFamily: "'DM Sans', sans-serif",
-                  }}
-                >
-                  Cancel
-                </button>
-              </div>
-            </div>
-          )}
-
           <div className="panel">
             <div className="panel-header">
               <div className="panel-title">Income Sources</div>
@@ -3262,135 +3161,339 @@ function Dashboard() {
               [...income]
                 .sort((a, b) => a.name.localeCompare(b.name))
                 .map((inc, i) => (
-                  <div className="row-item" key={i}>
-                    <div>
-                      <div className="row-name">{inc.name}</div>
-                      <div className="row-sub">
-                        {inc.owner} · {inc.frequency} · {inc.type}
-                      </div>
-                    </div>
-                    <div
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: "8px",
-                      }}
-                    >
-                      {quickEditIncomeId === inc.id ? (
-                        <input
-                          type="number"
-                          value={quickEditIncomeAmount}
-                          onChange={(e) =>
-                            setQuickEditIncomeAmount(e.target.value)
-                          }
-                          onBlur={() =>
-                            updateIncomeAmount(inc.id, quickEditIncomeAmount)
-                          }
-                          autoFocus
-                          style={{
-                            background: "#2D2B45",
-                            border: "1px solid #6C63FF",
-                            color: "#F0F6FC",
-                            padding: "4px 8px",
-                            borderRadius: "6px",
-                            fontSize: "14px",
-                            fontFamily: "'DM Mono', monospace",
-                            width: "100px",
-                            textAlign: "right",
-                          }}
-                        />
-                      ) : (
-                        <div
-                          className="row-amount"
-                          onClick={() => {
-                            setQuickEditIncomeId(inc.id);
-                            setQuickEditIncomeAmount(inc.fixed_amount || "");
-                          }}
-                          style={{ cursor: "pointer" }}
-                          title="Click to edit"
-                        >
-                          ${fmt(inc.fixed_amount)}
+                  <div key={i}>
+                    <div className="row-item">
+                      <div>
+                        <div className="row-name">{inc.name}</div>
+                        <div className="row-sub">
+                          {inc.owner} · {inc.frequency} · {inc.type}
                         </div>
-                      )}
-                      <button
-                        onClick={() => {
-                          setEditingIncome(inc);
-                          setShowIncomeForm(false);
-                          setIncomeName(inc.name);
-                          setIncomeOwner(inc.owner || "joint");
-                          setIncomeType(inc.type);
-                          setIncomeFrequency(inc.frequency);
-                          setFixedAmount(inc.fixed_amount || "");
-                          setNextPayDate(inc.next_pay_date || "");
-                          setDepositAccountId(inc.deposit_account_id || "");
-                        }}
+                      </div>
+                      <div
                         style={{
-                          background: "none",
-                          border: "1px solid #2D3748",
-                          color: "#8892A4",
-                          padding: "4px 10px",
-                          borderRadius: "6px",
-                          cursor: "pointer",
-                          fontSize: "11px",
-                          fontFamily: "'DM Sans', sans-serif",
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "8px",
                         }}
                       >
-                        Edit
-                      </button>
-                      {confirmDeleteIncomeId === inc.id ? (
-                        <>
-                          <button
+                        {quickEditIncomeId === inc.id ? (
+                          <input
+                            type="number"
+                            value={quickEditIncomeAmount}
+                            onChange={(e) =>
+                              setQuickEditIncomeAmount(e.target.value)
+                            }
+                            onBlur={() =>
+                              updateIncomeAmount(inc.id, quickEditIncomeAmount)
+                            }
+                            autoFocus
+                            style={{
+                              background: "#2D2B45",
+                              border: "1px solid #6C63FF",
+                              color: "#F0F6FC",
+                              padding: "4px 8px",
+                              borderRadius: "6px",
+                              fontSize: "14px",
+                              fontFamily: "'DM Mono', monospace",
+                              width: "100px",
+                              textAlign: "right",
+                            }}
+                          />
+                        ) : (
+                          <div
+                            className="row-amount"
                             onClick={() => {
-                              deleteIncome(inc.id);
-                              setConfirmDeleteIncomeId(null);
+                              setQuickEditIncomeId(inc.id);
+                              setQuickEditIncomeAmount(inc.fixed_amount || "");
                             }}
-                            style={{
-                              background: "none",
-                              border: "1px solid #FC8181",
-                              color: "#FC8181",
-                              padding: "4px 10px",
-                              borderRadius: "6px",
-                              cursor: "pointer",
-                              fontSize: "11px",
-                              fontFamily: "'DM Sans', sans-serif",
-                            }}
+                            style={{ cursor: "pointer" }}
+                            title="Click to edit"
                           >
-                            Confirm
-                          </button>
-                          <button
-                            onClick={() => setConfirmDeleteIncomeId(null)}
-                            style={{
-                              background: "none",
-                              border: "1px solid #2D3748",
-                              color: "#8892A4",
-                              padding: "4px 10px",
-                              borderRadius: "6px",
-                              cursor: "pointer",
-                              fontSize: "11px",
-                              fontFamily: "'DM Sans', sans-serif",
-                            }}
-                          >
-                            Cancel
-                          </button>
-                        </>
-                      ) : (
+                            ${fmt(inc.fixed_amount)}
+                          </div>
+                        )}
                         <button
-                          onClick={() => setConfirmDeleteIncomeId(inc.id)}
+                          onClick={() => {
+                            if (editingIncome?.id === inc.id) {
+                              setEditingIncome(null);
+                            } else {
+                              setEditingIncome(inc);
+                              setShowIncomeForm(false);
+                              setIncomeName(inc.name);
+                              setIncomeOwner(inc.owner || "joint");
+                              setIncomeType(inc.type);
+                              setIncomeFrequency(inc.frequency);
+                              setFixedAmount(inc.fixed_amount || "");
+                              setNextPayDate(inc.next_pay_date || "");
+                              setDepositAccountId(inc.deposit_account_id || "");
+                            }
+                          }}
                           style={{
                             background: "none",
                             border: "1px solid #2D3748",
-                            color: "#FC8181",
+                            color: "#8B8FA8",
                             padding: "4px 10px",
                             borderRadius: "6px",
                             cursor: "pointer",
                             fontSize: "11px",
-                            fontFamily: "'DM Sans', sans-serif",
+                            fontFamily: "'Inter', sans-serif",
                           }}
                         >
-                          Delete
+                          {editingIncome?.id === inc.id ? "Cancel" : "Edit"}
                         </button>
-                      )}
+                        {confirmDeleteIncomeId === inc.id ? (
+                          <>
+                            <button
+                              onClick={() => {
+                                deleteIncome(inc.id);
+                                setConfirmDeleteIncomeId(null);
+                              }}
+                              style={{
+                                background: "none",
+                                border: "1px solid #F87171",
+                                color: "#F87171",
+                                padding: "4px 10px",
+                                borderRadius: "6px",
+                                cursor: "pointer",
+                                fontSize: "11px",
+                                fontFamily: "'Inter', sans-serif",
+                              }}
+                            >
+                              Confirm
+                            </button>
+                            <button
+                              onClick={() => setConfirmDeleteIncomeId(null)}
+                              style={{
+                                background: "none",
+                                border: "1px solid #2D3748",
+                                color: "#8B8FA8",
+                                padding: "4px 10px",
+                                borderRadius: "6px",
+                                cursor: "pointer",
+                                fontSize: "11px",
+                                fontFamily: "'Inter', sans-serif",
+                              }}
+                            >
+                              Cancel
+                            </button>
+                          </>
+                        ) : (
+                          <button
+                            onClick={() => setConfirmDeleteIncomeId(inc.id)}
+                            style={{
+                              background: "none",
+                              border: "1px solid #2D3748",
+                              color: "#F87171",
+                              padding: "4px 10px",
+                              borderRadius: "6px",
+                              cursor: "pointer",
+                              fontSize: "11px",
+                              fontFamily: "'Inter', sans-serif",
+                            }}
+                          >
+                            Delete
+                          </button>
+                        )}
+                      </div>
                     </div>
+
+                    {editingIncome?.id === inc.id && (
+                      <div
+                        style={{
+                          background: "#13111F",
+                          border: "1px solid rgba(108,99,255,0.3)",
+                          borderRadius: "8px",
+                          padding: "16px",
+                          margin: "8px 0 4px",
+                        }}
+                      >
+                        <div
+                          style={{
+                            display: "grid",
+                            gridTemplateColumns: "1fr 1fr",
+                            gap: "12px",
+                          }}
+                        >
+                          <input
+                            placeholder="Income name"
+                            value={incomeName}
+                            onChange={(e) => setIncomeName(e.target.value)}
+                            style={{
+                              background: "#2D2B45",
+                              border: "1px solid rgba(255,255,255,0.1)",
+                              color: "#F0F6FC",
+                              padding: "8px 12px",
+                              borderRadius: "6px",
+                              fontSize: "13px",
+                              fontFamily: "'Inter', sans-serif",
+                            }}
+                          />
+                          <input
+                            type="number"
+                            placeholder="Amount"
+                            value={fixedAmount}
+                            onChange={(e) => setFixedAmount(e.target.value)}
+                            style={{
+                              background: "#2D2B45",
+                              border: "1px solid rgba(255,255,255,0.1)",
+                              color: "#F0F6FC",
+                              padding: "8px 12px",
+                              borderRadius: "6px",
+                              fontSize: "13px",
+                              fontFamily: "'Inter', sans-serif",
+                            }}
+                          />
+                          <select
+                            value={incomeOwner}
+                            onChange={(e) => setIncomeOwner(e.target.value)}
+                            style={{
+                              background: "#2D2B45",
+                              border: "1px solid rgba(255,255,255,0.1)",
+                              color: "#F0F6FC",
+                              padding: "8px 12px",
+                              borderRadius: "6px",
+                              fontSize: "13px",
+                              fontFamily: "'Inter', sans-serif",
+                            }}
+                          >
+                            <option value="joint">Joint</option>
+                            {members.map((m, i) => (
+                              <option key={i} value={m.name}>
+                                {m.name}
+                              </option>
+                            ))}
+                          </select>
+                          <select
+                            value={incomeType}
+                            onChange={(e) => setIncomeType(e.target.value)}
+                            style={{
+                              background: "#2D2B45",
+                              border: "1px solid rgba(255,255,255,0.1)",
+                              color: "#F0F6FC",
+                              padding: "8px 12px",
+                              borderRadius: "6px",
+                              fontSize: "13px",
+                              fontFamily: "'Inter', sans-serif",
+                            }}
+                          >
+                            <option value="salary">Salary</option>
+                            <option value="hourly">Hourly</option>
+                            <option value="benefits">Benefits</option>
+                            <option value="fixed">Fixed</option>
+                            <option value="variable">Variable</option>
+                          </select>
+                          <select
+                            value={incomeFrequency}
+                            onChange={(e) => setIncomeFrequency(e.target.value)}
+                            style={{
+                              background: "#2D2B45",
+                              border: "1px solid rgba(255,255,255,0.1)",
+                              color: "#F0F6FC",
+                              padding: "8px 12px",
+                              borderRadius: "6px",
+                              fontSize: "13px",
+                              fontFamily: "'Inter', sans-serif",
+                            }}
+                          >
+                            <option value="biweekly">Biweekly</option>
+                            <option value="monthly">Monthly</option>
+                            <option value="weekly">Weekly</option>
+                          </select>
+                          <select
+                            value={depositAccountId}
+                            onChange={(e) =>
+                              setDepositAccountId(e.target.value)
+                            }
+                            style={{
+                              background: "#2D2B45",
+                              border: "1px solid rgba(255,255,255,0.1)",
+                              color: "#F0F6FC",
+                              padding: "8px 12px",
+                              borderRadius: "6px",
+                              fontSize: "13px",
+                              fontFamily: "'Inter', sans-serif",
+                            }}
+                          >
+                            <option value="">
+                              Which account does this deposit into?
+                            </option>
+                            {accounts.map((acct, i) => (
+                              <option key={i} value={acct.id}>
+                                {acct.name}
+                              </option>
+                            ))}
+                          </select>
+                          <div style={{ gridColumn: "1 / -1" }}>
+                            <label
+                              style={{
+                                color: "#8B8FA8",
+                                fontSize: "11px",
+                                letterSpacing: "0.1em",
+                                textTransform: "uppercase",
+                                display: "block",
+                                marginBottom: "6px",
+                              }}
+                            >
+                              Next Deposit Date
+                            </label>
+                            <input
+                              type="date"
+                              value={nextPayDate}
+                              onChange={(e) => setNextPayDate(e.target.value)}
+                              style={{
+                                background: "#2D2B45",
+                                border: "1px solid rgba(255,255,255,0.1)",
+                                color: "#F0F6FC",
+                                padding: "8px 12px",
+                                borderRadius: "6px",
+                                fontSize: "13px",
+                                fontFamily: "'Inter', sans-serif",
+                                width: "100%",
+                              }}
+                            />
+                          </div>
+                        </div>
+                        <div
+                          style={{
+                            display: "flex",
+                            gap: "8px",
+                            marginTop: "12px",
+                          }}
+                        >
+                          <button
+                            onClick={updateIncome}
+                            style={{
+                              background: "#6C63FF",
+                              border: "none",
+                              color: "#F0F6FC",
+                              padding: "8px 16px",
+                              borderRadius: "6px",
+                              cursor: "pointer",
+                              fontSize: "13px",
+                              fontWeight: "600",
+                              fontFamily: "'Inter', sans-serif",
+                            }}
+                          >
+                            Save Changes
+                          </button>
+                          <button
+                            onClick={() => setEditingIncome(null)}
+                            style={{
+                              background: "none",
+                              border: "1px solid rgba(255,255,255,0.1)",
+                              color: "#8B8FA8",
+                              padding: "8px 16px",
+                              borderRadius: "6px",
+                              cursor: "pointer",
+                              fontSize: "13px",
+                              fontFamily: "'Inter', sans-serif",
+                            }}
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 ))
             )}
@@ -3442,180 +3545,6 @@ function Dashboard() {
             </button>
           </div>
 
-          {(showBillForm || editingBill) && (
-            <div className="panel" style={{ marginBottom: "16px" }}>
-              <div className="panel-header">
-                <div className="panel-title">
-                  {editingBill ? "Edit Bill" : "New Bill"}
-                </div>
-              </div>
-              <div
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: "1fr 1fr",
-                  gap: "12px",
-                }}
-              >
-                <input
-                  placeholder="Bill name"
-                  value={billName}
-                  onChange={(e) => setBillName(e.target.value)}
-                  style={{
-                    background: "#1E2736",
-                    border: "1px solid #2D3748",
-                    color: "#E8E6E1",
-                    padding: "8px 12px",
-                    borderRadius: "6px",
-                    fontSize: "13px",
-                    fontFamily: "'DM Sans', sans-serif",
-                  }}
-                />
-                <input
-                  type="number"
-                  placeholder="Amount"
-                  value={billAmount}
-                  onChange={(e) => setBillAmount(e.target.value)}
-                  style={{
-                    background: "#1E2736",
-                    border: "1px solid #2D3748",
-                    color: "#E8E6E1",
-                    padding: "8px 12px",
-                    borderRadius: "6px",
-                    fontSize: "13px",
-                    fontFamily: "'DM Sans', sans-serif",
-                  }}
-                />
-                <input
-                  type="number"
-                  placeholder="Due day of month (e.g. 1)"
-                  value={dueDay}
-                  onChange={(e) => setDueDay(e.target.value)}
-                  style={{
-                    background: "#1E2736",
-                    border: "1px solid #2D3748",
-                    color: "#E8E6E1",
-                    padding: "8px 12px",
-                    borderRadius: "6px",
-                    fontSize: "13px",
-                    fontFamily: "'DM Sans', sans-serif",
-                  }}
-                />
-                <select
-                  value={paymentMethod}
-                  onChange={(e) => setPaymentMethod(e.target.value)}
-                  style={{
-                    background: "#1E2736",
-                    border: "1px solid #2D3748",
-                    color: "#E8E6E1",
-                    padding: "8px 12px",
-                    borderRadius: "6px",
-                    fontSize: "13px",
-                    fontFamily: "'DM Sans', sans-serif",
-                  }}
-                >
-                  <option value="auto">Auto</option>
-                  <option value="transfer">Transfer</option>
-                  <option value="zelle">Zelle</option>
-                  <option value="check">Check</option>
-                  <option value="manual">Manual</option>
-                </select>
-                <select
-                  value={billCategory}
-                  onChange={(e) => setBillCategory(e.target.value)}
-                  style={{
-                    background: "#1E2736",
-                    border: "1px solid #2D3748",
-                    color: "#E8E6E1",
-                    padding: "8px 12px",
-                    borderRadius: "6px",
-                    fontSize: "13px",
-                    fontFamily: "'DM Sans', sans-serif",
-                  }}
-                >
-                  <option value="">Select category</option>
-                  {categories.map((cat, i) => (
-                    <option key={i} value={cat.name}>
-                      {cat.name}
-                    </option>
-                  ))}
-                </select>
-                <select
-                  value={billAccountId}
-                  onChange={(e) => setBillAccountId(e.target.value)}
-                  style={{
-                    background: "#1E2736",
-                    border: "1px solid #2D3748",
-                    color: "#E8E6E1",
-                    padding: "8px 12px",
-                    borderRadius: "6px",
-                    fontSize: "13px",
-                    fontFamily: "'DM Sans', sans-serif",
-                  }}
-                >
-                  <option value="">Which account pays this?</option>
-                  {accounts.map((acct, i) => (
-                    <option key={i} value={acct.id}>
-                      {acct.name}
-                    </option>
-                  ))}
-                </select>
-                <label
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "8px",
-                    color: "#8892A4",
-                    fontSize: "13px",
-                    gridColumn: "1 / -1",
-                  }}
-                >
-                  <input
-                    type="checkbox"
-                    checked={isVariable}
-                    onChange={(e) => setIsVariable(e.target.checked)}
-                  />
-                  This bill varies month to month
-                </label>
-              </div>
-              <div style={{ display: "flex", gap: "8px", marginTop: "12px" }}>
-                <button
-                  onClick={editingBill ? updateBill : addBill}
-                  style={{
-                    background: "00D4AA",
-                    border: "none",
-                    color: "#0F1218",
-                    padding: "8px 16px",
-                    borderRadius: "6px",
-                    cursor: "pointer",
-                    fontSize: "13px",
-                    fontWeight: "600",
-                    fontFamily: "'DM Sans', sans-serif",
-                  }}
-                >
-                  {editingBill ? "Save Changes" : "Add Bill"}
-                </button>
-                <button
-                  onClick={() => {
-                    setShowBillForm(false);
-                    setEditingBill(null);
-                  }}
-                  style={{
-                    background: "none",
-                    border: "1px solid #2D3748",
-                    color: "#8892A4",
-                    padding: "8px 16px",
-                    borderRadius: "6px",
-                    cursor: "pointer",
-                    fontSize: "13px",
-                    fontFamily: "'DM Sans', sans-serif",
-                  }}
-                >
-                  Cancel
-                </button>
-              </div>
-            </div>
-          )}
-
           <div className="panel">
             <div className="panel-header">
               <div className="panel-title">All Bills</div>
@@ -3627,169 +3556,338 @@ function Dashboard() {
               [...bills]
                 .sort((a, b) => a.due_day - b.due_day)
                 .map((bill, i) => (
-                  <div className="row-item" key={i}>
-                    <div>
+                  <div key={i}>
+                    <div className="row-item">
+                      <div>
+                        <div
+                          className="row-name"
+                          style={{
+                            color: !isBillDue(bill) ? "#8B8FA8" : "#F0F6FC",
+                            textDecoration: !isBillDue(bill)
+                              ? "line-through"
+                              : "none",
+                          }}
+                        >
+                          {bill.name}
+                        </div>
+                        <div className="row-sub">
+                          Due the {bill.due_day}
+                          {getSuffix(bill.due_day)} · {bill.category} ·{" "}
+                          {bill.payment_method}
+                          {!isBillDue(bill) && " · PAID"}
+                        </div>
+                      </div>
                       <div
-                        className="row-name"
                         style={{
-                          color: !isBillDue(bill) ? "#8B8FA8" : "#CBD5E0",
-                          textDecoration: !isBillDue(bill)
-                            ? "line-through"
-                            : "none",
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "8px",
                         }}
                       >
-                        {bill.name}
-                      </div>
-                      <div className="row-sub">
-                        Due the {bill.due_day}
-                        {getSuffix(bill.due_day)} · {bill.category} ·{" "}
-                        {bill.payment_method}
-                        {!isBillDue(bill) && " · PAID"}
-                      </div>
-                    </div>
-                    <div
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: "8px",
-                      }}
-                    >
-                      {quickEditBillId === bill.id ? (
-                        <input
-                          type="number"
-                          value={quickEditBillAmount}
-                          onChange={(e) =>
-                            setQuickEditBillAmount(e.target.value)
-                          }
-                          onBlur={() =>
-                            updateBillAmount(bill.id, quickEditBillAmount)
-                          }
-                          autoFocus
-                          style={{
-                            background: "#2D2B45",
-                            border: "1px solid #6C63FF",
-                            color: "#F0F6FC",
-                            padding: "4px 8px",
-                            borderRadius: "6px",
-                            fontSize: "14px",
-                            fontFamily: "'DM Mono', monospace",
-                            width: "100px",
-                            textAlign: "right",
-                          }}
-                        />
-                      ) : (
-                        <div
-                          className="row-amount"
-                          onClick={() => {
-                            setQuickEditBillId(bill.id);
-                            setQuickEditBillAmount(bill.amount || "");
-                          }}
-                          style={{ cursor: "pointer" }}
-                          title="Click to edit"
-                        >
-                          ${fmt(bill.amount)}
-                        </div>
-                      )}
-                      {!isBillDue(bill) ? (
-                        <button
-                          onClick={() => markBillUnpaid(bill)}
-                          style={{
-                            background: "none",
-                            border: "1px solid #2D3748",
-                            color: "#FC8181",
-                            padding: "4px 10px",
-                            borderRadius: "6px",
-                            cursor: "pointer",
-                            fontSize: "11px",
-                            fontFamily: "'DM Sans', sans-serif",
-                          }}
-                        >
-                          Unpaid
-                        </button>
-                      ) : (
-                        <>
-                          <button
-                            onClick={() => {
-                              setEditingBill(bill);
-                              setShowBillForm(false);
-                              setBillName(bill.name);
-                              setBillAmount(bill.amount);
-                              setDueDay(bill.due_day);
-                              setPaymentMethod(bill.payment_method);
-                              setBillCategory(bill.category);
-                              setBillOwner(bill.owner);
-                              setBillAccountId(bill.account_id || "");
-                              setIsVariable(bill.is_variable);
+                        {quickEditBillId === bill.id ? (
+                          <input
+                            type="number"
+                            value={quickEditBillAmount}
+                            onChange={(e) =>
+                              setQuickEditBillAmount(e.target.value)
+                            }
+                            onBlur={() =>
+                              updateBillAmount(bill.id, quickEditBillAmount)
+                            }
+                            autoFocus
+                            style={{
+                              background: "#2D2B45",
+                              border: "1px solid #6C63FF",
+                              color: "#F0F6FC",
+                              padding: "4px 8px",
+                              borderRadius: "6px",
+                              fontSize: "14px",
+                              fontFamily: "'DM Mono', monospace",
+                              width: "100px",
+                              textAlign: "right",
                             }}
+                          />
+                        ) : (
+                          <div
+                            className="row-amount"
+                            onClick={() => {
+                              setQuickEditBillId(bill.id);
+                              setQuickEditBillAmount(bill.amount || "");
+                            }}
+                            style={{ cursor: "pointer" }}
+                            title="Click to edit"
+                          >
+                            ${fmt(bill.amount)}
+                          </div>
+                        )}
+                        {!isBillDue(bill) ? (
+                          <button
+                            onClick={() => markBillUnpaid(bill)}
                             style={{
                               background: "none",
                               border: "1px solid #2D3748",
-                              color: "#8892A4",
+                              color: "#F87171",
                               padding: "4px 10px",
                               borderRadius: "6px",
                               cursor: "pointer",
                               fontSize: "11px",
-                              fontFamily: "'DM Sans', sans-serif",
+                              fontFamily: "'Inter', sans-serif",
                             }}
                           >
-                            Edit
+                            Unpaid
                           </button>
-                          {confirmDeleteBillId === bill.id ? (
-                            <>
-                              <button
-                                onClick={() => {
-                                  deleteBill(bill.id);
-                                  setConfirmDeleteBillId(null);
-                                }}
-                                style={{
-                                  background: "none",
-                                  border: "1px solid #FC8181",
-                                  color: "#FC8181",
-                                  padding: "4px 10px",
-                                  borderRadius: "6px",
-                                  cursor: "pointer",
-                                  fontSize: "11px",
-                                  fontFamily: "'DM Sans', sans-serif",
-                                }}
-                              >
-                                Confirm
-                              </button>
-                              <button
-                                onClick={() => setConfirmDeleteBillId(null)}
-                                style={{
-                                  background: "none",
-                                  border: "1px solid #2D3748",
-                                  color: "#8892A4",
-                                  padding: "4px 10px",
-                                  borderRadius: "6px",
-                                  cursor: "pointer",
-                                  fontSize: "11px",
-                                  fontFamily: "'DM Sans', sans-serif",
-                                }}
-                              >
-                                Cancel
-                              </button>
-                            </>
-                          ) : (
+                        ) : (
+                          <>
                             <button
-                              onClick={() => setConfirmDeleteBillId(bill.id)}
+                              onClick={() => {
+                                if (editingBill?.id === bill.id) {
+                                  setEditingBill(null);
+                                } else {
+                                  setEditingBill(bill);
+                                  setShowBillForm(false);
+                                  setBillName(bill.name);
+                                  setBillAmount(bill.amount);
+                                  setDueDay(bill.due_day);
+                                  setPaymentMethod(bill.payment_method);
+                                  setBillCategory(bill.category);
+                                  setBillOwner(bill.owner);
+                                  setBillAccountId(bill.account_id || "");
+                                  setIsVariable(bill.is_variable);
+                                }
+                              }}
                               style={{
                                 background: "none",
                                 border: "1px solid #2D3748",
-                                color: "#FC8181",
+                                color: "#8B8FA8",
                                 padding: "4px 10px",
                                 borderRadius: "6px",
                                 cursor: "pointer",
                                 fontSize: "11px",
-                                fontFamily: "'DM Sans', sans-serif",
+                                fontFamily: "'Inter', sans-serif",
                               }}
                             >
-                              Delete
+                              {editingBill?.id === bill.id ? "Cancel" : "Edit"}
                             </button>
-                          )}
-                        </>
-                      )}
+                            {confirmDeleteBillId === bill.id ? (
+                              <>
+                                <button
+                                  onClick={() => {
+                                    deleteBill(bill.id);
+                                    setConfirmDeleteBillId(null);
+                                  }}
+                                  style={{
+                                    background: "none",
+                                    border: "1px solid #F87171",
+                                    color: "#F87171",
+                                    padding: "4px 10px",
+                                    borderRadius: "6px",
+                                    cursor: "pointer",
+                                    fontSize: "11px",
+                                    fontFamily: "'Inter', sans-serif",
+                                  }}
+                                >
+                                  Confirm
+                                </button>
+                                <button
+                                  onClick={() => setConfirmDeleteBillId(null)}
+                                  style={{
+                                    background: "none",
+                                    border: "1px solid #2D3748",
+                                    color: "#8B8FA8",
+                                    padding: "4px 10px",
+                                    borderRadius: "6px",
+                                    cursor: "pointer",
+                                    fontSize: "11px",
+                                    fontFamily: "'Inter', sans-serif",
+                                  }}
+                                >
+                                  Cancel
+                                </button>
+                              </>
+                            ) : (
+                              <button
+                                onClick={() => setConfirmDeleteBillId(bill.id)}
+                                style={{
+                                  background: "none",
+                                  border: "1px solid #2D3748",
+                                  color: "#F87171",
+                                  padding: "4px 10px",
+                                  borderRadius: "6px",
+                                  cursor: "pointer",
+                                  fontSize: "11px",
+                                  fontFamily: "'Inter', sans-serif",
+                                }}
+                              >
+                                Delete
+                              </button>
+                            )}
+                          </>
+                        )}
+                      </div>
                     </div>
+
+                    {editingBill?.id === bill.id && (
+                      <div
+                        style={{
+                          background: "#13111F",
+                          border: "1px solid rgba(108,99,255,0.3)",
+                          borderRadius: "8px",
+                          padding: "16px",
+                          margin: "8px 0 4px",
+                        }}
+                      >
+                        <div
+                          style={{
+                            display: "grid",
+                            gridTemplateColumns: "1fr 1fr",
+                            gap: "12px",
+                          }}
+                        >
+                          <input
+                            placeholder="Bill name"
+                            value={billName}
+                            onChange={(e) => setBillName(e.target.value)}
+                            style={{
+                              background: "#2D2B45",
+                              border: "1px solid rgba(255,255,255,0.1)",
+                              color: "#F0F6FC",
+                              padding: "8px 12px",
+                              borderRadius: "6px",
+                              fontSize: "13px",
+                              fontFamily: "'Inter', sans-serif",
+                            }}
+                          />
+                          <input
+                            type="number"
+                            placeholder="Amount"
+                            value={billAmount}
+                            onChange={(e) => setBillAmount(e.target.value)}
+                            style={{
+                              background: "#2D2B45",
+                              border: "1px solid rgba(255,255,255,0.1)",
+                              color: "#F0F6FC",
+                              padding: "8px 12px",
+                              borderRadius: "6px",
+                              fontSize: "13px",
+                              fontFamily: "'Inter', sans-serif",
+                            }}
+                          />
+                          <input
+                            type="number"
+                            placeholder="Due day of month"
+                            value={dueDay}
+                            onChange={(e) => setDueDay(e.target.value)}
+                            style={{
+                              background: "#2D2B45",
+                              border: "1px solid rgba(255,255,255,0.1)",
+                              color: "#F0F6FC",
+                              padding: "8px 12px",
+                              borderRadius: "6px",
+                              fontSize: "13px",
+                              fontFamily: "'Inter', sans-serif",
+                            }}
+                          />
+                          <select
+                            value={paymentMethod}
+                            onChange={(e) => setPaymentMethod(e.target.value)}
+                            style={{
+                              background: "#2D2B45",
+                              border: "1px solid rgba(255,255,255,0.1)",
+                              color: "#F0F6FC",
+                              padding: "8px 12px",
+                              borderRadius: "6px",
+                              fontSize: "13px",
+                              fontFamily: "'Inter', sans-serif",
+                            }}
+                          >
+                            <option value="auto">Auto</option>
+                            <option value="transfer">Transfer</option>
+                            <option value="zelle">Zelle</option>
+                            <option value="check">Check</option>
+                            <option value="manual">Manual</option>
+                          </select>
+                          <select
+                            value={billCategory}
+                            onChange={(e) => setBillCategory(e.target.value)}
+                            style={{
+                              background: "#2D2B45",
+                              border: "1px solid rgba(255,255,255,0.1)",
+                              color: "#F0F6FC",
+                              padding: "8px 12px",
+                              borderRadius: "6px",
+                              fontSize: "13px",
+                              fontFamily: "'Inter', sans-serif",
+                            }}
+                          >
+                            <option value="">Select category</option>
+                            {categories.map((cat, i) => (
+                              <option key={i} value={cat.name}>
+                                {cat.name}
+                              </option>
+                            ))}
+                          </select>
+                          <select
+                            value={billAccountId}
+                            onChange={(e) => setBillAccountId(e.target.value)}
+                            style={{
+                              background: "#2D2B45",
+                              border: "1px solid rgba(255,255,255,0.1)",
+                              color: "#F0F6FC",
+                              padding: "8px 12px",
+                              borderRadius: "6px",
+                              fontSize: "13px",
+                              fontFamily: "'Inter', sans-serif",
+                            }}
+                          >
+                            <option value="">Which account pays this?</option>
+                            {accounts.map((acct, i) => (
+                              <option key={i} value={acct.id}>
+                                {acct.name}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                        <div
+                          style={{
+                            display: "flex",
+                            gap: "8px",
+                            marginTop: "12px",
+                          }}
+                        >
+                          <button
+                            onClick={updateBill}
+                            style={{
+                              background: "#6C63FF",
+                              border: "none",
+                              color: "#F0F6FC",
+                              padding: "8px 16px",
+                              borderRadius: "6px",
+                              cursor: "pointer",
+                              fontSize: "13px",
+                              fontWeight: "600",
+                              fontFamily: "'Inter', sans-serif",
+                            }}
+                          >
+                            Save Changes
+                          </button>
+                          <button
+                            onClick={() => setEditingBill(null)}
+                            style={{
+                              background: "none",
+                              border: "1px solid rgba(255,255,255,0.1)",
+                              color: "#8B8FA8",
+                              padding: "8px 16px",
+                              borderRadius: "6px",
+                              cursor: "pointer",
+                              fontSize: "13px",
+                              fontFamily: "'Inter', sans-serif",
+                            }}
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 ))
             )}
