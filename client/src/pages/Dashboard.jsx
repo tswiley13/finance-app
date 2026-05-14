@@ -1,56 +1,67 @@
 import { useState, useEffect } from "react";
 import { supabase } from "../supabase";
 import { QRCodeSVG as QRCode } from "qrcode.react";
+import {
+  LayoutDashboard,
+  Receipt,
+  Wallet,
+  CreditCard,
+  Tag,
+  Calendar,
+  TrendingDown,
+  Settings,
+  LogOut,
+} from "lucide-react";
 
 const css = `
   @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap');
 
   * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { background: #0D1117; color: #F0F6FC; font-family: 'Inter', sans-serif; -webkit-font-smoothing: antialiased; }
+  body { background: #0F0E17; color: #F0F6FC; font-family: 'Inter', sans-serif; -webkit-font-smoothing: antialiased; }
 
   .app-shell { display: flex; min-height: 100vh; }
 
   .sidebar { 
-    width: 260px; flex-shrink: 0; background: #0D1117; 
-    border-right: 1px solid #21262D; 
+    width: 260px; flex-shrink: 0; background: #13111F; 
+    border-right: 1px solid rgba(255,255,255,0.06); 
     display: flex; flex-direction: column; 
     position: fixed; top: 0; left: 0; bottom: 0; 
   }
 
-  .sidebar-logo { padding: 24px 20px 20px; border-bottom: 1px solid #21262D; }
+  .sidebar-logo { padding: 24px 20px 20px; border-bottom: 1px solid rgba(255,255,255,0.06); }
   .logo-text { font-size: 17px; font-weight: 800; letter-spacing: 0.06em; color: #F0F6FC; text-transform: uppercase; }
-  .logo-tag { font-size: 9px; color: #E8B84B; letter-spacing: 0.2em; text-transform: uppercase; margin-top: 2px; font-weight: 500; opacity: 0.7; }
+  .logo-tag { font-size: 9px; color: #6C63FF; letter-spacing: 0.2em; text-transform: uppercase; margin-top: 2px; font-weight: 500; }
 
   .nav { padding: 8px 12px; flex: 1; display: flex; flex-direction: column; gap: 1px; overflow-y: auto; }
-  .nav-label { font-size: 9px; color: #484F58; letter-spacing: 0.15em; text-transform: uppercase; padding: 0 8px; margin: 20px 0 4px; font-weight: 600; }
-  .nav-item { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 7px; cursor: pointer; font-size: 13px; color: #8B949E; font-weight: 400; transition: all 0.1s ease; border: none; background: none; width: 100%; text-align: left; font-family: 'Inter', sans-serif; }
-  .nav-item:hover { background: #161B22; color: #C9D1D9; }
-  .nav-item.active { background: rgba(232,184,75,0.1); color: #E8B84B; font-weight: 500; }
-  .nav-dot { width: 5px; height: 5px; border-radius: 50%; background: #E8B84B; flex-shrink: 0; }
-  .nav-dot-muted { width: 5px; height: 5px; border-radius: 50%; background: #484F58; flex-shrink: 0; }
+  .nav-label { font-size: 9px; color: rgba(255,255,255,0.25); letter-spacing: 0.15em; text-transform: uppercase; padding: 0 8px; margin: 20px 0 4px; font-weight: 600; }
+  .nav-item { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 7px; cursor: pointer; font-size: 13px; color: rgba(255,255,255,0.45); font-weight: 400; transition: all 0.1s ease; border: none; background: none; width: 100%; text-align: left; font-family: 'Inter', sans-serif; }
+  .nav-item:hover { background: rgba(108,99,255,0.1); color: #F0F6FC; }
+  .nav-item.active { background: rgba(108,99,255,0.15); color: #6C63FF; font-weight: 500; }
+  .nav-dot { width: 5px; height: 5px; border-radius: 50%; background: #6C63FF; flex-shrink: 0; }
+  .nav-dot-muted { width: 5px; height: 5px; border-radius: 50%; background: rgba(255,255,255,0.15); flex-shrink: 0; }
 
-  .sidebar-footer { padding: 12px; border-top: 1px solid #21262D; }
-  .signout-btn { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 7px; cursor: pointer; font-size: 13px; color: #6E7681; border: none; background: none; width: 100%; text-align: left; font-family: 'Inter', sans-serif; transition: all 0.1s ease; }
-  .signout-btn:hover { background: #161B22; color: #8B949E; }
+  .sidebar-footer { padding: 12px; border-top: 1px solid rgba(255,255,255,0.06); }
+  .signout-btn { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 7px; cursor: pointer; font-size: 13px; color: rgba(255,255,255,0.3); border: none; background: none; width: 100%; text-align: left; font-family: 'Inter', sans-serif; transition: all 0.1s ease; }
+  .signout-btn:hover { background: rgba(255,255,255,0.05); color: rgba(255,255,255,0.6); }
 
   .main { margin-left: 260px; flex: 1; min-width: 0; padding: 0; }
 
-  .topbar { display: flex; justify-content: space-between; align-items: center; padding: 24px 32px; border-bottom: 1px solid #21262D; margin-bottom: 0; }
+  .topbar { display: flex; justify-content: space-between; align-items: center; padding: 24px 32px; border-bottom: 1px solid rgba(255,255,255,0.05); margin-bottom: 0; }
   .welcome-name { font-size: 20px; font-weight: 700; color: #F0F6FC; letter-spacing: -0.02em; }
-  .welcome-date { font-size: 12px; color: #6E7681; margin-top: 3px; }
+  .welcome-date { font-size: 12px; color: rgba(255,255,255,0.3); margin-top: 3px; }
 
-  .period-badge { background: #161B22; border: 1px solid #30363D; border-radius: 10px; padding: 10px 16px; text-align: center; }
+  .period-badge { background: rgba(108,99,255,0.08); border: 1px solid rgba(108,99,255,0.2); border-radius: 10px; padding: 10px 16px; text-align: center; }
   .period-label { font-size: 13px; font-weight: 600; color: #F0F6FC; margin-bottom: 4px; }
   .period-name { font-size: 13px; font-weight: 600; color: #F0F6FC; margin-top: 3px; }
-  .period-dates { font-size: 13px; color: #E8B84B; margin-top: 6px; font-family: 'DM Mono', monospace; }
+  .period-dates { font-size: 13px; color: #6C63FF; margin-top: 6px; font-family: 'DM Mono', monospace; }
 
   .content-area { padding: 28px 32px 60px; width: 100%; }
 
   .stat-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 28px; }
-  .stat-card { background: #161B22; border: 1px solid #30363D; border-radius: 12px; padding: 20px 22px; position: relative; overflow: hidden; }
-  .stat-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 1px; background: linear-gradient(90deg, rgba(232,184,75,0.6), transparent); }
-  .stat-label { font-size: 10px; color: #6E7681; letter-spacing: 0.1em; text-transform: uppercase; font-weight: 600; margin-bottom: 10px; }
-  .stat-amount { font-family: 'DM Mono', monospace; font-size: 26px; font-weight: 500; color: #E8B84B; line-height: 1; }
+  .stat-card { background: #1A1826; border: 1px solid rgba(255,255,255,0.06); border-radius: 12px; padding: 20px 22px; position: relative; overflow: hidden; }
+  .stat-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 1px; background: linear-gradient(90deg, rgba(108,99,255,0.8), transparent); }
+  .stat-label { font-size: 10px; color: rgba(255,255,255,0.35); letter-spacing: 0.1em; text-transform: uppercase; font-weight: 600; margin-bottom: 10px; }
+  .stat-amount { font-family: 'DM Mono', monospace; font-size: 26px; font-weight: 500; color: #6C63FF; line-height: 1; }
   .stat-amount.neutral { color: #F0F6FC; }
   .stat-amount.negative { color: #F87171; }
 
@@ -58,22 +69,22 @@ const css = `
   .dashboard-left { display: flex; flex-direction: column; gap: 12px; }
   .dashboard-right { display: flex; flex-direction: column; gap: 12px; }
 
-  .panel { background: #161B22; border: 1px solid #30363D; border-radius: 12px; padding: 20px; }
+  .panel { background: #1A1826; border: 1px solid rgba(255,255,255,0.06); border-radius: 12px; padding: 20px; }
   .panel-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
-  .panel-title { font-size: 11px; color: #6E7681; letter-spacing: 0.1em; text-transform: uppercase; font-weight: 600; }
-  .panel-count { font-size: 11px; color: #484F58; font-family: 'DM Mono', monospace; }
+  .panel-title { font-size: 11px; color: rgba(255,255,255,0.35); letter-spacing: 0.1em; text-transform: uppercase; font-weight: 600; }
+  .panel-count { font-size: 11px; color: rgba(255,255,255,0.2); font-family: 'DM Mono', monospace; }
 
-  .row-item { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid #21262D; }
+  .row-item { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid rgba(255,255,255,0.04); }
   .row-item:last-child { border-bottom: none; }
   .row-name { font-size: 13.5px; color: #F0F6FC; font-weight: 500; }
-  .row-sub { font-size: 11px; color: #6E7681; margin-top: 3px; }
-  .row-amount { font-family: 'DM Mono', monospace; font-size: 14px; color: #E8B84B; font-weight: 500; }
-  .empty-state { font-size: 13px; color: #484F58; font-style: italic; padding: 16px 0; }
+  .row-sub { font-size: 11px; color: rgba(255,255,255,0.3); margin-top: 3px; }
+  .row-amount { font-family: 'DM Mono', monospace; font-size: 14px; color: #6C63FF; font-weight: 500; }
+  .empty-state { font-size: 13px; color: rgba(255,255,255,0.2); font-style: italic; padding: 16px 0; }
 
-  .accumulating-bar { height: 2px; background: #21262D; border-radius: 2px; margin-top: 8px; overflow: hidden; }
-  .accumulating-fill { height: 100%; background: linear-gradient(90deg, #E8B84B, #F5D07A); border-radius: 2px; }
+  .accumulating-bar { height: 2px; background: rgba(255,255,255,0.06); border-radius: 2px; margin-top: 8px; overflow: hidden; }
+  .accumulating-fill { height: 100%; background: linear-gradient(90deg, #6C63FF, #948cf2); border-radius: 2px; }
 
-  .tag { display: inline-block; font-size: 9px; letter-spacing: 0.08em; text-transform: uppercase; padding: 2px 7px; border-radius: 4px; background: #1C2333; color: #6E7681; margin-left: 8px; vertical-align: middle; font-weight: 600; }
+  .tag { display: inline-block; font-size: 9px; letter-spacing: 0.08em; text-transform: uppercase; padding: 2px 7px; border-radius: 4px; background: rgba(108,99,255,0.15); color: #6C63FF; margin-left: 8px; vertical-align: middle; font-weight: 600; }
 
   .content-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
 `;
@@ -1273,7 +1284,7 @@ function Dashboard() {
                   setDebtPayoffOrder("");
                 }}
                 style={{
-                  background: "#E8B84B",
+                  background: "00D4AA",
                   border: "none",
                   color: "#0F1218",
                   padding: "8px 16px",
@@ -1425,7 +1436,7 @@ function Dashboard() {
                 <button
                   onClick={editingDebt ? updateDebt : addDebt}
                   style={{
-                    background: "#E8B84B",
+                    background: "00D4AA",
                     border: "none",
                     color: "#0F1218",
                     padding: "8px 16px",
@@ -1477,7 +1488,7 @@ function Dashboard() {
                         <span
                           style={{
                             fontSize: "10px",
-                            background: "#E8B84B",
+                            background: "00D4AA",
                             color: "#0F1218",
                             padding: "1px 6px",
                             borderRadius: "4px",
@@ -1762,7 +1773,7 @@ function Dashboard() {
               <button
                 onClick={() => setConfirmRegenerate(true)}
                 style={{
-                  background: "#E8B84B",
+                  background: "00D4AA",
                   border: "none",
                   color: "#0F1218",
                   padding: "8px 16px",
@@ -1793,7 +1804,7 @@ function Dashboard() {
               dates. If your pay schedule changes, update your income's next
               deposit date on the{" "}
               <span
-                style={{ color: "#E8B84B", cursor: "pointer" }}
+                style={{ color: "00D4AA", cursor: "pointer" }}
                 onClick={() => navigate("income")}
               >
                 Income page
@@ -1833,7 +1844,7 @@ function Dashboard() {
                               style={{
                                 marginLeft: "10px",
                                 fontSize: "9px",
-                                background: "#E8B84B",
+                                background: "00D4AA",
                                 color: "#0F1218",
                                 padding: "2px 8px",
                                 borderRadius: "4px",
@@ -1854,7 +1865,7 @@ function Dashboard() {
                           color: isPast
                             ? "#4A5568"
                             : isCurrent
-                              ? "#E8B84B"
+                              ? "00D4AA"
                               : "#8892A4",
                           fontFamily: "'DM Mono', monospace",
                         }}
@@ -1884,7 +1895,7 @@ function Dashboard() {
             <div
               style={{
                 fontSize: "11px",
-                color: "#E8B84B",
+                color: "00D4AA",
                 letterSpacing: "0.18em",
                 textTransform: "uppercase",
                 fontWeight: "500",
@@ -1905,7 +1916,7 @@ function Dashboard() {
                     autoFocus
                     style={{
                       background: "#1E2736",
-                      border: "1px solid #E8B84B",
+                      border: "1px solid 00D4AA",
                       color: "#E8E6E1",
                       padding: "4px 8px",
                       borderRadius: "6px",
@@ -1916,7 +1927,7 @@ function Dashboard() {
                   <button
                     onClick={updateHouseholdName}
                     style={{
-                      background: "#E8B84B",
+                      background: "00D4AA",
                       border: "none",
                       color: "#0F1218",
                       padding: "4px 12px",
@@ -1991,7 +2002,7 @@ function Dashboard() {
                   style={{
                     fontFamily: "'DM Mono', monospace",
                     fontSize: "14px",
-                    color: "#E8B84B",
+                    color: "00D4AA",
                     letterSpacing: "0.1em",
                   }}
                 >
@@ -2046,7 +2057,7 @@ function Dashboard() {
               <div
                 style={{
                   fontSize: "11px",
-                  color: "#E8B84B",
+                  color: "00D4AA",
                   letterSpacing: "0.18em",
                   textTransform: "uppercase",
                   fontWeight: "500",
@@ -2093,7 +2104,7 @@ function Dashboard() {
                 <button
                   onClick={addMember}
                   style={{
-                    background: "#E8B84B",
+                    background: "00D4AA",
                     border: "none",
                     color: "#0F1218",
                     padding: "8px 16px",
@@ -2195,7 +2206,7 @@ function Dashboard() {
             <div
               style={{
                 fontSize: "11px",
-                color: "#E8B84B",
+                color: "00D4AA",
                 letterSpacing: "0.18em",
                 textTransform: "uppercase",
                 fontWeight: "500",
@@ -2291,7 +2302,7 @@ function Dashboard() {
             <button
               onClick={() => setShowCategoryForm(!showCategoryForm)}
               style={{
-                background: "#E8B84B",
+                background: "00D4AA",
                 border: "none",
                 color: "#0F1218",
                 padding: "8px 16px",
@@ -2330,7 +2341,7 @@ function Dashboard() {
                 <button
                   onClick={addCategory}
                   style={{
-                    background: "#E8B84B",
+                    background: "00D4AA",
                     border: "none",
                     color: "#0F1218",
                     padding: "8px 16px",
@@ -2439,7 +2450,7 @@ function Dashboard() {
                 setShowAccountForm(true);
               }}
               style={{
-                background: "#E8B84B",
+                background: "00D4AA",
                 border: "none",
                 color: "#0C0E14",
                 padding: "8px 16px",
@@ -2560,7 +2571,7 @@ function Dashboard() {
                 <button
                   onClick={updateAccount}
                   style={{
-                    background: "#E8B84B",
+                    background: "00D4AA",
                     border: "none",
                     color: "#0F1218",
                     padding: "8px 16px",
@@ -2775,7 +2786,7 @@ function Dashboard() {
                     setShowAccountForm(false);
                   }}
                   style={{
-                    background: "#E8B84B",
+                    background: "00D4AA",
                     border: "none",
                     color: "#0C0E14",
                     padding: "8px 16px",
@@ -2869,8 +2880,8 @@ function Dashboard() {
                         autoFocus
                         style={{
                           background: "#1E2736",
-                          border: "1px solid #E8B84B",
-                          color: "#E8B84B",
+                          border: "1px solid 00D4AA",
+                          color: "00D4AA",
                           padding: "4px 8px",
                           borderRadius: "6px",
                           fontSize: "14px",
@@ -3009,7 +3020,7 @@ function Dashboard() {
                 setDepositAccountId("");
               }}
               style={{
-                background: "#E8B84B",
+                background: "00D4AA",
                 border: "none",
                 color: "#0F1218",
                 padding: "8px 16px",
@@ -3179,7 +3190,7 @@ function Dashboard() {
                 <button
                   onClick={editingIncome ? updateIncome : addIncome}
                   style={{
-                    background: "#E8B84B",
+                    background: "00D4AA",
                     border: "none",
                     color: "#0F1218",
                     padding: "8px 16px",
@@ -3252,8 +3263,8 @@ function Dashboard() {
                           autoFocus
                           style={{
                             background: "#1E2736",
-                            border: "1px solid #E8B84B",
-                            color: "#E8B84B",
+                            border: "1px solid 00D4AA",
+                            color: "00D4AA",
                             padding: "4px 8px",
                             borderRadius: "6px",
                             fontSize: "14px",
@@ -3390,7 +3401,7 @@ function Dashboard() {
                 setIsVariable(false);
               }}
               style={{
-                background: "#E8B84B",
+                background: "00D4AA",
                 border: "none",
                 color: "#0F1218",
                 padding: "8px 16px",
@@ -3544,7 +3555,7 @@ function Dashboard() {
                 <button
                   onClick={editingBill ? updateBill : addBill}
                   style={{
-                    background: "#E8B84B",
+                    background: "00D4AA",
                     border: "none",
                     color: "#0F1218",
                     padding: "8px 16px",
@@ -3630,8 +3641,8 @@ function Dashboard() {
                           autoFocus
                           style={{
                             background: "#1E2736",
-                            border: "1px solid #E8B84B",
-                            color: "#E8B84B",
+                            border: "1px solid 00D4AA",
+                            color: "00D4AA",
                             padding: "4px 8px",
                             borderRadius: "6px",
                             fontSize: "14px",
@@ -3769,35 +3780,62 @@ function Dashboard() {
     return (
       <>
         <div className="topbar">
-          <div>
-            <div className="welcome-name">{household?.name}</div>
-            <div className="welcome-date">
-              {new Date().toLocaleDateString("en-US", {
-                weekday: "long",
-                year: "numeric",
-                month: "long",
-                day: "numeric",
-              })}
+          <div style={{ display: "flex", alignItems: "center", gap: "14px" }}>
+            <div
+              style={{
+                width: "38px",
+                height: "38px",
+                borderRadius: "50%",
+                background: "linear-gradient(135deg, #6C63FF, #948cf2)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                fontSize: "14px",
+                fontWeight: "700",
+                color: "#0D1117",
+                flexShrink: 0,
+              }}
+            >
+              {members
+                .find((m) => m.role === "owner")
+                ?.name?.charAt(0)
+                .toUpperCase() || "?"}
+            </div>
+            <div>
+              <div className="welcome-name">
+                {(() => {
+                  const hour = new Date().getHours();
+                  const greeting =
+                    hour < 12
+                      ? "Good morning"
+                      : hour < 17
+                        ? "Good afternoon"
+                        : "Good evening";
+                  const firstName =
+                    members.find((m) => m.role === "owner")?.name ||
+                    household?.name;
+                  return `${greeting}, ${firstName}`;
+                })()}
+              </div>
+              <div className="welcome-date">
+                {new Date().toLocaleDateString("en-US", {
+                  weekday: "long",
+                  year: "numeric",
+                  month: "long",
+                  day: "numeric",
+                })}
+              </div>
             </div>
           </div>
           <div className="period-badge">
             <div className="period-label">Current Pay Period</div>
             {currentPeriod ? (
-              <>
-                <div className="period-dates">
-                  {fmtDate(currentPeriod.start_date)} —{" "}
-                  {fmtDate(currentPeriod.end_date)}
-                </div>
-              </>
+              <div className="period-dates">
+                {fmtDate(currentPeriod.start_date)} —{" "}
+                {fmtDate(currentPeriod.end_date)}
+              </div>
             ) : (
-              <div
-                className="period-name"
-                style={{
-                  color: "rgba(255,255,255,0.3)",
-                  fontSize: "13px",
-                  fontWeight: 400,
-                }}
-              >
+              <div className="period-label" style={{ color: "#6E7681" }}>
                 No active period
               </div>
             )}
@@ -3874,7 +3912,7 @@ function Dashboard() {
                               style={{
                                 marginLeft: "10px",
                                 fontSize: "9px",
-                                background: "#E8B84B",
+                                background: "00D4AA",
                                 color: "#0C0E14",
                                 padding: "2px 8px",
                                 borderRadius: "4px",
@@ -4133,8 +4171,8 @@ function Dashboard() {
                           autoFocus
                           style={{
                             background: "rgba(255,255,255,0.06)",
-                            border: "1px solid #E8B84B",
-                            color: "#E8B84B",
+                            border: "1px solid 00D4AA",
+                            color: "00D4AA",
                             padding: "4px 8px",
                             borderRadius: "6px",
                             fontSize: "14px",
@@ -4220,31 +4258,46 @@ function Dashboard() {
         </div>
         <nav className="nav">
           <div className="nav-label">Main</div>
-          {["dashboard", "bills", "income", "accounts", "categories"].map(
-            (item) => (
-              <button
-                key={item}
-                className={`nav-item ${activeNav === item ? "active" : ""}`}
-                onClick={() => navigate(item)}
-              >
-                <span
-                  className={activeNav === item ? "nav-dot" : "nav-dot-muted"}
-                />
-                {item.charAt(0).toUpperCase() + item.slice(1)}
-              </button>
-            ),
-          )}
-          <div className="nav-label">Planning</div>
-          {["payperiods", "debts"].map((item) => (
+          {[
+            {
+              key: "dashboard",
+              label: "Dashboard",
+              icon: <LayoutDashboard size={16} />,
+            },
+            { key: "bills", label: "Bills", icon: <Receipt size={16} /> },
+            { key: "income", label: "Income", icon: <Wallet size={16} /> },
+            {
+              key: "accounts",
+              label: "Accounts",
+              icon: <CreditCard size={16} />,
+            },
+            { key: "categories", label: "Categories", icon: <Tag size={16} /> },
+          ].map((item) => (
             <button
-              key={item}
-              className={`nav-item ${activeNav === item ? "active" : ""}`}
-              onClick={() => navigate(item)}
+              key={item.key}
+              className={`nav-item ${activeNav === item.key ? "active" : ""}`}
+              onClick={() => navigate(item.key)}
             >
-              <span
-                className={activeNav === item ? "nav-dot" : "nav-dot-muted"}
-              />
-              {item === "payperiods" ? "Pay Periods" : "Debts"}
+              {item.icon}
+              {item.label}
+            </button>
+          ))}
+          <div className="nav-label">Planning</div>
+          {[
+            {
+              key: "payperiods",
+              label: "Pay Periods",
+              icon: <Calendar size={16} />,
+            },
+            { key: "debts", label: "Debts", icon: <TrendingDown size={16} /> },
+          ].map((item) => (
+            <button
+              key={item.key}
+              className={`nav-item ${activeNav === item.key ? "active" : ""}`}
+              onClick={() => navigate(item.key)}
+            >
+              {item.icon}
+              {item.label}
             </button>
           ))}
           <div className="nav-label">Account</div>
@@ -4252,9 +4305,7 @@ function Dashboard() {
             className={`nav-item ${activeNav === "settings" ? "active" : ""}`}
             onClick={() => navigate("settings")}
           >
-            <span
-              className={activeNav === "settings" ? "nav-dot" : "nav-dot-muted"}
-            />
+            <Settings size={16} />
             Settings
           </button>
         </nav>
@@ -4263,7 +4314,8 @@ function Dashboard() {
             className="signout-btn"
             onClick={() => supabase.auth.signOut()}
           >
-            <span className="nav-dot-muted" /> Sign Out
+            <LogOut size={16} />
+            Sign Out
           </button>
         </div>
       </aside>

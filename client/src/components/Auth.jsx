@@ -28,7 +28,6 @@ function AuthPage() {
       });
       if (error) setError(error.message);
     }
-
     setLoading(false);
   }
 
@@ -36,54 +35,56 @@ function AuthPage() {
     return (
       <div
         style={{
-          display: "flex",
-          justifyContent: "center",
-          alignItems: "center",
           minHeight: "100vh",
-          backgroundColor: "#0a0a0a",
+          background: "#0D1117",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          fontFamily: "'Inter', sans-serif",
         }}
       >
         <div
           style={{
-            width: "400px",
-            padding: "40px",
-            backgroundColor: "#111111",
-            borderRadius: "12px",
-            border: "1px solid #222222",
+            width: "420px",
+            padding: "48px",
+            background: "#161B22",
+            borderRadius: "16px",
+            border: "1px solid #30363D",
             textAlign: "center",
           }}
         >
-          <h1
+          <div
             style={{
-              color: "#ffffff",
+              width: "56px",
+              height: "56px",
+              borderRadius: "50%",
+              background: "linear-gradient(135deg, #6C63FF, #948cf2)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              margin: "0 auto 24px",
               fontSize: "24px",
-              fontWeight: "600",
-              marginBottom: "8px",
             }}
           >
-            Slate
-          </h1>
-          <p
-            style={{ color: "#E8B84B", fontSize: "14px", marginBottom: "32px" }}
-          >
-            Don't go dark.
-          </p>
-          <div style={{ fontSize: "40px", marginBottom: "24px" }}>✉️</div>
-          <h2
+            ✉️
+          </div>
+          <div
             style={{
-              color: "#ffffff",
-              fontSize: "18px",
-              fontWeight: "600",
+              fontSize: "20px",
+              fontWeight: "700",
+              color: "#F0F6FC",
               marginBottom: "12px",
             }}
           >
             Check your email
-          </h2>
-          <p style={{ color: "#888888", fontSize: "14px", lineHeight: "1.6" }}>
+          </div>
+          <div
+            style={{ fontSize: "14px", color: "#6E7681", lineHeight: "1.6" }}
+          >
             We sent a confirmation link to{" "}
-            <span style={{ color: "#E8B84B" }}>{email}</span>. Click it to
-            activate your account and get started.
-          </p>
+            <span style={{ color: "#6C63FF" }}>{email}</span>. Click it to
+            activate your account.
+          </div>
         </div>
       </div>
     );
@@ -92,124 +93,320 @@ function AuthPage() {
   return (
     <div
       style={{
-        display: "flex",
-        justifyContent: "center",
-        alignItems: "center",
         minHeight: "100vh",
-        backgroundColor: "#0a0a0a",
+        background: "#0D1117",
+        fontFamily: "'Inter', sans-serif",
+        display: "flex",
+        flexDirection: "column",
       }}
     >
+      {/* Top bar */}
       <div
         style={{
-          width: "400px",
-          padding: "40px",
-          backgroundColor: "#111111",
-          borderRadius: "12px",
-          border: "1px solid #222222",
+          padding: "28px 48px",
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
         }}
       >
-        <h1
-          style={{
-            color: "#ffffff",
-            fontSize: "24px",
-            fontWeight: "600",
-            marginBottom: "8px",
-            textAlign: "center",
-          }}
-        >
-          Slate
-        </h1>
-        <p
-          style={{
-            color: "#888888",
-            fontSize: "14px",
-            textAlign: "center",
-            marginBottom: "32px",
-          }}
-        >
-          Don't go dark.
-        </p>
-
-        <form onSubmit={handleSubmit}>
-          <input
-            type="email"
-            placeholder="Email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
+        <div>
+          <div
             style={{
-              width: "100%",
-              padding: "12px",
-              marginBottom: "12px",
-              backgroundColor: "#1a1a1a",
-              border: "1px solid #333333",
-              borderRadius: "8px",
-              color: "#ffffff",
-              fontSize: "14px",
-            }}
-          />
-          <input
-            type="password"
-            placeholder="Password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            style={{
-              width: "100%",
-              padding: "12px",
-              marginBottom: "12px",
-              backgroundColor: "#1a1a1a",
-              border: "1px solid #333333",
-              borderRadius: "8px",
-              color: "#ffffff",
-              fontSize: "14px",
-            }}
-          />
-          {error && (
-            <p
-              style={{
-                color: "#ff4444",
-                fontSize: "13px",
-                marginBottom: "12px",
-              }}
-            >
-              {error}
-            </p>
-          )}
-          <button
-            type="submit"
-            disabled={loading}
-            style={{
-              width: "100%",
-              padding: "12px",
-              backgroundColor: "#ffffff",
-              color: "#000000",
-              border: "none",
-              borderRadius: "8px",
-              fontSize: "14px",
-              fontWeight: "600",
-              cursor: "pointer",
+              fontSize: "11px",
+              fontWeight: "700",
+              letterSpacing: "0.2em",
+              color: "#6C63FF",
+              textTransform: "uppercase",
+              marginBottom: "2px",
             }}
           >
-            {loading ? "Loading..." : isSignUp ? "Sign Up" : "Sign In"}
-          </button>
-        </form>
+            Bravo Six
+          </div>
+          <div
+            style={{
+              fontSize: "20px",
+              fontWeight: "800",
+              letterSpacing: "0.08em",
+              color: "#F0F6FC",
+              textTransform: "uppercase",
+            }}
+          >
+            Slate
+          </div>
+        </div>
+      </div>
 
-        <p
+      {/* Main content */}
+      <div
+        style={{
+          flex: 1,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          padding: "0 48px 60px",
+        }}
+      >
+        <div
           style={{
-            color: "#888888",
-            fontSize: "13px",
-            textAlign: "center",
-            marginTop: "20px",
-            cursor: "pointer",
-          }}
-          onClick={() => {
-            setIsSignUp(!isSignUp);
-            setError(null);
+            display: "flex",
+            alignItems: "center",
+            gap: "80px",
+            maxWidth: "1200px",
+            width: "100%",
           }}
         >
-          {isSignUp
-            ? "Already have an account? Sign in"
-            : "Don't have an account? Sign up"}
-        </p>
+          {/* Left — tagline */}
+          <div style={{ flex: 1 }}>
+            <div
+              style={{
+                fontSize: "56px",
+                fontWeight: "800",
+                color: "#F0F6FC",
+                lineHeight: "1.1",
+                letterSpacing: "-0.03em",
+                marginBottom: "24px",
+              }}
+            >
+              Don't go
+              <br />
+              <span style={{ color: "#6C63FF" }}>dark.</span>
+            </div>
+            <div
+              style={{
+                fontSize: "18px",
+                color: "#6E7681",
+                lineHeight: "1.6",
+                maxWidth: "420px",
+                marginBottom: "40px",
+              }}
+            >
+              Paycheck to paycheck planning built for military families and
+              everyday households.
+            </div>
+            <div
+              style={{ display: "flex", flexDirection: "column", gap: "16px" }}
+            >
+              {[
+                "Plan every dollar before it lands",
+                "Share finances with your household",
+                "Track bills, accounts, and debts in one place",
+              ].map((item, i) => (
+                <div
+                  key={i}
+                  style={{ display: "flex", alignItems: "center", gap: "12px" }}
+                >
+                  <div
+                    style={{
+                      width: "20px",
+                      height: "20px",
+                      borderRadius: "50%",
+                      background: "rgba(0,212,170,0.15)",
+                      border: "1px solid rgba(0,212,170,0.4)",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      flexShrink: 0,
+                    }}
+                  >
+                    <div
+                      style={{
+                        width: "6px",
+                        height: "6px",
+                        borderRadius: "50%",
+                        background: "#6C63FF",
+                      }}
+                    />
+                  </div>
+                  <div style={{ fontSize: "15px", color: "#8B949E" }}>
+                    {item}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Right — floating card */}
+          <div
+            style={{
+              width: "400px",
+              flexShrink: 0,
+              background: "#161B22",
+              borderRadius: "20px",
+              border: "1px solid #30363D",
+              padding: "40px",
+              boxShadow: "0 24px 64px rgba(0,0,0,0.4)",
+            }}
+          >
+            <div style={{ marginBottom: "32px" }}>
+              <div
+                style={{
+                  fontSize: "22px",
+                  fontWeight: "700",
+                  color: "#F0F6FC",
+                  marginBottom: "6px",
+                }}
+              >
+                {isSignUp ? "Create your account" : "Welcome back"}
+              </div>
+              <div style={{ fontSize: "14px", color: "#6E7681" }}>
+                {isSignUp
+                  ? "Start managing your finances today"
+                  : "Sign in to continue to Slate"}
+              </div>
+            </div>
+
+            <form
+              onSubmit={handleSubmit}
+              style={{ display: "flex", flexDirection: "column", gap: "16px" }}
+            >
+              <div>
+                <label
+                  style={{
+                    fontSize: "11px",
+                    fontWeight: "600",
+                    color: "#6E7681",
+                    letterSpacing: "0.08em",
+                    textTransform: "uppercase",
+                    display: "block",
+                    marginBottom: "8px",
+                  }}
+                >
+                  Email
+                </label>
+                <input
+                  type="email"
+                  placeholder="you@example.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  style={{
+                    width: "100%",
+                    padding: "12px 14px",
+                    background: "#0D1117",
+                    border: "1px solid #30363D",
+                    borderRadius: "8px",
+                    color: "#F0F6FC",
+                    fontSize: "14px",
+                    fontFamily: "'Inter', sans-serif",
+                    outline: "none",
+                    boxSizing: "border-box",
+                  }}
+                />
+              </div>
+              <div>
+                <label
+                  style={{
+                    fontSize: "11px",
+                    fontWeight: "600",
+                    color: "#6E7681",
+                    letterSpacing: "0.08em",
+                    textTransform: "uppercase",
+                    display: "block",
+                    marginBottom: "8px",
+                  }}
+                >
+                  Password
+                </label>
+                <input
+                  type="password"
+                  placeholder="••••••••"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  style={{
+                    width: "100%",
+                    padding: "12px 14px",
+                    background: "#0D1117",
+                    border: "1px solid #30363D",
+                    borderRadius: "8px",
+                    color: "#F0F6FC",
+                    fontSize: "14px",
+                    fontFamily: "'Inter', sans-serif",
+                    outline: "none",
+                    boxSizing: "border-box",
+                  }}
+                />
+              </div>
+
+              {error && (
+                <div
+                  style={{
+                    fontSize: "13px",
+                    color: "#F87171",
+                    background: "rgba(248,113,113,0.08)",
+                    padding: "10px 14px",
+                    borderRadius: "8px",
+                    border: "1px solid rgba(248,113,113,0.2)",
+                  }}
+                >
+                  {error}
+                </div>
+              )}
+
+              <button
+                type="submit"
+                disabled={loading}
+                style={{
+                  width: "100%",
+                  padding: "13px",
+                  background: "linear-gradient(135deg, #6C63FF, #948cf2)",
+                  border: "none",
+                  borderRadius: "8px",
+                  color: "#0D1117",
+                  fontSize: "14px",
+                  fontWeight: "700",
+                  fontFamily: "'Inter', sans-serif",
+                  cursor: "pointer",
+                  marginTop: "8px",
+                }}
+              >
+                {loading
+                  ? "Loading..."
+                  : isSignUp
+                    ? "Create Account"
+                    : "Sign In"}
+              </button>
+            </form>
+
+            <div style={{ marginTop: "24px", textAlign: "center" }}>
+              <span style={{ fontSize: "14px", color: "#6E7681" }}>
+                {isSignUp
+                  ? "Already have an account? "
+                  : "Don't have an account? "}
+              </span>
+              <span
+                onClick={() => {
+                  setIsSignUp(!isSignUp);
+                  setError(null);
+                }}
+                style={{
+                  fontSize: "14px",
+                  color: "#6C63FF",
+                  cursor: "pointer",
+                  fontWeight: "600",
+                }}
+              >
+                {isSignUp ? "Sign in" : "Sign up"}
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Footer */}
+      <div
+        style={{
+          padding: "20px 48px",
+          borderTop: "1px solid #21262D",
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+        }}
+      >
+        <div style={{ fontSize: "12px", color: "#484F58" }}>
+          © 2026 Bravo Six. All rights reserved.
+        </div>
+        <div style={{ fontSize: "12px", color: "#484F58" }}>
+          Built for those who serve.
+        </div>
       </div>
     </div>
   );
