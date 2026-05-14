@@ -1327,159 +1327,6 @@ function Dashboard() {
           </div>
 
           {/* Add / Edit Form */}
-          {(showDebtForm || editingDebt) && (
-            <div className="panel" style={{ marginBottom: "16px" }}>
-              <div className="panel-header">
-                <div className="panel-title">
-                  {editingDebt ? "Edit Debt" : "New Debt"}
-                </div>
-              </div>
-              <div
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: "1fr 1fr",
-                  gap: "12px",
-                }}
-              >
-                <input
-                  placeholder="Debt name (e.g. Chase Visa)"
-                  value={debtName}
-                  onChange={(e) => setDebtName(e.target.value)}
-                  style={{
-                    background: "#1E2736",
-                    border: "1px solid #2D3748",
-                    color: "#E8E6E1",
-                    padding: "8px 12px",
-                    borderRadius: "6px",
-                    fontSize: "13px",
-                    fontFamily: "'DM Sans', sans-serif",
-                  }}
-                />
-                <select
-                  value={debtCategory}
-                  onChange={(e) => setDebtCategory(e.target.value)}
-                  style={{
-                    background: "#1E2736",
-                    border: "1px solid #2D3748",
-                    color: "#E8E6E1",
-                    padding: "8px 12px",
-                    borderRadius: "6px",
-                    fontSize: "13px",
-                    fontFamily: "'DM Sans', sans-serif",
-                  }}
-                >
-                  <option value="Credit Card">Credit Card</option>
-                  <option value="Auto Loan">Auto Loan</option>
-                  <option value="Student Loan">Student Loan</option>
-                  <option value="Personal Loan">Personal Loan</option>
-                  <option value="Medical">Medical</option>
-                  <option value="Mortgage">Mortgage</option>
-                  <option value="Other">Other</option>
-                </select>
-                <select
-                  value={debtOwner}
-                  onChange={(e) => setDebtOwner(e.target.value)}
-                  style={{
-                    background: "#1E2736",
-                    border: "1px solid #2D3748",
-                    color: "#E8E6E1",
-                    padding: "8px 12px",
-                    borderRadius: "6px",
-                    fontSize: "13px",
-                    fontFamily: "'DM Sans', sans-serif",
-                  }}
-                >
-                  <option value="joint">Joint</option>
-                  {members.map((m, i) => (
-                    <option key={i} value={m.name}>
-                      {m.name}
-                    </option>
-                  ))}
-                </select>
-                <input
-                  type="number"
-                  placeholder="Current balance"
-                  value={debtBalance}
-                  onChange={(e) => setDebtBalance(e.target.value)}
-                  style={{
-                    background: "#1E2736",
-                    border: "1px solid #2D3748",
-                    color: "#E8E6E1",
-                    padding: "8px 12px",
-                    borderRadius: "6px",
-                    fontSize: "13px",
-                    fontFamily: "'DM Sans', sans-serif",
-                  }}
-                />
-                <input
-                  type="number"
-                  placeholder="Minimum payment"
-                  value={debtMinPayment}
-                  onChange={(e) => setDebtMinPayment(e.target.value)}
-                  style={{
-                    background: "#1E2736",
-                    border: "1px solid #2D3748",
-                    color: "#E8E6E1",
-                    padding: "8px 12px",
-                    borderRadius: "6px",
-                    fontSize: "13px",
-                    fontFamily: "'DM Sans', sans-serif",
-                  }}
-                />
-                <input
-                  type="number"
-                  placeholder="Interest rate (e.g. 24.99)"
-                  value={debtInterestRate}
-                  onChange={(e) => setDebtInterestRate(e.target.value)}
-                  style={{
-                    background: "#1E2736",
-                    border: "1px solid #2D3748",
-                    color: "#E8E6E1",
-                    padding: "8px 12px",
-                    borderRadius: "6px",
-                    fontSize: "13px",
-                    fontFamily: "'DM Sans', sans-serif",
-                  }}
-                />
-              </div>
-              <div style={{ display: "flex", gap: "8px", marginTop: "12px" }}>
-                <button
-                  onClick={editingDebt ? updateDebt : addDebt}
-                  style={{
-                    background: "00D4AA",
-                    border: "none",
-                    color: "#0F1218",
-                    padding: "8px 16px",
-                    borderRadius: "6px",
-                    cursor: "pointer",
-                    fontSize: "13px",
-                    fontWeight: "600",
-                    fontFamily: "'DM Sans', sans-serif",
-                  }}
-                >
-                  {editingDebt ? "Save Changes" : "Add Debt"}
-                </button>
-                <button
-                  onClick={() => {
-                    setShowDebtForm(false);
-                    setEditingDebt(null);
-                  }}
-                  style={{
-                    background: "none",
-                    border: "1px solid #2D3748",
-                    color: "#8892A4",
-                    padding: "8px 16px",
-                    borderRadius: "6px",
-                    cursor: "pointer",
-                    fontSize: "13px",
-                    fontFamily: "'DM Sans', sans-serif",
-                  }}
-                >
-                  Cancel
-                </button>
-              </div>
-            </div>
-          )}
 
           {/* Active Debts */}
           <div className="panel" style={{ marginBottom: "16px" }}>
@@ -1491,182 +1338,351 @@ function Dashboard() {
               <div className="empty-state">No active debts — great work!</div>
             ) : (
               activeDebts.map((debt, i) => (
-                <div className="row-item" key={i}>
-                  <div>
-                    <div className="row-name">
-                      {debt.payoff_order && (
-                        <span
-                          style={{
-                            fontSize: "10px",
-                            background: "00D4AA",
-                            color: "#0F1218",
-                            padding: "1px 6px",
-                            borderRadius: "4px",
-                            marginRight: "8px",
-                            fontWeight: "700",
-                          }}
-                        >
-                          #{debt.payoff_order}
-                        </span>
-                      )}
-                      {debt.name}
-                    </div>
-                    <div className="row-sub">
-                      {debt.category} · {debt.owner}
-                      {debt.interest_rate &&
-                        ` · ${(debt.interest_rate * 100).toFixed(2)}% APR`}
-                    </div>
-                  </div>
-                  <div
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "8px",
-                    }}
-                  >
-                    <div style={{ textAlign: "right" }}>
-                      <div className="row-amount" style={{ color: "#FC8181" }}>
-                        ${fmt(debt.balance)}
+                <div key={i}>
+                  <div className="row-item">
+                    <div>
+                      <div className="row-name">
+                        {debt.payoff_order && (
+                          <span
+                            style={{
+                              fontSize: "10px",
+                              background: "#6C63FF",
+                              color: "#F0F6FC",
+                              padding: "1px 6px",
+                              borderRadius: "4px",
+                              marginRight: "8px",
+                              fontWeight: "700",
+                            }}
+                          >
+                            #{debt.payoff_order}
+                          </span>
+                        )}
+                        {debt.name}
                       </div>
-                      <div style={{ fontSize: "10px", color: "#8B8FA8" }}>
-                        min ${fmt(debt.minimum_payment)}/mo
+                      <div className="row-sub">
+                        {debt.category} · {debt.owner}
+                        {debt.interest_rate &&
+                          ` · ${(debt.interest_rate * 100).toFixed(2)}% APR`}
                       </div>
                     </div>
-                    <button
-                      onClick={() => {
-                        setEditingDebt(debt);
-                        setShowDebtForm(false);
-                        setDebtName(debt.name);
-                        setDebtOwner(debt.owner);
-                        setDebtCategory(debt.category);
-                        setDebtBalance(debt.balance);
-                        setDebtInterestRate(
-                          debt.interest_rate
-                            ? (debt.interest_rate * 100).toFixed(2)
-                            : "",
-                        );
-                        setDebtMinPayment(debt.minimum_payment);
-                        setDebtPayoffOrder(debt.payoff_order || "");
-                      }}
+                    <div
                       style={{
-                        background: "none",
-                        border: "1px solid #2D3748",
-                        color: "#8892A4",
-                        padding: "4px 10px",
-                        borderRadius: "6px",
-                        cursor: "pointer",
-                        fontSize: "11px",
-                        fontFamily: "'DM Sans', sans-serif",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "8px",
                       }}
                     >
-                      Edit
-                    </button>
-                    {confirmPayoffDebtId === debt.id ? (
-                      <>
-                        <button
-                          onClick={() => markDebtPaidOff(debt)}
-                          style={{
-                            background: "none",
-                            border: "1px solid #68D391",
-                            color: "#68D391",
-                            padding: "4px 10px",
-                            borderRadius: "6px",
-                            cursor: "pointer",
-                            fontSize: "11px",
-                            fontFamily: "'DM Sans', sans-serif",
-                          }}
+                      <div style={{ textAlign: "right" }}>
+                        <div
+                          className="row-amount"
+                          style={{ color: "#F87171" }}
                         >
-                          Confirm
-                        </button>
-                        <button
-                          onClick={() => setConfirmPayoffDebtId(null)}
-                          style={{
-                            background: "none",
-                            border: "1px solid #2D3748",
-                            color: "#8892A4",
-                            padding: "4px 10px",
-                            borderRadius: "6px",
-                            cursor: "pointer",
-                            fontSize: "11px",
-                            fontFamily: "'DM Sans', sans-serif",
-                          }}
-                        >
-                          Cancel
-                        </button>
-                      </>
-                    ) : (
-                      <>
-                        <button
-                          onClick={() => setConfirmPayoffDebtId(debt.id)}
-                          style={{
-                            background: "none",
-                            border: "1px solid #68D391",
-                            color: "#68D391",
-                            padding: "4px 10px",
-                            borderRadius: "6px",
-                            cursor: "pointer",
-                            fontSize: "11px",
-                            fontFamily: "'DM Sans', sans-serif",
-                          }}
-                        >
-                          Paid Off
-                        </button>
-                        {confirmDeleteDebtId === debt.id ? (
-                          <>
-                            <button
-                              onClick={() => {
-                                deleteDebt(debt.id);
-                                setConfirmDeleteDebtId(null);
-                              }}
-                              style={{
-                                background: "none",
-                                border: "1px solid #FC8181",
-                                color: "#FC8181",
-                                padding: "4px 10px",
-                                borderRadius: "6px",
-                                cursor: "pointer",
-                                fontSize: "11px",
-                                fontFamily: "'DM Sans', sans-serif",
-                              }}
-                            >
-                              Confirm
-                            </button>
-                            <button
-                              onClick={() => setConfirmDeleteDebtId(null)}
-                              style={{
-                                background: "none",
-                                border: "1px solid #2D3748",
-                                color: "#8892A4",
-                                padding: "4px 10px",
-                                borderRadius: "6px",
-                                cursor: "pointer",
-                                fontSize: "11px",
-                                fontFamily: "'DM Sans', sans-serif",
-                              }}
-                            >
-                              Cancel
-                            </button>
-                          </>
-                        ) : (
+                          ${fmt(debt.balance)}
+                        </div>
+                        <div style={{ fontSize: "10px", color: "#8B8FA8" }}>
+                          min ${fmt(debt.minimum_payment)}/mo
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => {
+                          if (editingDebt?.id === debt.id) {
+                            setEditingDebt(null);
+                          } else {
+                            setEditingDebt(debt);
+                            setShowDebtForm(false);
+                            setDebtName(debt.name);
+                            setDebtOwner(debt.owner);
+                            setDebtCategory(debt.category);
+                            setDebtBalance(debt.balance);
+                            setDebtInterestRate(
+                              debt.interest_rate
+                                ? (debt.interest_rate * 100).toFixed(2)
+                                : "",
+                            );
+                            setDebtMinPayment(debt.minimum_payment);
+                            setDebtPayoffOrder(debt.payoff_order || "");
+                          }
+                        }}
+                        style={{
+                          background: "none",
+                          border: "1px solid #2D3748",
+                          color: "#8B8FA8",
+                          padding: "4px 10px",
+                          borderRadius: "6px",
+                          cursor: "pointer",
+                          fontSize: "11px",
+                          fontFamily: "'Inter', sans-serif",
+                        }}
+                      >
+                        {editingDebt?.id === debt.id ? "Cancel" : "Edit"}
+                      </button>
+                      {confirmPayoffDebtId === debt.id ? (
+                        <>
                           <button
-                            onClick={() => setConfirmDeleteDebtId(debt.id)}
+                            onClick={() => markDebtPaidOff(debt)}
                             style={{
                               background: "none",
-                              border: "1px solid #2D3748",
-                              color: "#FC8181",
+                              border: "1px solid #4ADE80",
+                              color: "#4ADE80",
                               padding: "4px 10px",
                               borderRadius: "6px",
                               cursor: "pointer",
                               fontSize: "11px",
-                              fontFamily: "'DM Sans', sans-serif",
+                              fontFamily: "'Inter', sans-serif",
                             }}
                           >
-                            Delete
+                            Confirm
                           </button>
-                        )}
-                      </>
-                    )}
+                          <button
+                            onClick={() => setConfirmPayoffDebtId(null)}
+                            style={{
+                              background: "none",
+                              border: "1px solid #2D3748",
+                              color: "#8B8FA8",
+                              padding: "4px 10px",
+                              borderRadius: "6px",
+                              cursor: "pointer",
+                              fontSize: "11px",
+                              fontFamily: "'Inter', sans-serif",
+                            }}
+                          >
+                            Cancel
+                          </button>
+                        </>
+                      ) : (
+                        <>
+                          <button
+                            onClick={() => setConfirmPayoffDebtId(debt.id)}
+                            style={{
+                              background: "none",
+                              border: "1px solid #4ADE80",
+                              color: "#4ADE80",
+                              padding: "4px 10px",
+                              borderRadius: "6px",
+                              cursor: "pointer",
+                              fontSize: "11px",
+                              fontFamily: "'Inter', sans-serif",
+                            }}
+                          >
+                            Paid Off
+                          </button>
+                          {confirmDeleteDebtId === debt.id ? (
+                            <>
+                              <button
+                                onClick={() => {
+                                  deleteDebt(debt.id);
+                                  setConfirmDeleteDebtId(null);
+                                }}
+                                style={{
+                                  background: "none",
+                                  border: "1px solid #F87171",
+                                  color: "#F87171",
+                                  padding: "4px 10px",
+                                  borderRadius: "6px",
+                                  cursor: "pointer",
+                                  fontSize: "11px",
+                                  fontFamily: "'Inter', sans-serif",
+                                }}
+                              >
+                                Confirm
+                              </button>
+                              <button
+                                onClick={() => setConfirmDeleteDebtId(null)}
+                                style={{
+                                  background: "none",
+                                  border: "1px solid #2D3748",
+                                  color: "#8B8FA8",
+                                  padding: "4px 10px",
+                                  borderRadius: "6px",
+                                  cursor: "pointer",
+                                  fontSize: "11px",
+                                  fontFamily: "'Inter', sans-serif",
+                                }}
+                              >
+                                Cancel
+                              </button>
+                            </>
+                          ) : (
+                            <button
+                              onClick={() => setConfirmDeleteDebtId(debt.id)}
+                              style={{
+                                background: "none",
+                                border: "1px solid #2D3748",
+                                color: "#F87171",
+                                padding: "4px 10px",
+                                borderRadius: "6px",
+                                cursor: "pointer",
+                                fontSize: "11px",
+                                fontFamily: "'Inter', sans-serif",
+                              }}
+                            >
+                              Delete
+                            </button>
+                          )}
+                        </>
+                      )}
+                    </div>
                   </div>
+
+                  {editingDebt?.id === debt.id && (
+                    <div
+                      style={{
+                        background: "#13111F",
+                        border: "1px solid rgba(108,99,255,0.3)",
+                        borderRadius: "8px",
+                        padding: "16px",
+                        margin: "8px 0 4px",
+                      }}
+                    >
+                      <div
+                        style={{
+                          display: "grid",
+                          gridTemplateColumns: "1fr 1fr",
+                          gap: "12px",
+                        }}
+                      >
+                        <input
+                          placeholder="Debt name"
+                          value={debtName}
+                          onChange={(e) => setDebtName(e.target.value)}
+                          style={{
+                            background: "#2D2B45",
+                            border: "1px solid rgba(255,255,255,0.1)",
+                            color: "#F0F6FC",
+                            padding: "8px 12px",
+                            borderRadius: "6px",
+                            fontSize: "13px",
+                            fontFamily: "'Inter', sans-serif",
+                          }}
+                        />
+                        <select
+                          value={debtCategory}
+                          onChange={(e) => setDebtCategory(e.target.value)}
+                          style={{
+                            background: "#2D2B45",
+                            border: "1px solid rgba(255,255,255,0.1)",
+                            color: "#F0F6FC",
+                            padding: "8px 12px",
+                            borderRadius: "6px",
+                            fontSize: "13px",
+                            fontFamily: "'Inter', sans-serif",
+                          }}
+                        >
+                          <option value="Credit Card">Credit Card</option>
+                          <option value="Auto Loan">Auto Loan</option>
+                          <option value="Student Loan">Student Loan</option>
+                          <option value="Personal Loan">Personal Loan</option>
+                          <option value="Medical">Medical</option>
+                          <option value="Mortgage">Mortgage</option>
+                          <option value="Other">Other</option>
+                        </select>
+                        <select
+                          value={debtOwner}
+                          onChange={(e) => setDebtOwner(e.target.value)}
+                          style={{
+                            background: "#2D2B45",
+                            border: "1px solid rgba(255,255,255,0.1)",
+                            color: "#F0F6FC",
+                            padding: "8px 12px",
+                            borderRadius: "6px",
+                            fontSize: "13px",
+                            fontFamily: "'Inter', sans-serif",
+                          }}
+                        >
+                          <option value="joint">Joint</option>
+                          {members.map((m, i) => (
+                            <option key={i} value={m.name}>
+                              {m.name}
+                            </option>
+                          ))}
+                        </select>
+                        <input
+                          type="number"
+                          placeholder="Current balance"
+                          value={debtBalance}
+                          onChange={(e) => setDebtBalance(e.target.value)}
+                          style={{
+                            background: "#2D2B45",
+                            border: "1px solid rgba(255,255,255,0.1)",
+                            color: "#F0F6FC",
+                            padding: "8px 12px",
+                            borderRadius: "6px",
+                            fontSize: "13px",
+                            fontFamily: "'Inter', sans-serif",
+                          }}
+                        />
+                        <input
+                          type="number"
+                          placeholder="Minimum payment"
+                          value={debtMinPayment}
+                          onChange={(e) => setDebtMinPayment(e.target.value)}
+                          style={{
+                            background: "#2D2B45",
+                            border: "1px solid rgba(255,255,255,0.1)",
+                            color: "#F0F6FC",
+                            padding: "8px 12px",
+                            borderRadius: "6px",
+                            fontSize: "13px",
+                            fontFamily: "'Inter', sans-serif",
+                          }}
+                        />
+                        <input
+                          type="number"
+                          placeholder="Interest rate (e.g. 24.99)"
+                          value={debtInterestRate}
+                          onChange={(e) => setDebtInterestRate(e.target.value)}
+                          style={{
+                            background: "#2D2B45",
+                            border: "1px solid rgba(255,255,255,0.1)",
+                            color: "#F0F6FC",
+                            padding: "8px 12px",
+                            borderRadius: "6px",
+                            fontSize: "13px",
+                            fontFamily: "'Inter', sans-serif",
+                          }}
+                        />
+                      </div>
+                      <div
+                        style={{
+                          display: "flex",
+                          gap: "8px",
+                          marginTop: "12px",
+                        }}
+                      >
+                        <button
+                          onClick={updateDebt}
+                          style={{
+                            background: "#6C63FF",
+                            border: "none",
+                            color: "#F0F6FC",
+                            padding: "8px 16px",
+                            borderRadius: "6px",
+                            cursor: "pointer",
+                            fontSize: "13px",
+                            fontWeight: "600",
+                            fontFamily: "'Inter', sans-serif",
+                          }}
+                        >
+                          Save Changes
+                        </button>
+                        <button
+                          onClick={() => setEditingDebt(null)}
+                          style={{
+                            background: "none",
+                            border: "1px solid rgba(255,255,255,0.1)",
+                            color: "#8B8FA8",
+                            padding: "8px 16px",
+                            borderRadius: "6px",
+                            cursor: "pointer",
+                            fontSize: "13px",
+                            fontFamily: "'Inter', sans-serif",
+                          }}
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               ))
             )}
