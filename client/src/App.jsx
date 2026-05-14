@@ -41,6 +41,9 @@ function App() {
           .limit(1)
           .maybeSingle();
 
+        if (data) {
+          localStorage.setItem("activeNav", "dashboard");
+        }
         setHasHousehold(!!data);
         setCheckingHousehold(false);
       }
