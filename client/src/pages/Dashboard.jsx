@@ -2879,9 +2879,9 @@ function Dashboard() {
                         }
                         autoFocus
                         style={{
-                          background: "#1E2736",
-                          border: "1px solid 00D4AA",
-                          color: "00D4AA",
+                          background: "#2D2B45",
+                          border: "1px solid #6C63FF",
+                          color: "#F0F6FC",
                           padding: "4px 8px",
                           borderRadius: "6px",
                           fontSize: "14px",
@@ -3262,9 +3262,9 @@ function Dashboard() {
                           }
                           autoFocus
                           style={{
-                            background: "#1E2736",
-                            border: "1px solid 00D4AA",
-                            color: "00D4AA",
+                            background: "#2D2B45",
+                            border: "1px solid #6C63FF",
+                            color: "#F0F6FC",
                             padding: "4px 8px",
                             borderRadius: "6px",
                             fontSize: "14px",
@@ -3640,9 +3640,9 @@ function Dashboard() {
                           }
                           autoFocus
                           style={{
-                            background: "#1E2736",
-                            border: "1px solid 00D4AA",
-                            color: "00D4AA",
+                            background: "#2D2B45",
+                            border: "1px solid #6C63FF",
+                            color: "#F0F6FC",
                             padding: "4px 8px",
                             borderRadius: "6px",
                             fontSize: "14px",
@@ -4170,9 +4170,9 @@ function Dashboard() {
                           }
                           autoFocus
                           style={{
-                            background: "rgba(255,255,255,0.06)",
-                            border: "1px solid 00D4AA",
-                            color: "00D4AA",
+                            background: "#2D2B45",
+                            border: "1px solid #6C63FF",
+                            color: "#F0F6FC",
                             padding: "4px 8px",
                             borderRadius: "6px",
                             fontSize: "14px",
