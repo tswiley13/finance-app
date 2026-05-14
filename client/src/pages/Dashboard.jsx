@@ -524,8 +524,8 @@ function Dashboard() {
       .slice(0, 4);
 
     return upcomingPeriods.map((period) => {
-      const periodStart = new Date(period.start_date + "T12:00:00");
-      const periodEnd = new Date(period.end_date + "T12:00:00");
+      const periodStart = new Date(period.start_date + "T00:00:00");
+      const periodEnd = new Date(period.end_date + "T23:59:59");
 
       let periodIncome = 0;
       const periodIncomeItems = [];
@@ -3873,7 +3873,11 @@ function Dashboard() {
             <div className="stat-card">
               <div className="stat-label">Income Remaining</div>
               <div className="stat-amount">
-                ${fmt(getRemainingIncomeThisMonth())}
+                $
+                {fmt(
+                  (accounts.find((a) => a.is_primary)?.current_balance || 0) +
+                    getRemainingIncomeThisMonth(),
+                )}
               </div>
             </div>
             <div className="stat-card">
@@ -3890,11 +3894,13 @@ function Dashboard() {
             <div className="stat-card">
               <div className="stat-label">Left After Bills</div>
               {(() => {
-                const left =
-                  getRemainingIncomeThisMonth() -
-                  bills
-                    .filter(isBillDue)
-                    .reduce((sum, b) => sum + (b.amount || 0), 0);
+                const income =
+                  (accounts.find((a) => a.is_primary)?.current_balance || 0) +
+                  getRemainingIncomeThisMonth();
+                const billsTotal = bills
+                  .filter(isBillDue)
+                  .reduce((sum, b) => sum + (b.amount || 0), 0);
+                const left = income - billsTotal;
                 return (
                   <div
                     className={`stat-amount ${left < 0 ? "negative" : "neutral"}`}
@@ -4274,22 +4280,59 @@ function Dashboard() {
                   currentBreakdown.bills.forEach((bill) => {
                     const acct = accounts.find((a) => a.id === bill.account_id);
                     const key = acct ? acct.name : "Unassigned";
-                    if (!grouped[key]) grouped[key] = { total: 0, bills: [] };
+                    if (!grouped[key]) {
+                      grouped[key] = {
+                        total: 0,
+                        bills: [],
+                        balance: acct?.current_balance || 0,
+                        buffer: acct?.minimum_buffer || 0,
+                      };
+                    }
                     grouped[key].total += bill.amount || 0;
                     grouped[key].bills.push(bill);
                   });
 
-                  return Object.entries(grouped).map(([acctName, data], i) => (
-                    <div className="row-item" key={i}>
-                      <div>
-                        <div className="row-name">{acctName}</div>
-                        <div className="row-sub">
-                          {data.bills.map((b) => b.name).join(" · ")}
+                  return Object.entries(grouped).map(([acctName, data], i) => {
+                    const transferNeeded = Math.max(
+                      0,
+                      data.total + data.buffer - data.balance,
+                    );
+                    return (
+                      <div className="row-item" key={i}>
+                        <div>
+                          <div className="row-name">{acctName}</div>
+                          <div className="row-sub">
+                            {data.bills.map((b) => b.name).join(" · ")}
+                          </div>
+                          {data.buffer > 0 && (
+                            <div
+                              style={{
+                                fontSize: "10px",
+                                color: "#6C63FF",
+                                marginTop: "2px",
+                              }}
+                            >
+                              Includes ${fmt(data.buffer)} buffer
+                            </div>
+                          )}
+                        </div>
+                        <div style={{ textAlign: "right" }}>
+                          <div className="row-amount">
+                            ${fmt(transferNeeded)}
+                          </div>
+                          <div
+                            style={{
+                              fontSize: "10px",
+                              color: "#8B8FA8",
+                              marginTop: "2px",
+                            }}
+                          >
+                            transfer needed
+                          </div>
                         </div>
                       </div>
-                      <div className="row-amount">${fmt(data.total)}</div>
-                    </div>
-                  ));
+                    );
+                  });
                 })()}
               </div>
             </div>
