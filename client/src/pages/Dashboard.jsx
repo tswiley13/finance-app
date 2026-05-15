@@ -62,7 +62,7 @@ const css = `
   .stat-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 1px; background: linear-gradient(90deg, rgba(108,99,255,0.8), transparent); }
   .stat-label { font-size: 10px; color: #8B8FA8; letter-spacing: 0.1em; text-transform: uppercase; font-weight: 600; margin-bottom: 10px; }
   .stat-amount { font-family: 'DM Mono', monospace; font-size: 26px; font-weight: 500; color: #6C63FF; line-height: 1; }
-  .stat-amount.neutral { color: #F0F6FC; }
+  .stat-amount.neutral { color: #4ADE80; }
   .stat-amount.negative { color: #F87171; }
 
   .dashboard-grid { display: grid; grid-template-columns: calc((100% - 24px) / 3 * 2 + 12px) calc((100% - 24px) / 3); gap: 12px; align-items: start; width: 100%; }
@@ -135,6 +135,9 @@ function Dashboard() {
   const [quickEditBalance, setQuickEditBalance] = useState("");
   const [quickEditBillId, setQuickEditBillId] = useState(null);
   const [quickEditBillAmount, setQuickEditBillAmount] = useState("");
+  const [transferringId, setTransferringId] = useState(null);
+  const [transferAmount, setTransferAmount] = useState("");
+  const [transfers, setTransfers] = useState({});
   const [quickEditIncomeId, setQuickEditIncomeId] = useState(null);
   const [quickEditIncomeAmount, setQuickEditIncomeAmount] = useState("");
   const [confirmDeleteBillId, setConfirmDeleteBillId] = useState(null);
@@ -542,14 +545,28 @@ function Dashboard() {
               : 0;
 
         if (interval === 0) {
-          if (baseDate >= periodStart && baseDate <= periodEnd) {
-            periodIncome += inc.fixed_amount;
-            periodIncomeItems.push(inc);
-          }
+          // Monthly — check if this income's pay day falls in the period
+          // for either the period's start month or end month
+          const payDay = baseDate.getDate();
+          const candidateDates = [
+            new Date(periodStart.getFullYear(), periodStart.getMonth(), payDay, 12, 0, 0),
+            new Date(periodEnd.getFullYear(), periodEnd.getMonth(), payDay, 12, 0, 0),
+          ];
+          candidateDates.forEach((d) => {
+            if (d >= periodStart && d <= periodEnd) {
+              periodIncome += inc.fixed_amount;
+              periodIncomeItems.push({ ...inc, actualPayDate: d.toISOString().split("T")[0] });
+            }
+          });
         } else {
+          // Walk backwards from next_pay_date to find the earliest
+          // occurrence at or before periodEnd, then sweep forward
           let payDate = new Date(baseDate);
+          while (payDate > periodEnd) {
+            payDate.setDate(payDate.getDate() - interval);
+          }
           while (payDate <= periodEnd) {
-            if (payDate >= periodStart && payDate <= periodEnd) {
+            if (payDate >= periodStart) {
               periodIncome += inc.fixed_amount;
               periodIncomeItems.push({
                 ...inc,
@@ -597,6 +614,19 @@ function Dashboard() {
 
       const isCurrentPeriod = periodStart <= today && periodEnd >= today;
 
+      // Left Over = income - ALL bills whose due date falls in this period,
+      // regardless of paid status. Marking a bill paid never changes Left Over.
+      const leftOverBillsTotal = bills
+        .filter((bill) => {
+          const dueDateThisMonth = new Date(periodStart.getFullYear(), periodStart.getMonth(), bill.due_day, 23, 59, 59);
+          const dueDateNextMonth = new Date(periodStart.getFullYear(), periodStart.getMonth() + 1, bill.due_day, 23, 59, 59);
+          return (
+            (dueDateThisMonth >= periodStart && dueDateThisMonth <= periodEnd) ||
+            (dueDateNextMonth >= periodStart && dueDateNextMonth <= periodEnd)
+          );
+        })
+        .reduce((sum, b) => sum + (b.amount || 0), 0);
+
       return {
         period,
         isCurrentPeriod,
@@ -604,7 +634,7 @@ function Dashboard() {
         incomeItems: periodIncomeItems,
         bills: periodBills,
         billsTotal: periodBillsTotal,
-        leftOver: periodIncome - periodBillsTotal,
+        leftOver: periodIncome - leftOverBillsTotal,
       };
     });
   }
@@ -788,6 +818,35 @@ function Dashboard() {
       return;
     }
     setAccounts(accounts.filter((a) => a.id !== accountId));
+  }
+
+  async function confirmTransfer(accountId, amount) {
+    const parsed = parseFloat(amount);
+    if (!parsed || parsed <= 0) return;
+
+    const account = accounts.find((a) => a.id === accountId);
+    if (!account) return;
+
+    const newBalance = (account.current_balance || 0) + parsed;
+
+    const { error } = await supabase
+      .from("accounts")
+      .update({ current_balance: newBalance })
+      .eq("id", accountId);
+
+    if (error) { console.log("Error:", error.message); return; }
+
+    setAccounts(accounts.map((a) =>
+      a.id === accountId ? { ...a, current_balance: newBalance } : a
+    ));
+
+    setTransfers((prev) => ({
+      ...prev,
+      [accountId]: (prev[accountId] || 0) + parsed,
+    }));
+
+    setTransferringId(null);
+    setTransferAmount("");
   }
 
   async function updateAccountBalance(accountId, newBalance) {
@@ -1255,7 +1314,7 @@ function Dashboard() {
                 onClick={() => autoSortDebts("snowball")}
                 style={{
                   background: "none",
-                  border: "1px solid #2D3748",
+                  border: "1px solid rgba(255,255,255,0.1)",
                   color: "#8892A4",
                   padding: "8px 16px",
                   borderRadius: "8px",
@@ -1270,7 +1329,7 @@ function Dashboard() {
                 onClick={() => autoSortDebts("avalanche")}
                 style={{
                   background: "none",
-                  border: "1px solid #2D3748",
+                  border: "1px solid rgba(255,255,255,0.1)",
                   color: "#8892A4",
                   padding: "8px 16px",
                   borderRadius: "8px",
@@ -1294,7 +1353,7 @@ function Dashboard() {
                   setDebtPayoffOrder("");
                 }}
                 style={{
-                  background: "00D4AA",
+                  background: "#6C63FF",
                   border: "none",
                   color: "#0F1218",
                   padding: "8px 16px",
@@ -1405,7 +1464,7 @@ function Dashboard() {
                         }}
                         style={{
                           background: "none",
-                          border: "1px solid #2D3748",
+                          border: "1px solid rgba(255,255,255,0.1)",
                           color: "#8B8FA8",
                           padding: "4px 10px",
                           borderRadius: "6px",
@@ -1437,7 +1496,7 @@ function Dashboard() {
                             onClick={() => setConfirmPayoffDebtId(null)}
                             style={{
                               background: "none",
-                              border: "1px solid #2D3748",
+                              border: "1px solid rgba(255,255,255,0.1)",
                               color: "#8B8FA8",
                               padding: "4px 10px",
                               borderRadius: "6px",
@@ -1490,7 +1549,7 @@ function Dashboard() {
                                 onClick={() => setConfirmDeleteDebtId(null)}
                                 style={{
                                   background: "none",
-                                  border: "1px solid #2D3748",
+                                  border: "1px solid rgba(255,255,255,0.1)",
                                   color: "#8B8FA8",
                                   padding: "4px 10px",
                                   borderRadius: "6px",
@@ -1507,7 +1566,7 @@ function Dashboard() {
                               onClick={() => setConfirmDeleteDebtId(debt.id)}
                               style={{
                                 background: "none",
-                                border: "1px solid #2D3748",
+                                border: "1px solid rgba(255,255,255,0.1)",
                                 color: "#F87171",
                                 padding: "4px 10px",
                                 borderRadius: "6px",
@@ -1717,7 +1776,7 @@ function Dashboard() {
                     onClick={() => setConfirmDeleteDebtId(debt.id)}
                     style={{
                       background: "none",
-                      border: "1px solid #2D3748",
+                      border: "1px solid rgba(255,255,255,0.1)",
                       color: "#FC8181",
                       padding: "4px 10px",
                       borderRadius: "6px",
@@ -1783,7 +1842,7 @@ function Dashboard() {
                   onClick={() => setConfirmRegenerate(false)}
                   style={{
                     background: "none",
-                    border: "1px solid #2D3748",
+                    border: "1px solid rgba(255,255,255,0.1)",
                     color: "#8892A4",
                     padding: "8px 16px",
                     borderRadius: "8px",
@@ -1799,7 +1858,7 @@ function Dashboard() {
               <button
                 onClick={() => setConfirmRegenerate(true)}
                 style={{
-                  background: "00D4AA",
+                  background: "#6C63FF",
                   border: "none",
                   color: "#0F1218",
                   padding: "8px 16px",
@@ -1819,8 +1878,8 @@ function Dashboard() {
             className="panel"
             style={{
               marginBottom: "16px",
-              background: "#1E2736",
-              border: "1px solid #2D3748",
+              background: "#2D2B45",
+              border: "1px solid rgba(255,255,255,0.1)",
             }}
           >
             <div
@@ -1830,7 +1889,7 @@ function Dashboard() {
               dates. If your pay schedule changes, update your income's next
               deposit date on the{" "}
               <span
-                style={{ color: "00D4AA", cursor: "pointer" }}
+                style={{ color: "#6C63FF", cursor: "pointer" }}
                 onClick={() => navigate("income")}
               >
                 Income page
@@ -1870,7 +1929,7 @@ function Dashboard() {
                               style={{
                                 marginLeft: "10px",
                                 fontSize: "9px",
-                                background: "00D4AA",
+                                background: "#6C63FF",
                                 color: "#0F1218",
                                 padding: "2px 8px",
                                 borderRadius: "4px",
@@ -1891,7 +1950,7 @@ function Dashboard() {
                           color: isPast
                             ? "#8B8FA8"
                             : isCurrent
-                              ? "00D4AA"
+                              ? "#6C63FF"
                               : "#8892A4",
                           fontFamily: "'DM Mono', monospace",
                         }}
@@ -1921,7 +1980,7 @@ function Dashboard() {
             <div
               style={{
                 fontSize: "11px",
-                color: "00D4AA",
+                color: "#6C63FF",
                 letterSpacing: "0.18em",
                 textTransform: "uppercase",
                 fontWeight: "500",
@@ -1940,9 +1999,10 @@ function Dashboard() {
                     value={newHouseholdName}
                     onChange={(e) => setNewHouseholdName(e.target.value)}
                     autoFocus
+                                  onFocus={(e) => e.target.select()}
                     style={{
-                      background: "#1E2736",
-                      border: "1px solid 00D4AA",
+                      background: "#2D2B45",
+                      border: "1px solid #6C63FF",
                       color: "#E8E6E1",
                       padding: "4px 8px",
                       borderRadius: "6px",
@@ -1953,7 +2013,7 @@ function Dashboard() {
                   <button
                     onClick={updateHouseholdName}
                     style={{
-                      background: "00D4AA",
+                      background: "#6C63FF",
                       border: "none",
                       color: "#0F1218",
                       padding: "4px 12px",
@@ -1973,7 +2033,7 @@ function Dashboard() {
                     }}
                     style={{
                       background: "none",
-                      border: "1px solid #2D3748",
+                      border: "1px solid rgba(255,255,255,0.1)",
                       color: "#8892A4",
                       padding: "4px 12px",
                       borderRadius: "6px",
@@ -1999,7 +2059,7 @@ function Dashboard() {
                     }}
                     style={{
                       background: "none",
-                      border: "1px solid #2D3748",
+                      border: "1px solid rgba(255,255,255,0.1)",
                       color: "#8892A4",
                       padding: "4px 10px",
                       borderRadius: "6px",
@@ -2028,7 +2088,7 @@ function Dashboard() {
                   style={{
                     fontFamily: "'DM Mono', monospace",
                     fontSize: "14px",
-                    color: "00D4AA",
+                    color: "#6C63FF",
                     letterSpacing: "0.1em",
                   }}
                 >
@@ -2040,7 +2100,7 @@ function Dashboard() {
                   }
                   style={{
                     background: "none",
-                    border: "1px solid #2D3748",
+                    border: "1px solid rgba(255,255,255,0.1)",
                     color: "#8892A4",
                     padding: "4px 10px",
                     borderRadius: "6px",
@@ -2083,7 +2143,7 @@ function Dashboard() {
               <div
                 style={{
                   fontSize: "11px",
-                  color: "00D4AA",
+                  color: "#6C63FF",
                   letterSpacing: "0.18em",
                   textTransform: "uppercase",
                   fontWeight: "500",
@@ -2095,7 +2155,7 @@ function Dashboard() {
                 onClick={() => setShowAddMember(!showAddMember)}
                 style={{
                   background: "none",
-                  border: "1px solid #2D3748",
+                  border: "1px solid rgba(255,255,255,0.1)",
                   color: "#8892A4",
                   padding: "4px 10px",
                   borderRadius: "6px",
@@ -2116,10 +2176,11 @@ function Dashboard() {
                   value={newMemberName}
                   onChange={(e) => setNewMemberName(e.target.value)}
                   autoFocus
+                                  onFocus={(e) => e.target.select()}
                   style={{
                     flex: 1,
-                    background: "#1E2736",
-                    border: "1px solid #2D3748",
+                    background: "#2D2B45",
+                    border: "1px solid rgba(255,255,255,0.1)",
                     color: "#E8E6E1",
                     padding: "8px 12px",
                     borderRadius: "6px",
@@ -2130,7 +2191,7 @@ function Dashboard() {
                 <button
                   onClick={addMember}
                   style={{
-                    background: "00D4AA",
+                    background: "#6C63FF",
                     border: "none",
                     color: "#0F1218",
                     padding: "8px 16px",
@@ -2150,7 +2211,7 @@ function Dashboard() {
                   }}
                   style={{
                     background: "none",
-                    border: "1px solid #2D3748",
+                    border: "1px solid rgba(255,255,255,0.1)",
                     color: "#8892A4",
                     padding: "8px 16px",
                     borderRadius: "6px",
@@ -2193,7 +2254,7 @@ function Dashboard() {
                         onClick={() => setConfirmDeleteMemberId(null)}
                         style={{
                           background: "none",
-                          border: "1px solid #2D3748",
+                          border: "1px solid rgba(255,255,255,0.1)",
                           color: "#8892A4",
                           padding: "4px 10px",
                           borderRadius: "6px",
@@ -2210,7 +2271,7 @@ function Dashboard() {
                       onClick={() => setConfirmDeleteMemberId(m.id)}
                       style={{
                         background: "none",
-                        border: "1px solid #2D3748",
+                        border: "1px solid rgba(255,255,255,0.1)",
                         color: "#FC8181",
                         padding: "4px 10px",
                         borderRadius: "6px",
@@ -2232,7 +2293,7 @@ function Dashboard() {
             <div
               style={{
                 fontSize: "11px",
-                color: "00D4AA",
+                color: "#6C63FF",
                 letterSpacing: "0.18em",
                 textTransform: "uppercase",
                 fontWeight: "500",
@@ -2253,7 +2314,7 @@ function Dashboard() {
                 onClick={() => supabase.auth.signOut()}
                 style={{
                   background: "none",
-                  border: "1px solid #2D3748",
+                  border: "1px solid rgba(255,255,255,0.1)",
                   color: "#8892A4",
                   padding: "4px 10px",
                   borderRadius: "6px",
@@ -2328,7 +2389,7 @@ function Dashboard() {
             <button
               onClick={() => setShowCategoryForm(!showCategoryForm)}
               style={{
-                background: "00D4AA",
+                background: "#6C63FF",
                 border: "none",
                 color: "#0F1218",
                 padding: "8px 16px",
@@ -2355,8 +2416,8 @@ function Dashboard() {
                   onChange={(e) => setNewCategory(e.target.value)}
                   style={{
                     flex: 1,
-                    background: "#1E2736",
-                    border: "1px solid #2D3748",
+                    background: "#2D2B45",
+                    border: "1px solid rgba(255,255,255,0.1)",
                     color: "#E8E6E1",
                     padding: "8px 12px",
                     borderRadius: "6px",
@@ -2367,7 +2428,7 @@ function Dashboard() {
                 <button
                   onClick={addCategory}
                   style={{
-                    background: "00D4AA",
+                    background: "#6C63FF",
                     border: "none",
                     color: "#0F1218",
                     padding: "8px 16px",
@@ -2387,7 +2448,7 @@ function Dashboard() {
                   }}
                   style={{
                     background: "none",
-                    border: "1px solid #2D3748",
+                    border: "1px solid rgba(255,255,255,0.1)",
                     color: "#8892A4",
                     padding: "8px 16px",
                     borderRadius: "6px",
@@ -2419,7 +2480,7 @@ function Dashboard() {
                     onClick={() => deleteCategory(cat.id)}
                     style={{
                       background: "none",
-                      border: "1px solid #2D3748",
+                      border: "1px solid rgba(255,255,255,0.1)",
                       color: "#FC8181",
                       padding: "4px 10px",
                       borderRadius: "6px",
@@ -2476,7 +2537,7 @@ function Dashboard() {
                 setShowAccountForm(true);
               }}
               style={{
-                background: "00D4AA",
+                background: "#6C63FF",
                 border: "none",
                 color: "#0C0E14",
                 padding: "8px 16px",
@@ -2595,6 +2656,11 @@ function Dashboard() {
                     />
                     Primary
                   </label>
+                  {isPrimary && (
+                    <div style={{ fontSize: "11px", color: "#8B8FA8", marginTop: "2px", gridColumn: "1 / -1" }}>
+                      Multiple primary accounts are combined for Available Funds.
+                    </div>
+                  )}
                   <label
                     style={{
                       color: "rgba(255,255,255,0.6)",
@@ -2674,7 +2740,7 @@ function Dashboard() {
                     setShowAccountForm(false);
                   }}
                   style={{
-                    background: "00D4AA",
+                    background: "#6C63FF",
                     border: "none",
                     color: "#0C0E14",
                     padding: "8px 16px",
@@ -2770,6 +2836,7 @@ function Dashboard() {
                             updateAccountBalance(acct.id, quickEditBalance)
                           }
                           autoFocus
+                                  onFocus={(e) => e.target.select()}
                           style={{
                             background: "#2D2B45",
                             border: "1px solid #6C63FF",
@@ -2787,7 +2854,7 @@ function Dashboard() {
                           className="row-amount"
                           onClick={() => {
                             setQuickEditAccountId(acct.id);
-                            setQuickEditBalance(acct.current_balance || "");
+                            setQuickEditBalance(acct.current_balance ?? "");
                           }}
                           style={{ cursor: "pointer" }}
                           title="Click to edit"
@@ -2805,7 +2872,7 @@ function Dashboard() {
                             setBankName(acct.bank_name);
                             setLastFour(acct.last_four);
                             setAccountType(acct.account_type);
-                            setCurrentBalance(acct.current_balance || "");
+                            setCurrentBalance(acct.current_balance ?? "");
                             setIsPrimary(acct.is_primary);
                             setIsAccumulating(acct.is_accumulating);
                             setAccumulationTarget(
@@ -2821,7 +2888,7 @@ function Dashboard() {
                         }}
                         style={{
                           background: "none",
-                          border: "1px solid #2D3748",
+                          border: "1px solid rgba(255,255,255,0.1)",
                           color: "#8B8FA8",
                           padding: "4px 10px",
                           borderRadius: "6px",
@@ -2856,7 +2923,7 @@ function Dashboard() {
                             onClick={() => setConfirmDeleteAccountId(null)}
                             style={{
                               background: "none",
-                              border: "1px solid #2D3748",
+                              border: "1px solid rgba(255,255,255,0.1)",
                               color: "#8B8FA8",
                               padding: "4px 10px",
                               borderRadius: "6px",
@@ -2873,7 +2940,7 @@ function Dashboard() {
                           onClick={() => setConfirmDeleteAccountId(acct.id)}
                           style={{
                             background: "none",
-                            border: "1px solid #2D3748",
+                            border: "1px solid rgba(255,255,255,0.1)",
                             color: "#F87171",
                             padding: "4px 10px",
                             borderRadius: "6px",
@@ -3017,6 +3084,11 @@ function Dashboard() {
                             />
                             Primary
                           </label>
+                          {isPrimary && (
+                            <div style={{ fontSize: "11px", color: "#8B8FA8", marginTop: "2px", gridColumn: "1 / -1" }}>
+                              Multiple primary accounts are combined for Available Funds.
+                            </div>
+                          )}
                           <label
                             style={{
                               color: "#8B8FA8",
@@ -3151,7 +3223,7 @@ function Dashboard() {
                 setDepositAccountId("");
               }}
               style={{
-                background: "00D4AA",
+                background: "#6C63FF",
                 border: "none",
                 color: "#0F1218",
                 padding: "8px 16px",
@@ -3165,6 +3237,92 @@ function Dashboard() {
               + Add Income
             </button>
           </div>
+
+          {showIncomeForm && (
+            <div className="panel" style={{ marginBottom: "16px" }}>
+              <div className="panel-header">
+                <div className="panel-title">New Income</div>
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
+                <input
+                  placeholder="Income name"
+                  value={incomeName}
+                  onChange={(e) => setIncomeName(e.target.value)}
+                  style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", color: "#F2F0EB", padding: "8px 12px", borderRadius: "6px", fontSize: "13px", fontFamily: "'Inter', sans-serif" }}
+                />
+                <input
+                  type="number"
+                  placeholder="Amount"
+                  value={fixedAmount}
+                  onChange={(e) => setFixedAmount(e.target.value)}
+                  style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", color: "#F2F0EB", padding: "8px 12px", borderRadius: "6px", fontSize: "13px", fontFamily: "'Inter', sans-serif" }}
+                />
+                <select
+                  value={incomeOwner}
+                  onChange={(e) => setIncomeOwner(e.target.value)}
+                  style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", color: "#F2F0EB", padding: "8px 12px", borderRadius: "6px", fontSize: "13px", fontFamily: "'Inter', sans-serif" }}
+                >
+                  <option value="joint">Joint</option>
+                  <option value="mine">Mine</option>
+                  <option value="partner">Partner</option>
+                </select>
+                <select
+                  value={incomeType}
+                  onChange={(e) => setIncomeType(e.target.value)}
+                  style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", color: "#F2F0EB", padding: "8px 12px", borderRadius: "6px", fontSize: "13px", fontFamily: "'Inter', sans-serif" }}
+                >
+                  <option value="salary">Salary</option>
+                  <option value="benefits">Benefits</option>
+                  <option value="fixed">Fixed</option>
+                  <option value="variable">Variable</option>
+                </select>
+                <select
+                  value={incomeFrequency}
+                  onChange={(e) => setIncomeFrequency(e.target.value)}
+                  style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", color: "#F2F0EB", padding: "8px 12px", borderRadius: "6px", fontSize: "13px", fontFamily: "'Inter', sans-serif" }}
+                >
+                  <option value="biweekly">Biweekly</option>
+                  <option value="monthly">Monthly</option>
+                  <option value="weekly">Weekly</option>
+                </select>
+                <select
+                  value={depositAccountId}
+                  onChange={(e) => setDepositAccountId(e.target.value)}
+                  style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", color: "#F2F0EB", padding: "8px 12px", borderRadius: "6px", fontSize: "13px", fontFamily: "'Inter', sans-serif" }}
+                >
+                  <option value="">Which account does this deposit into?</option>
+                  {accounts.map((acct, i) => (
+                    <option key={i} value={acct.id}>{acct.name}</option>
+                  ))}
+                </select>
+                <div style={{ gridColumn: "1 / -1" }}>
+                  <label style={{ color: "rgba(255,255,255,0.6)", fontSize: "11px", letterSpacing: "0.1em", textTransform: "uppercase", display: "block", marginBottom: "6px" }}>
+                    Next Deposit Date
+                  </label>
+                  <input
+                    type="date"
+                    value={nextPayDate}
+                    onChange={(e) => setNextPayDate(e.target.value)}
+                    style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", color: "#F2F0EB", padding: "8px 12px", borderRadius: "6px", fontSize: "13px", fontFamily: "'Inter', sans-serif", width: "100%" }}
+                  />
+                </div>
+              </div>
+              <div style={{ display: "flex", gap: "8px", marginTop: "12px" }}>
+                <button
+                  onClick={addIncome}
+                  style={{ background: "#6C63FF", border: "none", color: "#F0F6FC", padding: "8px 16px", borderRadius: "6px", cursor: "pointer", fontSize: "13px", fontWeight: "600", fontFamily: "'Inter', sans-serif" }}
+                >
+                  Add Income
+                </button>
+                <button
+                  onClick={() => setShowIncomeForm(false)}
+                  style={{ background: "none", border: "1px solid rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.6)", padding: "8px 16px", borderRadius: "6px", cursor: "pointer", fontSize: "13px", fontFamily: "'Inter', sans-serif" }}
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          )}
 
           <div className="panel">
             <div className="panel-header">
@@ -3203,6 +3361,7 @@ function Dashboard() {
                               updateIncomeAmount(inc.id, quickEditIncomeAmount)
                             }
                             autoFocus
+                                  onFocus={(e) => e.target.select()}
                             style={{
                               background: "#2D2B45",
                               border: "1px solid #6C63FF",
@@ -3246,7 +3405,7 @@ function Dashboard() {
                           }}
                           style={{
                             background: "none",
-                            border: "1px solid #2D3748",
+                            border: "1px solid rgba(255,255,255,0.1)",
                             color: "#8B8FA8",
                             padding: "4px 10px",
                             borderRadius: "6px",
@@ -3281,7 +3440,7 @@ function Dashboard() {
                               onClick={() => setConfirmDeleteIncomeId(null)}
                               style={{
                                 background: "none",
-                                border: "1px solid #2D3748",
+                                border: "1px solid rgba(255,255,255,0.1)",
                                 color: "#8B8FA8",
                                 padding: "4px 10px",
                                 borderRadius: "6px",
@@ -3298,7 +3457,7 @@ function Dashboard() {
                             onClick={() => setConfirmDeleteIncomeId(inc.id)}
                             style={{
                               background: "none",
-                              border: "1px solid #2D3748",
+                              border: "1px solid rgba(255,255,255,0.1)",
                               color: "#F87171",
                               padding: "4px 10px",
                               borderRadius: "6px",
@@ -3546,7 +3705,7 @@ function Dashboard() {
                 setIsVariable(false);
               }}
               style={{
-                background: "00D4AA",
+                background: "#6C63FF",
                 border: "none",
                 color: "#0F1218",
                 padding: "8px 16px",
@@ -3560,6 +3719,81 @@ function Dashboard() {
               + Add Bill
             </button>
           </div>
+
+          {showBillForm && (
+            <div className="panel" style={{ marginBottom: "16px" }}>
+              <div className="panel-header">
+                <div className="panel-title">New Bill</div>
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
+                <input
+                  placeholder="Bill name"
+                  value={billName}
+                  onChange={(e) => setBillName(e.target.value)}
+                  style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", color: "#F2F0EB", padding: "8px 12px", borderRadius: "6px", fontSize: "13px", fontFamily: "'Inter', sans-serif" }}
+                />
+                <input
+                  type="number"
+                  placeholder="Amount"
+                  value={billAmount}
+                  onChange={(e) => setBillAmount(e.target.value)}
+                  style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", color: "#F2F0EB", padding: "8px 12px", borderRadius: "6px", fontSize: "13px", fontFamily: "'Inter', sans-serif" }}
+                />
+                <input
+                  type="number"
+                  placeholder="Due day of month"
+                  value={dueDay}
+                  onChange={(e) => setDueDay(e.target.value)}
+                  style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", color: "#F2F0EB", padding: "8px 12px", borderRadius: "6px", fontSize: "13px", fontFamily: "'Inter', sans-serif" }}
+                />
+                <select
+                  value={paymentMethod}
+                  onChange={(e) => setPaymentMethod(e.target.value)}
+                  style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", color: "#F2F0EB", padding: "8px 12px", borderRadius: "6px", fontSize: "13px", fontFamily: "'Inter', sans-serif" }}
+                >
+                  <option value="auto">Auto</option>
+                  <option value="transfer">Transfer</option>
+                  <option value="zelle">Zelle</option>
+                  <option value="check">Check</option>
+                  <option value="manual">Manual</option>
+                </select>
+                <select
+                  value={billCategory}
+                  onChange={(e) => setBillCategory(e.target.value)}
+                  style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", color: "#F2F0EB", padding: "8px 12px", borderRadius: "6px", fontSize: "13px", fontFamily: "'Inter', sans-serif" }}
+                >
+                  <option value="">Select category</option>
+                  {categories.map((cat, i) => (
+                    <option key={i} value={cat.name}>{cat.name}</option>
+                  ))}
+                </select>
+                <select
+                  value={billAccountId}
+                  onChange={(e) => setBillAccountId(e.target.value)}
+                  style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", color: "#F2F0EB", padding: "8px 12px", borderRadius: "6px", fontSize: "13px", fontFamily: "'Inter', sans-serif" }}
+                >
+                  <option value="">Which account pays this?</option>
+                  {accounts.map((acct, i) => (
+                    <option key={i} value={acct.id}>{acct.name}</option>
+                  ))}
+                </select>
+              </div>
+              <div style={{ display: "flex", gap: "8px", marginTop: "12px" }}>
+                <button
+                  onClick={addBill}
+                  style={{ background: "#6C63FF", border: "none", color: "#F0F6FC", padding: "8px 16px", borderRadius: "6px", cursor: "pointer", fontSize: "13px", fontWeight: "600", fontFamily: "'Inter', sans-serif" }}
+                >
+                  Add Bill
+                </button>
+                <button
+                  onClick={() => setShowBillForm(false)}
+                  style={{ background: "none", border: "1px solid rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.6)", padding: "8px 16px", borderRadius: "6px", cursor: "pointer", fontSize: "13px", fontFamily: "'Inter', sans-serif" }}
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          )}
 
           <div className="panel">
             <div className="panel-header">
@@ -3611,6 +3845,7 @@ function Dashboard() {
                               updateBillAmount(bill.id, quickEditBillAmount)
                             }
                             autoFocus
+                                  onFocus={(e) => e.target.select()}
                             style={{
                               background: "#2D2B45",
                               border: "1px solid #6C63FF",
@@ -3628,7 +3863,7 @@ function Dashboard() {
                             className="row-amount"
                             onClick={() => {
                               setQuickEditBillId(bill.id);
-                              setQuickEditBillAmount(bill.amount || "");
+                              setQuickEditBillAmount(bill.amount ?? "");
                             }}
                             style={{ cursor: "pointer" }}
                             title="Click to edit"
@@ -3641,7 +3876,7 @@ function Dashboard() {
                             onClick={() => markBillUnpaid(bill)}
                             style={{
                               background: "none",
-                              border: "1px solid #2D3748",
+                              border: "1px solid rgba(248,113,113,0.4)",
                               color: "#F87171",
                               padding: "4px 10px",
                               borderRadius: "6px",
@@ -3653,92 +3888,52 @@ function Dashboard() {
                             Unpaid
                           </button>
                         ) : (
-                          <>
-                            <button
-                              onClick={() => {
-                                if (editingBill?.id === bill.id) {
-                                  setEditingBill(null);
-                                } else {
-                                  setEditingBill(bill);
-                                  setShowBillForm(false);
-                                  setBillName(bill.name);
-                                  setBillAmount(bill.amount);
-                                  setDueDay(bill.due_day);
-                                  setPaymentMethod(bill.payment_method);
-                                  setBillCategory(bill.category);
-                                  setBillOwner(bill.owner);
-                                  setBillAccountId(bill.account_id || "");
-                                  setIsVariable(bill.is_variable);
-                                }
-                              }}
-                              style={{
-                                background: "none",
-                                border: "1px solid #2D3748",
-                                color: "#8B8FA8",
-                                padding: "4px 10px",
-                                borderRadius: "6px",
-                                cursor: "pointer",
-                                fontSize: "11px",
-                                fontFamily: "'Inter', sans-serif",
-                              }}
-                            >
-                              {editingBill?.id === bill.id ? "Cancel" : "Edit"}
-                            </button>
-                            {confirmDeleteBillId === bill.id ? (
-                              <>
-                                <button
-                                  onClick={() => {
-                                    deleteBill(bill.id);
-                                    setConfirmDeleteBillId(null);
-                                  }}
-                                  style={{
-                                    background: "none",
-                                    border: "1px solid #F87171",
-                                    color: "#F87171",
-                                    padding: "4px 10px",
-                                    borderRadius: "6px",
-                                    cursor: "pointer",
-                                    fontSize: "11px",
-                                    fontFamily: "'Inter', sans-serif",
-                                  }}
-                                >
-                                  Confirm
-                                </button>
-                                <button
-                                  onClick={() => setConfirmDeleteBillId(null)}
-                                  style={{
-                                    background: "none",
-                                    border: "1px solid #2D3748",
-                                    color: "#8B8FA8",
-                                    padding: "4px 10px",
-                                    borderRadius: "6px",
-                                    cursor: "pointer",
-                                    fontSize: "11px",
-                                    fontFamily: "'Inter', sans-serif",
-                                  }}
-                                >
-                                  Cancel
-                                </button>
-                              </>
-                            ) : (
-                              <button
-                                onClick={() => setConfirmDeleteBillId(bill.id)}
-                                style={{
-                                  background: "none",
-                                  border: "1px solid #2D3748",
-                                  color: "#F87171",
-                                  padding: "4px 10px",
-                                  borderRadius: "6px",
-                                  cursor: "pointer",
-                                  fontSize: "11px",
-                                  fontFamily: "'Inter', sans-serif",
-                                }}
-                              >
-                                Delete
-                              </button>
-                            )}
-                          </>
+                          <button
+                            onClick={() => markBillPaid(bill)}
+                            style={{
+                              background: "none",
+                              border: "1px solid rgba(74,222,128,0.4)",
+                              color: "#4ADE80",
+                              padding: "4px 10px",
+                              borderRadius: "6px",
+                              cursor: "pointer",
+                              fontSize: "11px",
+                              fontFamily: "'Inter', sans-serif",
+                            }}
+                          >
+                            Paid
+                          </button>
                         )}
+                        <button
+                          onClick={() => {
+                            if (editingBill?.id === bill.id) {
+                              setEditingBill(null);
+                            } else {
+                              setEditingBill(bill);
+                              setShowBillForm(false);
+                              setBillName(bill.name);
+                              setBillAmount(bill.amount);
+                              setDueDay(bill.due_day);
+                              setPaymentMethod(bill.payment_method);
+                              setBillCategory(bill.category);
+                              setBillOwner(bill.owner);
+                              setBillAccountId(bill.account_id || "");
+                              setIsVariable(bill.is_variable);
+                            }
+                          }}
+                          style={{
+                            background: "none",
+                            border: "1px solid rgba(255,255,255,0.15)",
+                            color: "#8B8FA8",
+                            padding: "4px 10px",
+                            borderRadius: "6px",
+                            cursor: "pointer",
+                            fontSize: "11px",
+                            fontFamily: "'Inter', sans-serif",
+                          }}
+                        >
+                          {editingBill?.id === bill.id ? "Cancel" : "Edit"}
+                        </button>
                       </div>
                     </div>
 
@@ -3901,6 +4096,29 @@ function Dashboard() {
                           >
                             Cancel
                           </button>
+                          {confirmDeleteBillId === bill.id ? (
+                            <>
+                              <button
+                                onClick={() => { deleteBill(bill.id); setConfirmDeleteBillId(null); setEditingBill(null); }}
+                                style={{ background: "none", border: "1px solid #F87171", color: "#F87171", padding: "8px 16px", borderRadius: "6px", cursor: "pointer", fontSize: "13px", fontFamily: "'Inter', sans-serif", marginLeft: "auto" }}
+                              >
+                                Confirm Delete
+                              </button>
+                              <button
+                                onClick={() => setConfirmDeleteBillId(null)}
+                                style={{ background: "none", border: "1px solid rgba(255,255,255,0.1)", color: "#8B8FA8", padding: "8px 16px", borderRadius: "6px", cursor: "pointer", fontSize: "13px", fontFamily: "'Inter', sans-serif" }}
+                              >
+                                Cancel
+                              </button>
+                            </>
+                          ) : (
+                            <button
+                              onClick={() => setConfirmDeleteBillId(bill.id)}
+                              style={{ background: "none", border: "1px solid rgba(248,113,113,0.3)", color: "#F87171", padding: "8px 16px", borderRadius: "6px", cursor: "pointer", fontSize: "13px", fontFamily: "'Inter', sans-serif", marginLeft: "auto" }}
+                            >
+                              Delete
+                            </button>
+                          )}
                         </div>
                       </div>
                     )}
@@ -3984,46 +4202,38 @@ function Dashboard() {
 
         <div className="content-area">
           <div className="stat-row">
-            <div className="stat-card">
-              <div className="stat-label">Available Funds</div>
-              <div className="stat-amount">
-                $
-                {fmt(
-                  (accounts.find((a) => a.is_primary)?.current_balance || 0) +
-                    getRemainingIncomeThisMonth(),
-                )}
-              </div>
-            </div>
-            <div className="stat-card">
-              <div className="stat-label">Remaining Bills</div>
-              <div className="stat-amount">
-                $
-                {fmt(
-                  bills
-                    .filter(isBillDue)
-                    .reduce((sum, b) => sum + (b.amount || 0), 0),
-                )}
-              </div>
-            </div>
-            <div className="stat-card">
-              <div className="stat-label">Left After Bills</div>
-              {(() => {
-                const income =
-                  (accounts.find((a) => a.is_primary)?.current_balance || 0) +
-                  getRemainingIncomeThisMonth();
-                const billsTotal = bills
-                  .filter(isBillDue)
-                  .reduce((sum, b) => sum + (b.amount || 0), 0);
-                const left = income - billsTotal;
-                return (
-                  <div
-                    className={`stat-amount ${left < 0 ? "negative" : "neutral"}`}
-                  >
-                    {left < 0 ? "-" : ""}${fmt(Math.abs(left))}
+            {(() => {
+              const primaryBalance = accounts.filter((a) => a.is_primary && !a.is_accumulating).reduce((sum, a) => sum + (a.current_balance || 0), 0);
+              const now = new Date();
+              const currentMonth = now.getMonth();
+              const currentYear = now.getFullYear();
+              const remainingBills = bills
+                .filter((b) => {
+                  if (b.is_paid) return false;
+                  const dueDate = new Date(currentYear, currentMonth, b.due_day);
+                  return dueDate.getMonth() === currentMonth && dueDate.getFullYear() === currentYear;
+                })
+                .reduce((sum, b) => sum + (b.amount || 0), 0);
+              const leftAfterBills = primaryBalance - remainingBills;
+              return (
+                <>
+                  <div className="stat-card">
+                    <div className="stat-label">Available Funds</div>
+                    <div className="stat-amount">${fmt(primaryBalance)}</div>
                   </div>
-                );
-              })()}
-            </div>
+                  <div className="stat-card">
+                    <div className="stat-label">Remaining Bills</div>
+                    <div className="stat-amount">${fmt(remainingBills)}</div>
+                  </div>
+                  <div className="stat-card">
+                    <div className="stat-label">Left After Bills</div>
+                    <div className={`stat-amount ${leftAfterBills < 0 ? "negative" : "neutral"}`}>
+                      {leftAfterBills < 0 ? "-" : ""}${fmt(Math.abs(leftAfterBills))}
+                    </div>
+                  </div>
+                </>
+              );
+            })()}
           </div>
 
           <div className="dashboard-grid">
@@ -4124,7 +4334,7 @@ function Dashboard() {
                             fontFamily: "'DM Mono', monospace",
                             fontSize: "22px",
                             fontWeight: "500",
-                            color: item.leftOver < 0 ? "#F87171" : "#F0F6FC",
+                            color: item.leftOver < 0 ? "#F87171" : "#4ADE80",
                           }}
                         >
                           {item.leftOver < 0 ? "-" : ""}$
@@ -4340,7 +4550,12 @@ function Dashboard() {
                           onBlur={() =>
                             updateAccountBalance(acct.id, quickEditBalance)
                           }
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") updateAccountBalance(acct.id, quickEditBalance);
+                            if (e.key === "Escape") { setQuickEditAccountId(null); setQuickEditBalance(""); }
+                          }}
                           autoFocus
+                                  onFocus={(e) => e.target.select()}
                           style={{
                             background: "#2D2B45",
                             border: "1px solid #6C63FF",
@@ -4358,7 +4573,7 @@ function Dashboard() {
                           className="row-amount"
                           onClick={() => {
                             setQuickEditAccountId(acct.id);
-                            setQuickEditBalance(acct.current_balance || "");
+                            setQuickEditBalance(acct.current_balance ?? "");
                           }}
                           style={{ cursor: "pointer" }}
                           title="Click to edit"
@@ -4379,74 +4594,155 @@ function Dashboard() {
                   const currentBreakdown = getPayPeriodBreakdown().find(
                     (item) => item.isCurrentPeriod,
                   );
-                  if (
-                    !currentBreakdown ||
-                    currentBreakdown.bills.length === 0
-                  ) {
-                    return (
-                      <div className="empty-state">
-                        No bills due this period
-                      </div>
-                    );
+
+                  // Count paychecks in the current month for accumulating contribution calc
+                  const now = new Date();
+                  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+                  const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
+                  let paychecksThisMonth = 0;
+                  income.forEach((inc) => {
+                    if (!inc.next_pay_date || !inc.fixed_amount) return;
+                    const baseDate = new Date(inc.next_pay_date + "T12:00:00");
+                    const interval = inc.frequency === "weekly" ? 7 : inc.frequency === "biweekly" ? 14 : 0;
+                    if (interval === 0) {
+                      const payDay = baseDate.getDate();
+                      const candidate = new Date(now.getFullYear(), now.getMonth(), payDay, 12, 0, 0);
+                      if (candidate >= monthStart && candidate <= monthEnd) paychecksThisMonth++;
+                    } else {
+                      let payDate = new Date(baseDate);
+                      while (payDate > monthEnd) payDate.setDate(payDate.getDate() - interval);
+                      while (payDate <= monthEnd) {
+                        if (payDate >= monthStart) paychecksThisMonth++;
+                        payDate = new Date(payDate);
+                        payDate.setDate(payDate.getDate() + interval);
+                      }
+                    }
+                  });
+                  if (paychecksThisMonth === 0) paychecksThisMonth = 1;
+
+                  // Bills section — grouped by destination account
+                  const grouped = {};
+                  if (currentBreakdown) {
+                    currentBreakdown.bills.forEach((bill) => {
+                      const acct = accounts.find((a) => a.id === bill.account_id);
+                      const key = acct ? acct.id : "unassigned";
+                      if (!grouped[key]) {
+                        grouped[key] = {
+                          acctName: acct ? acct.name : "Unassigned",
+                          total: 0,
+                          bills: [],
+                          balance: acct?.current_balance || 0,
+                          buffer: acct?.minimum_buffer || 0,
+                        };
+                      }
+                      grouped[key].total += bill.amount || 0;
+                      grouped[key].bills.push(bill);
+                    });
                   }
 
-                  const grouped = {};
-                  currentBreakdown.bills.forEach((bill) => {
-                    const acct = accounts.find((a) => a.id === bill.account_id);
-                    const key = acct ? acct.name : "Unassigned";
-                    if (!grouped[key]) {
-                      grouped[key] = {
-                        total: 0,
-                        bills: [],
-                        balance: acct?.current_balance || 0,
-                        buffer: acct?.minimum_buffer || 0,
-                      };
-                    }
-                    grouped[key].total += bill.amount || 0;
-                    grouped[key].bills.push(bill);
-                  });
+                  const primaryName = accounts.find((a) => a.is_primary && !a.is_accumulating)?.name || "Primary Account";
 
-                  return Object.entries(grouped).map(([acctName, data], i) => {
-                    const transferNeeded = Math.max(
-                      0,
-                      data.total + data.buffer - data.balance,
-                    );
+                  const renderTransferRow = (accountId, label, suggestedAmount, subtitle) => {
+                    const transferred = transfers[accountId] || 0;
+                    const remaining = Math.max(0, suggestedAmount - transferred);
+                    const done = transferred >= suggestedAmount;
+
                     return (
-                      <div className="row-item" key={i}>
-                        <div>
-                          <div className="row-name">{acctName}</div>
-                          <div className="row-sub">
-                            {data.bills.map((b) => b.name).join(" · ")}
-                          </div>
-                          {data.buffer > 0 && (
-                            <div
-                              style={{
-                                fontSize: "10px",
-                                color: "#6C63FF",
-                                marginTop: "2px",
-                              }}
-                            >
-                              Includes ${fmt(data.buffer)} buffer
+                      <div key={accountId} style={{ borderBottom: "1px solid rgba(255,255,255,0.04)", padding: "10px 0" }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                          <div>
+                            <div className="row-name" style={{ color: done ? "#4ADE80" : "#F0F6FC" }}>
+                              {done ? "✓ " : ""}{label}
                             </div>
-                          )}
-                        </div>
-                        <div style={{ textAlign: "right" }}>
-                          <div className="row-amount">
-                            ${fmt(transferNeeded)}
+                            {subtitle && <div className="row-sub">{subtitle}</div>}
+                            {transferred > 0 && !done && (
+                              <div style={{ fontSize: "10px", color: "#948cf2", marginTop: "2px" }}>
+                                ${fmt(transferred)} transferred · ${fmt(remaining)} remaining
+                              </div>
+                            )}
                           </div>
-                          <div
-                            style={{
-                              fontSize: "10px",
-                              color: "#8B8FA8",
-                              marginTop: "2px",
-                            }}
-                          >
-                            transfer needed
+                          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                            {!done && (
+                              <div className="row-amount" style={{ color: remaining < suggestedAmount ? "#948cf2" : "#F0F6FC" }}>
+                                ${fmt(remaining)}
+                              </div>
+                            )}
+                            {!done && transferringId === accountId ? (
+                              <>
+                                <input
+                                  type="number"
+                                  value={transferAmount}
+                                  onChange={(e) => setTransferAmount(e.target.value)}
+                                  onKeyDown={(e) => {
+                                    if (e.key === "Enter") confirmTransfer(accountId, transferAmount);
+                                    if (e.key === "Escape") { setTransferringId(null); setTransferAmount(""); }
+                                  }}
+                                  autoFocus
+                                  onFocus={(e) => e.target.select()}
+                                  style={{ background: "#2D2B45", border: "1px solid #6C63FF", color: "#F0F6FC", padding: "4px 8px", borderRadius: "6px", fontSize: "13px", fontFamily: "'DM Mono', monospace", width: "90px", textAlign: "right" }}
+                                />
+                                <button
+                                  onClick={() => confirmTransfer(accountId, transferAmount)}
+                                  style={{ background: "#6C63FF", border: "none", color: "#F0F6FC", padding: "4px 10px", borderRadius: "6px", cursor: "pointer", fontSize: "11px", fontFamily: "'Inter', sans-serif", fontWeight: "600" }}
+                                >
+                                  Confirm
+                                </button>
+                                <button
+                                  onClick={() => { setTransferringId(null); setTransferAmount(""); }}
+                                  style={{ background: "none", border: "1px solid rgba(255,255,255,0.1)", color: "#8B8FA8", padding: "4px 10px", borderRadius: "6px", cursor: "pointer", fontSize: "11px", fontFamily: "'Inter', sans-serif" }}
+                                >
+                                  Cancel
+                                </button>
+                              </>
+                            ) : !done ? (
+                              <button
+                                onClick={() => { setTransferringId(accountId); setTransferAmount(remaining.toFixed(2)); }}
+                                style={{ background: "rgba(108,99,255,0.15)", border: "1px solid rgba(108,99,255,0.4)", color: "#948cf2", padding: "4px 10px", borderRadius: "6px", cursor: "pointer", fontSize: "11px", fontFamily: "'Inter', sans-serif", fontWeight: "500" }}
+                              >
+                                Transfer
+                              </button>
+                            ) : null}
                           </div>
                         </div>
                       </div>
                     );
+                  };
+
+                  const billRows = Object.entries(grouped).map(([key, data]) => {
+                    const transferNeeded = Math.max(0, data.total + data.buffer - data.balance);
+                    const subtitle = data.buffer > 0 ? `Includes $${fmt(data.buffer)} buffer` : null;
+                    return renderTransferRow(key, `Transfer to ${data.acctName}`, transferNeeded, subtitle);
                   });
+
+                  // Accumulating accounts section
+                  const accumRows = accounts
+                    .filter((a) => a.is_accumulating && a.accumulation_target > 0)
+                    .map((acct) => {
+                      const perPaycheck = acct.accumulation_target / paychecksThisMonth;
+                      const subtitle = `$${fmt(acct.accumulation_current || acct.current_balance || 0)} of $${fmt(acct.accumulation_target)} saved`;
+                      return renderTransferRow(acct.id, `Transfer to ${acct.name}`, perPaycheck, subtitle);
+                    });
+
+                  if (billRows.length === 0 && accumRows.length === 0) {
+                    return <div className="empty-state">No allocations this period</div>;
+                  }
+
+                  return (
+                    <>
+                      {billRows.length > 0 && (
+                        <>
+                          <div style={{ fontSize: "10px", color: "#8B8FA8", letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: "8px" }}>Bills</div>
+                          {billRows}
+                        </>
+                      )}
+                      {accumRows.length > 0 && (
+                        <>
+                          <div style={{ fontSize: "10px", color: "#8B8FA8", letterSpacing: "0.08em", textTransform: "uppercase", margin: billRows.length > 0 ? "16px 0 8px" : "0 0 8px" }}>Set Aside</div>
+                          {accumRows}
+                        </>
+                      )}
+                    </>
+                  );
                 })()}
               </div>
             </div>

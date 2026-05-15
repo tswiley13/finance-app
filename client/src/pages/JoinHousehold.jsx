@@ -83,7 +83,7 @@ function JoinHousehold() {
       <div
         style={{
           background: "#161B26",
-          border: "1px solid #2D3748",
+          border: "1px solid rgba(255,255,255,0.1)",
           borderRadius: "12px",
           padding: "40px",
           width: "100%",
@@ -138,7 +138,7 @@ function JoinHousehold() {
               fontSize: "13px",
               color: "#FC8181",
               marginBottom: "16px",
-              background: "#1E2736",
+              background: "#2D2B45",
               padding: "10px 12px",
               borderRadius: "6px",
             }}
@@ -153,8 +153,8 @@ function JoinHousehold() {
             value={name}
             onChange={(e) => setName(e.target.value)}
             style={{
-              background: "#1E2736",
-              border: "1px solid #2D3748",
+              background: "#2D2B45",
+              border: "1px solid rgba(255,255,255,0.1)",
               color: "#E8E6E1",
               padding: "10px 12px",
               borderRadius: "6px",
@@ -168,8 +168,8 @@ function JoinHousehold() {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             style={{
-              background: "#1E2736",
-              border: "1px solid #2D3748",
+              background: "#2D2B45",
+              border: "1px solid rgba(255,255,255,0.1)",
               color: "#E8E6E1",
               padding: "10px 12px",
               borderRadius: "6px",
@@ -183,8 +183,8 @@ function JoinHousehold() {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             style={{
-              background: "#1E2736",
-              border: "1px solid #2D3748",
+              background: "#2D2B45",
+              border: "1px solid rgba(255,255,255,0.1)",
               color: "#E8E6E1",
               padding: "10px 12px",
               borderRadius: "6px",
@@ -197,8 +197,8 @@ function JoinHousehold() {
             value={inviteCode}
             onChange={(e) => setInviteCode(e.target.value)}
             style={{
-              background: "#1E2736",
-              border: "1px solid #2D3748",
+              background: "#2D2B45",
+              border: "1px solid rgba(255,255,255,0.1)",
               color: "#E8B84B",
               padding: "10px 12px",
               borderRadius: "6px",
