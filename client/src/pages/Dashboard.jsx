@@ -3985,7 +3985,7 @@ function Dashboard() {
         <div className="content-area">
           <div className="stat-row">
             <div className="stat-card">
-              <div className="stat-label">Income Remaining</div>
+              <div className="stat-label">Available Funds</div>
               <div className="stat-amount">
                 $
                 {fmt(
