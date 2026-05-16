@@ -11,6 +11,7 @@ function Onboarding({ onComplete }) {
   const [memberError, setMemberError] = useState(null);
   const [editingMember, setEditingMember] = useState(null);
   const [incomeList, setIncomeList] = useState([]);
+  const [incomeError, setIncomeError] = useState(null);
   const [incomeName, setIncomeName] = useState("");
   const [incomeOwner, setIncomeOwner] = useState("");
   const [incomeEntryMode, setIncomeEntryMode] = useState("");
@@ -36,6 +37,14 @@ function Onboarding({ onComplete }) {
   const [resetDay, setResetDay] = useState("");
   const [editingAccount, setEditingAccount] = useState(null);
   const [activeIndex, setActiveIndex] = useState(0);
+  const [incomeActiveIndex, setIncomeActiveIndex] = useState(0);
+  const [incomeCards, setIncomeCards] = useState([{
+    saved: false, id: null, error: null, loading: false,
+    incomeName: "", incomeOwner: "", incomeType: "salary",
+    incomeFrequency: "biweekly", depositAccountId: "",
+    nextPayDate: "", incomeEntryMode: "",
+    fixedAmount: "", hourlyRate: "", hoursPerWeek: "", overtimeRate: "", taxRate: "",
+  }]);
   const [carouselCards, setCarouselCards] = useState([{
     saved: false, id: null, error: null, loading: false,
     accountName: "", bankName: "", lastFour: "",
@@ -52,7 +61,10 @@ function Onboarding({ onComplete }) {
   const [billOwner, setBillOwner] = useState("joint");
   const [billAccountId, setBillAccountId] = useState("");
   const [isVariable, setIsVariable] = useState(false);
+  const [isBillAccumulating, setIsBillAccumulating] = useState(false);
+  const [billTransferToAccountId, setBillTransferToAccountId] = useState("");
   const [editingBill, setEditingBill] = useState(null);
+  const [billError, setBillError] = useState(null);
   const [payPeriodList, setPayPeriodList] = useState([]);
   const [depositAccountId, setDepositAccountId] = useState("");
   useEffect(() => {
@@ -222,31 +234,82 @@ function Onboarding({ onComplete }) {
     }
   }
 
-  async function addIncome() {
-    const newIncome = {
+  function blankIncomeCard() {
+    return {
+      saved: false, id: null, error: null, loading: false,
+      incomeName: "", incomeOwner: "", incomeType: "salary",
+      incomeFrequency: "biweekly", depositAccountId: "",
+      nextPayDate: "", incomeEntryMode: "",
+      fixedAmount: "", hourlyRate: "", hoursPerWeek: "", overtimeRate: "", taxRate: "",
+    };
+  }
+
+  function updateIncomeCard(index, fields) {
+    setIncomeCards(prev => prev.map((c, i) => i === index ? { ...c, ...fields } : c));
+  }
+
+  async function saveIncomeCard(index) {
+    const card = incomeCards[index];
+    if (!card.incomeName.trim()) {
+      updateIncomeCard(index, { error: "Please enter an income name." });
+      return false;
+    }
+    if (!householdId) {
+      updateIncomeCard(index, { error: "Could not find your household." });
+      return false;
+    }
+    updateIncomeCard(index, { loading: true, error: null });
+
+    const payload = {
       household_id: householdId,
-      name: incomeName,
-      owner: incomeOwner,
-      type: incomeType,
-      deposit_account_id: depositAccountId || null,
-      frequency: incomeFrequency,
-      fixed_amount: incomeType !== "hourly" ? parseFloat(fixedAmount) : null,
-      hourly_rate: incomeType === "hourly" ? parseFloat(hourlyRate) : null,
-      hours_per_week: incomeType === "hourly" ? parseFloat(hoursPerWeek) : null,
-      overtime_rate: incomeType === "hourly" ? parseFloat(overtimeRate) : null,
-      tax_rate: taxRate ? parseFloat(taxRate) : null,
-      next_pay_date: nextPayDate,
+      name: card.incomeName.trim(),
+      owner: card.incomeOwner || null,
+      type: card.incomeType,
+      frequency: card.incomeFrequency,
+      deposit_account_id: card.depositAccountId || null,
+      next_pay_date: card.nextPayDate || null,
+      fixed_amount: card.incomeType !== "hourly" ? (parseFloat(card.fixedAmount) || null) : null,
+      hourly_rate: card.incomeType === "hourly" ? (parseFloat(card.hourlyRate) || null) : null,
+      hours_per_week: card.incomeType === "hourly" ? (parseFloat(card.hoursPerWeek) || null) : null,
+      overtime_rate: card.incomeType === "hourly" ? (parseFloat(card.overtimeRate) || null) : null,
+      tax_rate: card.taxRate ? parseFloat(card.taxRate) : null,
       is_active: true,
     };
 
-    const { error } = await supabase.from("income").insert(newIncome);
-
-    if (error) {
-      console.log("Error:", error.message);
-      return;
+    if (card.id) {
+      const { error } = await supabase.from("income").update(payload).eq("id", card.id);
+      if (error) { updateIncomeCard(index, { loading: false, error: error.message }); return false; }
+      setIncomeList(prev => prev.map(i => i.id === card.id ? { ...i, ...payload } : i));
+      updateIncomeCard(index, { loading: false, saved: true });
+    } else {
+      const { data: saved, error } = await supabase.from("income").insert(payload).select().single();
+      if (error) { updateIncomeCard(index, { loading: false, error: error.message }); return false; }
+      setIncomeList(prev => [...prev, saved]);
+      const newCardIndex = incomeCards.length;
+      setIncomeCards(prev => [
+        ...prev.map((c, i) => i === index ? { ...c, loading: false, saved: true, id: saved.id } : c),
+        blankIncomeCard(),
+      ]);
+      setIncomeActiveIndex(newCardIndex);
     }
+    return true;
+  }
 
-    setIncomeList([...incomeList, newIncome]);
+  async function deleteIncomeCard(index) {
+    const card = incomeCards[index];
+    if (card.id) {
+      const { error } = await supabase.from("income").delete().eq("id", card.id);
+      if (error) { updateIncomeCard(index, { error: error.message }); return; }
+      setIncomeList(prev => prev.filter(i => i.id !== card.id));
+    }
+    setIncomeCards(prev => {
+      const next = prev.filter((_, i) => i !== index);
+      return next.length === 0 ? [blankIncomeCard()] : next;
+    });
+    setIncomeActiveIndex(prev => Math.min(prev, Math.max(0, incomeCards.length - 2)));
+  }
+
+  function resetIncomeForm() {
     setIncomeName("");
     setIncomeOwner("");
     setFixedAmount("");
@@ -256,13 +319,62 @@ function Onboarding({ onComplete }) {
     setTaxRate("");
     setNextPayDate("");
     setDepositAccountId("");
+    setIncomeEntryMode("");
+    setEditingIncome(null);
+    setIncomeError(null);
+  }
+
+  async function addIncome() {
+    if (!incomeName.trim()) {
+      setIncomeError("Please enter an income name.");
+      return;
+    }
+    if (!householdId) {
+      setIncomeError("Could not find your household. Try going back to step 1.");
+      return;
+    }
+    setIncomeError(null);
+
+    const payload = {
+      household_id: householdId,
+      name: incomeName.trim(),
+      owner: incomeOwner,
+      type: incomeType,
+      deposit_account_id: depositAccountId || null,
+      frequency: incomeFrequency,
+      fixed_amount: incomeType !== "hourly" ? (parseFloat(fixedAmount) || null) : null,
+      hourly_rate: incomeType === "hourly" ? (parseFloat(hourlyRate) || null) : null,
+      hours_per_week: incomeType === "hourly" ? (parseFloat(hoursPerWeek) || null) : null,
+      overtime_rate: incomeType === "hourly" ? (parseFloat(overtimeRate) || null) : null,
+      tax_rate: taxRate ? parseFloat(taxRate) : null,
+      next_pay_date: nextPayDate || null,
+      is_active: true,
+    };
+
+    const { data: saved, error } = await supabase.from("income").insert(payload).select().single();
+
+    if (error) {
+      setIncomeError(error.message);
+      return;
+    }
+
+    setIncomeList([...incomeList, saved]);
+    resetIncomeForm();
+  }
+
+  async function deleteIncome(inc) {
+    const { error } = await supabase.from("income").delete().eq("id", inc.id);
+    if (error) { setIncomeError(error.message); return; }
+    setIncomeList(incomeList.filter((i) => i.id !== inc.id));
+    if (editingIncome?.id === inc.id) resetIncomeForm();
   }
 
   async function updateIncome() {
-    if (!incomeName) {
-      alert("Please enter an income name.");
+    if (!incomeName.trim()) {
+      setIncomeError("Please enter an income name.");
       return;
     }
+    setIncomeError(null);
 
     const { error } = await supabase
       .from("income")
@@ -284,37 +396,16 @@ function Onboarding({ onComplete }) {
       .eq("id", editingIncome.id);
 
     if (error) {
-      console.log("Error:", error.message);
+      setIncomeError(error.message);
       return;
     }
 
-    setIncomeList(
-      incomeList.map((i) =>
-        i.id === editingIncome.id
-          ? {
-              ...i,
-              name: incomeName,
-              owner: incomeOwner,
-              type: incomeType,
-              frequency: incomeFrequency,
-              fixed_amount: parseFloat(fixedAmount) || null,
-              next_pay_date: nextPayDate,
-              deposit_account_id: depositAccountId || null,
-            }
-          : i,
-      ),
-    );
-
-    setEditingIncome(null);
-    setIncomeName("");
-    setIncomeOwner("");
-    setFixedAmount("");
-    setHourlyRate("");
-    setHoursPerWeek("");
-    setOvertimeRate("");
-    setTaxRate("");
-    setNextPayDate("");
-    setDepositAccountId("");
+    setIncomeList(incomeList.map((i) =>
+      i.id === editingIncome.id
+        ? { ...i, name: incomeName, owner: incomeOwner, type: incomeType, frequency: incomeFrequency, fixed_amount: parseFloat(fixedAmount) || null, next_pay_date: nextPayDate, deposit_account_id: depositAccountId || null }
+        : i,
+    ));
+    resetIncomeForm();
   }
 
   async function addAccount() {
@@ -468,18 +559,18 @@ function Onboarding({ onComplete }) {
     const card = carouselCards[index];
     if (!card.accountName) {
       updateCard(index, { error: "Account name is required." });
-      return;
+      return false;
     }
     if (card.lastFour && !/^\d{4}$/.test(card.lastFour)) {
       updateCard(index, { error: "Last 4 must be exactly 4 digits." });
-      return;
+      return false;
     }
 
     updateCard(index, { loading: true, error: null });
 
     if (!householdId) {
       updateCard(index, { loading: false, error: "Could not find your household." });
-      return;
+      return false;
     }
 
     const payload = {
@@ -498,13 +589,13 @@ function Onboarding({ onComplete }) {
 
     if (card.id) {
       const { error } = await supabase.from("accounts").update(payload).eq("id", card.id);
-      if (error) { updateCard(index, { loading: false, error: error.message }); return; }
+      if (error) { updateCard(index, { loading: false, error: error.message }); return false; }
       setAccountList(prev => prev.map(a => a.id === card.id ? { ...a, ...payload } : a));
       updateCard(index, { loading: false, saved: true });
     } else {
       const { data: savedAccount, error } = await supabase
         .from("accounts").insert(payload).select().single();
-      if (error) { updateCard(index, { loading: false, error: error.message }); return; }
+      if (error) { updateCard(index, { loading: false, error: error.message }); return false; }
       const newCardIndex = carouselCards.length;
       setAccountList(prev => [...prev, savedAccount]);
       setCarouselCards(prev => [
@@ -513,30 +604,16 @@ function Onboarding({ onComplete }) {
       ]);
       setActiveIndex(newCardIndex);
     }
+    return true;
   }
 
   async function addBill() {
-    if (!billName) {
-      alert("Please enter a bill name.");
-      return;
-    }
-    if (!billAmount) {
-      alert("Please enter a bill amount.");
-      return;
-    }
-    if (!dueDay) {
-      alert("Please enter a due day.");
-      return;
-    }
-    if (!billCategory) {
-      alert("Please select a category.");
-      return;
-    }
-
-    if (!billAccountId) {
-      alert("Please select which account this bill comes from.");
-      return;
-    }
+    setBillError(null);
+    if (!billName) { setBillError("Please enter a bill name."); return; }
+    if (!billAmount) { setBillError("Please enter a bill amount."); return; }
+    if (!dueDay) { setBillError("Please enter a due day."); return; }
+    if (!billCategory) { setBillError("Please select a category."); return; }
+    if (!billAccountId) { setBillError("Please select which account this bill comes from."); return; }
 
     const newBill = {
       household_id: householdId,
@@ -547,6 +624,7 @@ function Onboarding({ onComplete }) {
       category: billCategory,
       owner: billOwner,
       account_id: billAccountId || null,
+      transfer_to_account_id: isBillAccumulating ? (billTransferToAccountId || null) : null,
       is_variable: isVariable,
       is_active: true,
       is_paid: false,
@@ -558,10 +636,7 @@ function Onboarding({ onComplete }) {
       .select()
       .single();
 
-    if (error) {
-      console.log("Error:", error.message);
-      return;
-    }
+    if (error) { setBillError(error.message); return false; }
 
     setBillList([...billList, savedBill]);
     setBillName("");
@@ -572,29 +647,18 @@ function Onboarding({ onComplete }) {
     setBillOwner("joint");
     setBillAccountId("");
     setIsVariable(false);
+    setIsBillAccumulating(false);
+    setBillTransferToAccountId("");
+    return true;
   }
 
   async function updateBill() {
-    if (!billName) {
-      alert("Please enter a bill name.");
-      return;
-    }
-    if (!billAmount) {
-      alert("Please enter a bill amount.");
-      return;
-    }
-    if (!dueDay) {
-      alert("Please enter a due day.");
-      return;
-    }
-    if (!billCategory) {
-      alert("Please select a category.");
-      return;
-    }
-    if (!billAccountId) {
-      alert("Please select which account this bill comes from.");
-      return;
-    }
+    setBillError(null);
+    if (!billName) { setBillError("Please enter a bill name."); return; }
+    if (!billAmount) { setBillError("Please enter a bill amount."); return; }
+    if (!dueDay) { setBillError("Please enter a due day."); return; }
+    if (!billCategory) { setBillError("Please select a category."); return; }
+    if (!billAccountId) { setBillError("Please select which account this bill comes from."); return; }
 
     const { error } = await supabase
       .from("bills")
@@ -606,14 +670,12 @@ function Onboarding({ onComplete }) {
         category: billCategory,
         owner: billOwner,
         account_id: billAccountId || null,
+        transfer_to_account_id: isBillAccumulating ? (billTransferToAccountId || null) : null,
         is_variable: isVariable,
       })
       .eq("id", editingBill.id);
 
-    if (error) {
-      console.log("Error:", error.message);
-      return;
-    }
+    if (error) { setBillError(error.message); return; }
 
     setBillList(
       billList.map((b) =>
@@ -642,6 +704,8 @@ function Onboarding({ onComplete }) {
     setBillOwner("joint");
     setBillAccountId("");
     setIsVariable(false);
+    setIsBillAccumulating(false);
+    setBillTransferToAccountId("");
   }
 
   function formatDate(dateString) {
@@ -1074,139 +1138,276 @@ function Onboarding({ onComplete }) {
 
         <div style={{ display: "flex", justifyContent: "space-between" }}>
           <button style={ghostBtn} onClick={() => setStep(2)}>Back</button>
-          <button style={primaryBtn} onClick={() => setStep(4)} disabled={accountList.length === 0}>Continue</button>
+          <button style={primaryBtn} onClick={async () => {
+            const card = carouselCards[activeIndex];
+            if (!card.saved && card.accountName) {
+              const ok = await saveCard(activeIndex);
+              if (!ok) return;
+            }
+            setStep(4);
+          }}>Continue</button>
         </div>
       </div>
     ), "660px");
   }
 
   if (step === 4) {
+    const n = incomeCards.length;
+    const CARD_W = 320;
+    const GAP = 20;
+    const CONTAINER_W = 520;
+    const slideX = CONTAINER_W / 2 - (incomeActiveIndex * (CARD_W + GAP) + CARD_W / 2);
+
+    const cardInput = { ...inputStyle, fontSize: "13px", padding: "8px 12px" };
+    const cardLabel = { ...labelStyle, fontSize: "10px", marginBottom: "4px" };
+    const arrowStyle = {
+      position: "absolute", top: "50%", transform: "translateY(-50%)", zIndex: 3,
+      width: "34px", height: "34px", borderRadius: "50%",
+      background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.14)",
+      color: "#F0F6FC", cursor: "pointer", fontSize: "20px",
+      display: "flex", alignItems: "center", justifyContent: "center",
+      fontFamily: "'Inter', sans-serif",
+    };
+
     return shell(4, "Add your income", "Add each income source. You can always add more from the dashboard.", (
-      <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
-          <div style={{ gridColumn: "1 / -1" }}>
-            <label style={labelStyle}>Income Name</label>
-            <input style={inputStyle} type="text" placeholder="e.g. VA Disability" value={incomeName} onChange={(e) => setIncomeName(e.target.value)} autoFocus />
-          </div>
-          <div>
-            <label style={labelStyle}>Who is this for?</label>
-            <select style={selectStyle} value={incomeOwner} onChange={(e) => setIncomeOwner(e.target.value)}>
-              <option value="">Select</option>
-              <option value="joint">Joint</option>
-              {memberList.map((m, i) => <option key={i} value={m.name}>{m.name}</option>)}
-            </select>
-          </div>
-          <div>
-            <label style={labelStyle}>Type</label>
-            <select style={selectStyle} value={incomeType} onChange={(e) => setIncomeType(e.target.value)}>
-              <option value="salary">Salary</option>
-              <option value="hourly">Hourly</option>
-              <option value="benefits">Benefits</option>
-              <option value="fixed">Fixed</option>
-              <option value="variable">Variable/Commission</option>
-            </select>
-          </div>
-          <div>
-            <label style={labelStyle}>Frequency</label>
-            <select style={selectStyle} value={incomeFrequency} onChange={(e) => setIncomeFrequency(e.target.value)}>
-              <option value="biweekly">Biweekly</option>
-              <option value="monthly">Monthly</option>
-              <option value="weekly">Weekly</option>
-            </select>
-          </div>
-          <div>
-            <label style={labelStyle}>Deposits Into</label>
-            <select style={selectStyle} value={depositAccountId} onChange={(e) => setDepositAccountId(e.target.value)}>
-              <option value="">Select account</option>
-              {accountList.map((a, i) => <option key={i} value={a.id}>{a.name}</option>)}
-            </select>
-          </div>
-          <div>
-            <label style={labelStyle}>Next Deposit Date</label>
-            <input style={inputStyle} type="date" value={nextPayDate} onChange={(e) => setNextPayDate(e.target.value)} />
+      <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
+
+        <div style={{ position: "relative", width: `${CONTAINER_W}px`, margin: "0 auto" }}>
+          <div style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: "72px", background: "linear-gradient(to right, #1A1826 25%, transparent)", pointerEvents: "none", zIndex: 2 }} />
+          <div style={{ position: "absolute", right: 0, top: 0, bottom: 0, width: "72px", background: "linear-gradient(to left, #1A1826 25%, transparent)", pointerEvents: "none", zIndex: 2 }} />
+
+          {incomeActiveIndex > 0 && (
+            <button style={{ ...arrowStyle, left: "10px" }} onClick={() => setIncomeActiveIndex(i => i - 1)}>‹</button>
+          )}
+          {incomeActiveIndex < n - 1 && (
+            <button style={{ ...arrowStyle, right: "10px" }} onClick={() => setIncomeActiveIndex(i => i + 1)}>›</button>
+          )}
+
+          <div style={{ overflow: "hidden" }}>
+            <div style={{
+              display: "flex", gap: `${GAP}px`,
+              transform: `translateX(${slideX}px)`,
+              transition: "transform 0.4s cubic-bezier(0.4, 0, 0.2, 1)",
+            }}>
+              {incomeCards.map((card, index) => {
+                const isActive = index === incomeActiveIndex;
+                const depositAcct = accountList.find(a => a.id === card.depositAccountId);
+
+                if (card.saved) {
+                  return (
+                    <div key={index} style={{
+                      width: `${CARD_W}px`, flexShrink: 0,
+                      background: "rgba(0,212,170,0.05)",
+                      border: `1px solid ${isActive ? "rgba(0,212,170,0.4)" : "rgba(0,212,170,0.15)"}`,
+                      borderRadius: "12px", padding: "20px",
+                      display: "flex", flexDirection: "column", gap: "10px",
+                      opacity: isActive ? 1 : 0.5,
+                      transition: "opacity 0.3s ease",
+                    }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                          <div style={{ width: "22px", height: "22px", borderRadius: "50%", background: "#00D4AA", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                            <span style={{ fontSize: "11px", color: "#0F1218", fontWeight: "700" }}>✓</span>
+                          </div>
+                          <span style={{ fontSize: "11px", color: "#00D4AA", fontWeight: "600", letterSpacing: "0.06em", textTransform: "uppercase" }}>Saved</span>
+                        </div>
+                        <div style={{ display: "flex", gap: "6px" }}>
+                          <button style={{ ...ghostBtn, padding: "3px 10px", fontSize: "11px" }} onClick={() => { setIncomeActiveIndex(index); updateIncomeCard(index, { saved: false }); }}>Edit</button>
+                          <button style={{ ...ghostBtn, padding: "3px 10px", fontSize: "11px", color: "#F87171", borderColor: "rgba(248,113,113,0.2)" }} onClick={() => deleteIncomeCard(index)}>Delete</button>
+                        </div>
+                      </div>
+                      <div style={{ fontSize: "18px", fontWeight: "600", color: "#F0F6FC" }}>{card.incomeName}</div>
+                      <div style={{ fontSize: "13px", color: "#8B8FA8", textTransform: "capitalize" }}>
+                        {card.incomeOwner || "Joint"} · {card.incomeFrequency} · {card.incomeType}
+                      </div>
+                      {card.fixedAmount && (
+                        <div style={{ fontSize: "22px", color: "#00D4AA", fontWeight: "700" }}>
+                          ${parseFloat(card.fixedAmount).toLocaleString()}
+                        </div>
+                      )}
+                      {card.hourlyRate && (
+                        <div style={{ fontSize: "22px", color: "#00D4AA", fontWeight: "700" }}>
+                          ${card.hourlyRate}/hr
+                        </div>
+                      )}
+                      {depositAcct && (
+                        <div style={{ fontSize: "12px", color: "#6C63FF" }}>→ {depositAcct.name}</div>
+                      )}
+                      {card.nextPayDate && (
+                        <div style={{ fontSize: "12px", color: "#8B8FA8" }}>Next: {new Date(card.nextPayDate).toLocaleDateString("en-US", { month: "short", day: "numeric" })}</div>
+                      )}
+                    </div>
+                  );
+                }
+
+                return (
+                  <div key={index} style={{
+                    width: `${CARD_W}px`, flexShrink: 0,
+                    background: "rgba(255,255,255,0.03)",
+                    border: `1px solid ${isActive ? "rgba(108,99,255,0.4)" : "rgba(108,99,255,0.15)"}`,
+                    borderRadius: "12px", padding: "20px",
+                    display: "flex", flexDirection: "column", gap: "12px",
+                    opacity: isActive ? 1 : 0.4,
+                    transition: "opacity 0.3s ease",
+                  }}>
+                    <div style={{ fontSize: "11px", color: "#6C63FF", fontWeight: "700", letterSpacing: "0.1em", textTransform: "uppercase" }}>
+                      Income {index + 1}
+                    </div>
+
+                    <div>
+                      <label style={cardLabel}>Name</label>
+                      <input style={cardInput} type="text" placeholder="VA Disability" value={card.incomeName} onChange={(e) => updateIncomeCard(index, { incomeName: e.target.value, error: null })} autoFocus={isActive} />
+                    </div>
+
+                    <div style={{ display: "flex", gap: "8px" }}>
+                      <div style={{ flex: 1 }}>
+                        <label style={cardLabel}>Who is this for?</label>
+                        <select style={{ ...cardInput, cursor: "pointer" }} value={card.incomeOwner} onChange={(e) => updateIncomeCard(index, { incomeOwner: e.target.value })}>
+                          <option value="">Select</option>
+                          <option value="joint">Joint</option>
+                          {memberList.map((m, i) => <option key={i} value={m.name}>{m.name}</option>)}
+                        </select>
+                      </div>
+                      <div style={{ flex: 1 }}>
+                        <label style={cardLabel}>Type</label>
+                        <select style={{ ...cardInput, cursor: "pointer" }} value={card.incomeType} onChange={(e) => updateIncomeCard(index, { incomeType: e.target.value, incomeEntryMode: "" })}>
+                          <option value="salary">Salary</option>
+                          <option value="hourly">Hourly</option>
+                          <option value="benefits">Benefits</option>
+                          <option value="fixed">Fixed</option>
+                          <option value="variable">Variable</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    <div style={{ display: "flex", gap: "8px" }}>
+                      <div style={{ flex: 1 }}>
+                        <label style={cardLabel}>Frequency</label>
+                        <select style={{ ...cardInput, cursor: "pointer" }} value={card.incomeFrequency} onChange={(e) => updateIncomeCard(index, { incomeFrequency: e.target.value })}>
+                          <option value="biweekly">Biweekly</option>
+                          <option value="monthly">Monthly</option>
+                          <option value="weekly">Weekly</option>
+                        </select>
+                      </div>
+                      <div style={{ flex: 1 }}>
+                        <label style={cardLabel}>Deposits Into</label>
+                        <select style={{ ...cardInput, cursor: "pointer" }} value={card.depositAccountId} onChange={(e) => updateIncomeCard(index, { depositAccountId: e.target.value })}>
+                          <option value="">Select</option>
+                          {accountList.map((a, i) => <option key={i} value={a.id}>{a.name}</option>)}
+                        </select>
+                      </div>
+                    </div>
+
+                    <div>
+                      <label style={cardLabel}>Next Deposit Date</label>
+                      <input style={cardInput} type="date" value={card.nextPayDate} onChange={(e) => updateIncomeCard(index, { nextPayDate: e.target.value })} />
+                    </div>
+
+                    {card.incomeType !== "variable" && card.incomeType !== "hourly" && (
+                      <div style={{ background: "rgba(255,255,255,0.03)", borderRadius: "8px", border: "1px solid rgba(255,255,255,0.06)", padding: "12px" }}>
+                        {card.incomeEntryMode === "" ? (
+                          <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                            <div style={{ fontSize: "11px", color: "#8B8FA8" }}>How would you like to enter your income?</div>
+                            <label style={{ display: "flex", alignItems: "center", gap: "8px", cursor: "pointer", fontSize: "12px", color: "#F0F6FC" }}>
+                              <input type="radio" name={`incomeMode-${index}`} onChange={() => updateIncomeCard(index, { incomeEntryMode: "net" })} />
+                              After-tax (what hits my bank)
+                            </label>
+                            <label style={{ display: "flex", alignItems: "center", gap: "8px", cursor: "pointer", fontSize: "12px", color: "#F0F6FC" }}>
+                              <input type="radio" name={`incomeMode-${index}`} onChange={() => updateIncomeCard(index, { incomeEntryMode: "gross" })} />
+                              Gross (app calculates take-home)
+                            </label>
+                          </div>
+                        ) : (
+                          <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                              <span style={{ fontSize: "11px", color: "#8B8FA8" }}>{card.incomeEntryMode === "net" ? "After-tax" : "Gross pay"}</span>
+                              <button style={{ ...ghostBtn, padding: "2px 8px", fontSize: "10px" }} onClick={() => updateIncomeCard(index, { incomeEntryMode: "" })}>Change</button>
+                            </div>
+                            <div>
+                              <label style={cardLabel}>{card.incomeEntryMode === "net" ? "Amount Deposited" : "Gross Amount"}</label>
+                              <input style={cardInput} type="number" placeholder="0.00" value={card.fixedAmount} onChange={(e) => updateIncomeCard(index, { fixedAmount: e.target.value })} />
+                            </div>
+                            {card.incomeEntryMode === "gross" && (
+                              <div>
+                                <label style={cardLabel}>Tax Rate (%)</label>
+                                <input style={cardInput} type="number" placeholder="e.g. 20" value={card.taxRate} onChange={(e) => updateIncomeCard(index, { taxRate: e.target.value })} />
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {card.incomeType === "variable" && (
+                      <div>
+                        <label style={cardLabel}>Estimated Amount</label>
+                        <input style={cardInput} type="number" placeholder="0.00" value={card.fixedAmount} onChange={(e) => updateIncomeCard(index, { fixedAmount: e.target.value })} />
+                      </div>
+                    )}
+
+                    {card.incomeType === "hourly" && (
+                      <div style={{ display: "flex", gap: "8px" }}>
+                        <div style={{ flex: 1 }}>
+                          <label style={cardLabel}>Rate/hr</label>
+                          <input style={cardInput} type="number" placeholder="0.00" value={card.hourlyRate} onChange={(e) => updateIncomeCard(index, { hourlyRate: e.target.value })} />
+                        </div>
+                        <div style={{ flex: 1 }}>
+                          <label style={cardLabel}>Hrs/Week</label>
+                          <input style={cardInput} type="number" placeholder="40" value={card.hoursPerWeek} onChange={(e) => updateIncomeCard(index, { hoursPerWeek: e.target.value })} />
+                        </div>
+                        <div style={{ flex: 1 }}>
+                          <label style={cardLabel}>OT Rate</label>
+                          <input style={cardInput} type="number" placeholder="0.00" value={card.overtimeRate} onChange={(e) => updateIncomeCard(index, { overtimeRate: e.target.value })} />
+                        </div>
+                      </div>
+                    )}
+
+                    {card.error && (
+                      <div style={{ fontSize: "12px", color: "#F87171", background: "rgba(248,113,113,0.08)", padding: "8px 12px", borderRadius: "6px" }}>
+                        {card.error}
+                      </div>
+                    )}
+
+                    <button
+                      style={{ ...addBtn, width: "100%", marginTop: "auto", opacity: card.loading ? 0.6 : 1 }}
+                      onClick={() => saveIncomeCard(index)}
+                      disabled={card.loading}
+                    >
+                      {card.loading ? "Saving..." : "+ Add Income"}
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
           </div>
         </div>
 
-        {incomeType !== "variable" && (
-          <div style={{ padding: "16px", background: "rgba(255,255,255,0.03)", borderRadius: "8px", border: "1px solid rgba(255,255,255,0.06)" }}>
-            {incomeEntryMode === "" ? (
-              <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-                <div style={{ fontSize: "12px", color: "#8B8FA8", marginBottom: "4px" }}>How would you like to enter your income?</div>
-                <label style={{ ...checkRowStyle, background: "none", border: "1px solid rgba(255,255,255,0.08)" }}>
-                  <input type="radio" name="incomeMode" onChange={() => setIncomeEntryMode("net")} />
-                  <span style={checkLabelStyle}>After-tax — enter what hits my bank</span>
-                </label>
-                <label style={{ ...checkRowStyle, background: "none", border: "1px solid rgba(255,255,255,0.08)" }}>
-                  <input type="radio" name="incomeMode" onChange={() => setIncomeEntryMode("gross")} />
-                  <span style={checkLabelStyle}>Gross — app will calculate take-home</span>
-                </label>
-              </div>
-            ) : (
-              <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                  <span style={{ fontSize: "12px", color: "#8B8FA8" }}>{incomeEntryMode === "net" ? "After-tax" : "Gross pay"}</span>
-                  <button style={{ ...ghostBtn, padding: "3px 10px", fontSize: "11px" }} onClick={() => setIncomeEntryMode("")}>Change</button>
-                </div>
-                {incomeEntryMode === "net" && (
-                  <div>
-                    <label style={labelStyle}>Amount Deposited</label>
-                    <input style={inputStyle} type="number" placeholder="0.00" value={fixedAmount} onChange={(e) => setFixedAmount(e.target.value)} />
-                  </div>
-                )}
-                {incomeEntryMode === "gross" && (
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
-                    <div>
-                      <label style={labelStyle}>Gross Amount</label>
-                      <input style={inputStyle} type="number" placeholder="0.00" value={fixedAmount} onChange={(e) => setFixedAmount(e.target.value)} />
-                    </div>
-                    <div>
-                      <label style={labelStyle}>Tax Rate (%)</label>
-                      <input style={inputStyle} type="number" placeholder="e.g. 20" value={taxRate} onChange={(e) => setTaxRate(e.target.value)} />
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-        )}
-
-        {incomeType === "variable" && (
-          <div>
-            <label style={labelStyle}>Estimated Amount</label>
-            <input style={inputStyle} type="number" placeholder="0.00" value={fixedAmount} onChange={(e) => setFixedAmount(e.target.value)} />
-          </div>
-        )}
-
-        {incomeType === "hourly" && (
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "12px" }}>
-            <div><label style={labelStyle}>Hourly Rate</label><input style={inputStyle} type="number" placeholder="0.00" value={hourlyRate} onChange={(e) => setHourlyRate(e.target.value)} /></div>
-            <div><label style={labelStyle}>Hours/Week</label><input style={inputStyle} type="number" placeholder="40" value={hoursPerWeek} onChange={(e) => setHoursPerWeek(e.target.value)} /></div>
-            <div><label style={labelStyle}>OT Rate</label><input style={inputStyle} type="number" placeholder="0.00" value={overtimeRate} onChange={(e) => setOvertimeRate(e.target.value)} /></div>
-          </div>
-        )}
-
-        <button style={addBtn} onClick={editingIncome ? updateIncome : addIncome}>{editingIncome ? "Save Changes" : "+ Add Income"}</button>
-
-        {incomeList.length > 0 && (
-          <div style={{ borderTop: "1px solid rgba(255,255,255,0.06)", paddingTop: "12px" }}>
-            {incomeList.map((inc, i) => (
-              <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 0", borderBottom: "1px solid rgba(255,255,255,0.04)" }}>
-                <div>
-                  <div style={{ fontSize: "14px", color: "#F0F6FC", fontWeight: "500" }}>{inc.name}</div>
-                  <div style={{ fontSize: "11px", color: "#8B8FA8", marginTop: "2px" }}>{inc.owner} · {inc.frequency} · ${inc.fixed_amount || inc.hourly_rate + "/hr"}</div>
-                </div>
-                <button style={ghostBtn} onClick={() => { setEditingIncome(inc); setIncomeName(inc.name); setIncomeOwner(inc.owner || ""); setIncomeType(inc.type); setIncomeFrequency(inc.frequency); setFixedAmount(inc.fixed_amount || ""); setHourlyRate(inc.hourly_rate || ""); setHoursPerWeek(inc.hours_per_week || ""); setOvertimeRate(inc.overtime_rate || ""); setTaxRate(inc.tax_rate || ""); setNextPayDate(inc.next_pay_date || ""); setDepositAccountId(inc.deposit_account_id || ""); setIncomeEntryMode("net"); }}>Edit</button>
-              </div>
+        {n > 1 && (
+          <div style={{ display: "flex", justifyContent: "center", gap: "6px" }}>
+            {incomeCards.map((_, i) => (
+              <div key={i} onClick={() => setIncomeActiveIndex(i)} style={{
+                width: i === incomeActiveIndex ? "20px" : "6px", height: "6px",
+                borderRadius: "3px", cursor: "pointer",
+                background: i === incomeActiveIndex ? "#6C63FF" : "rgba(255,255,255,0.2)",
+                transition: "width 0.3s ease, background 0.3s ease",
+              }} />
             ))}
           </div>
         )}
 
-        <div style={{ display: "flex", justifyContent: "space-between", marginTop: "8px" }}>
+        <div style={{ display: "flex", justifyContent: "space-between" }}>
           <button style={ghostBtn} onClick={() => setStep(3)}>Back</button>
-          <button style={primaryBtn} onClick={async () => { if (incomeName && fixedAmount) await addIncome(); setStep(5); }} disabled={incomeList.length === 0 && !incomeName}>Continue</button>
+          <button style={primaryBtn} onClick={async () => {
+            const card = incomeCards[incomeActiveIndex];
+            if (!card.saved && card.incomeName) {
+              const ok = await saveIncomeCard(incomeActiveIndex);
+              if (!ok) return;
+            }
+            setStep(5);
+          }}>Continue</button>
         </div>
       </div>
-    ));
+    ), "660px");
   }
 
   if (step === 5) {
@@ -1271,6 +1472,26 @@ function Onboarding({ onComplete }) {
           <span style={checkLabelStyle}>This bill varies month to month</span>
         </label>
 
+        <label style={checkRowStyle}>
+          <input type="checkbox" checked={isBillAccumulating} onChange={(e) => { setIsBillAccumulating(e.target.checked); if (!e.target.checked) setBillTransferToAccountId(""); }} />
+          <span style={checkLabelStyle}>This bill accumulates into another account</span>
+        </label>
+        {isBillAccumulating && (
+          <div>
+            <label style={labelStyle}>Accumulates Into</label>
+            <select style={selectStyle} value={billTransferToAccountId} onChange={(e) => setBillTransferToAccountId(e.target.value)}>
+              <option value="">Select account</option>
+              {accountList.map((a, i) => <option key={i} value={a.id}>{a.name}{a.is_accumulating ? " (accumulating)" : ""}</option>)}
+            </select>
+          </div>
+        )}
+
+        {billError && (
+          <div style={{ fontSize: "13px", color: "#F87171", background: "rgba(248,113,113,0.08)", padding: "10px 14px", borderRadius: "8px", border: "1px solid rgba(248,113,113,0.2)" }}>
+            {billError}
+          </div>
+        )}
+
         <button style={addBtn} onClick={editingBill ? updateBill : addBill}>{editingBill ? "Save Changes" : "+ Add Bill"}</button>
 
         {billList.length > 0 && (
@@ -1281,7 +1502,7 @@ function Onboarding({ onComplete }) {
                   <div style={{ fontSize: "14px", color: "#F0F6FC", fontWeight: "500" }}>{bill.name}</div>
                   <div style={{ fontSize: "11px", color: "#8B8FA8", marginTop: "2px" }}>${bill.amount} · Due the {bill.due_day}{bill.due_day === 1 ? "st" : bill.due_day === 2 ? "nd" : bill.due_day === 3 ? "rd" : "th"} · {bill.category}</div>
                 </div>
-                <button style={ghostBtn} onClick={() => { setEditingBill(bill); setBillName(bill.name); setBillAmount(bill.amount); setDueDay(bill.due_day); setPaymentMethod(bill.payment_method); setBillCategory(bill.category); setBillOwner(bill.owner); setBillAccountId(bill.account_id || ""); setIsVariable(bill.is_variable); }}>Edit</button>
+                <button style={ghostBtn} onClick={() => { setEditingBill(bill); setBillName(bill.name); setBillAmount(bill.amount); setDueDay(bill.due_day); setPaymentMethod(bill.payment_method); setBillCategory(bill.category); setBillOwner(bill.owner); setBillAccountId(bill.account_id || ""); setIsVariable(bill.is_variable); setIsBillAccumulating(!!bill.transfer_to_account_id); setBillTransferToAccountId(bill.transfer_to_account_id || ""); }}>Edit</button>
               </div>
             ))}
           </div>
@@ -1290,7 +1511,10 @@ function Onboarding({ onComplete }) {
         <div style={{ display: "flex", justifyContent: "space-between", marginTop: "8px" }}>
           <button style={ghostBtn} onClick={() => setStep(4)}>Back</button>
           <button style={{ ...primaryBtn, background: "#00D4AA", color: "#0F1218" }} onClick={async () => {
-            if (billName && billAmount && dueDay) await addBill();
+            if (billName) {
+              const ok = await addBill();
+              if (!ok) return;
+            }
             const periods = calculatePayPeriods();
             await savePayPeriods(periods);
             await saveDefaultCategories(householdId);

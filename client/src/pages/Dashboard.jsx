@@ -107,6 +107,8 @@ function Dashboard() {
   const [billCategory, setBillCategory] = useState("");
   const [billOwner, setBillOwner] = useState("joint");
   const [billAccountId, setBillAccountId] = useState("");
+  const [transferToAccountId, setTransferToAccountId] = useState("");
+  const [isBillAccumulating, setIsBillAccumulating] = useState(false);
   const [isVariable, setIsVariable] = useState(false);
   const [showBillForm, setShowBillForm] = useState(false);
   const [editingIncome, setEditingIncome] = useState(null);
@@ -339,6 +341,7 @@ function Dashboard() {
         category: billCategory,
         owner: billOwner,
         account_id: billAccountId || null,
+        transfer_to_account_id: isBillAccumulating ? (transferToAccountId || null) : null,
         is_variable: isVariable,
         is_active: true,
         is_paid: false,
@@ -359,6 +362,8 @@ function Dashboard() {
     setBillCategory("");
     setBillOwner("joint");
     setBillAccountId("");
+    setTransferToAccountId("");
+    setIsBillAccumulating(false);
     setIsVariable(false);
     setShowBillForm(false);
   }
@@ -385,6 +390,7 @@ function Dashboard() {
         category: billCategory,
         owner: billOwner,
         account_id: billAccountId || null,
+        transfer_to_account_id: isBillAccumulating ? (transferToAccountId || null) : null,
         is_variable: isVariable,
       })
       .eq("id", editingBill.id);
@@ -406,6 +412,7 @@ function Dashboard() {
               category: billCategory,
               owner: billOwner,
               account_id: billAccountId,
+              transfer_to_account_id: isBillAccumulating ? (transferToAccountId || null) : null,
               is_variable: isVariable,
             }
           : b,
@@ -420,6 +427,8 @@ function Dashboard() {
     setBillCategory("");
     setBillOwner("joint");
     setBillAccountId("");
+    setTransferToAccountId("");
+    setIsBillAccumulating(false);
     setIsVariable(false);
   }
 
@@ -3778,6 +3787,26 @@ function Dashboard() {
                   ))}
                 </select>
               </div>
+              <label style={{ display: "flex", alignItems: "center", gap: "8px", cursor: "pointer", marginTop: "4px" }}>
+                <input
+                  type="checkbox"
+                  checked={isBillAccumulating}
+                  onChange={(e) => { setIsBillAccumulating(e.target.checked); if (!e.target.checked) setTransferToAccountId(""); }}
+                />
+                <span style={{ fontSize: "13px", color: "#8B8FA8" }}>This bill accumulates into another account</span>
+              </label>
+              {isBillAccumulating && (
+                <select
+                  value={transferToAccountId}
+                  onChange={(e) => setTransferToAccountId(e.target.value)}
+                  style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", color: "#F2F0EB", padding: "8px 12px", borderRadius: "6px", fontSize: "13px", fontFamily: "'Inter', sans-serif" }}
+                >
+                  <option value="">Accumulates into which account?</option>
+                  {accounts.map((acct, i) => (
+                    <option key={i} value={acct.id}>{acct.name}{acct.is_accumulating ? " (accumulating)" : ""}</option>
+                  ))}
+                </select>
+              )}
               <div style={{ display: "flex", gap: "8px", marginTop: "12px" }}>
                 <button
                   onClick={addBill}
@@ -3918,6 +3947,8 @@ function Dashboard() {
                               setBillCategory(bill.category);
                               setBillOwner(bill.owner);
                               setBillAccountId(bill.account_id || "");
+                              setTransferToAccountId(bill.transfer_to_account_id || "");
+                              setIsBillAccumulating(!!bill.transfer_to_account_id);
                               setIsVariable(bill.is_variable);
                             }
                           }}
@@ -4058,6 +4089,37 @@ function Dashboard() {
                             ))}
                           </select>
                         </div>
+                        <label style={{ display: "flex", alignItems: "center", gap: "8px", cursor: "pointer", marginTop: "4px" }}>
+                          <input
+                            type="checkbox"
+                            checked={isBillAccumulating}
+                            onChange={(e) => { setIsBillAccumulating(e.target.checked); if (!e.target.checked) setTransferToAccountId(""); }}
+                          />
+                          <span style={{ fontSize: "13px", color: "#8B8FA8" }}>This bill accumulates into another account</span>
+                        </label>
+                        {isBillAccumulating && (
+                          <select
+                            value={transferToAccountId}
+                            onChange={(e) => setTransferToAccountId(e.target.value)}
+                            style={{
+                              background: "#2D2B45",
+                              border: "1px solid rgba(255,255,255,0.1)",
+                              color: "#F0F6FC",
+                              padding: "8px 12px",
+                              borderRadius: "6px",
+                              fontSize: "13px",
+                              fontFamily: "'Inter', sans-serif",
+                              marginTop: "4px",
+                            }}
+                          >
+                            <option value="">Accumulates into which account?</option>
+                            {accounts.map((acct, i) => (
+                              <option key={i} value={acct.id}>
+                                {acct.name}{acct.is_accumulating ? " (accumulating)" : ""}
+                              </option>
+                            ))}
+                          </select>
+                        )}
                         <div
                           style={{
                             display: "flex",
@@ -4595,60 +4657,36 @@ function Dashboard() {
                     (item) => item.isCurrentPeriod,
                   );
 
-                  // Count paychecks in the current month for accumulating contribution calc
-                  const now = new Date();
-                  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-                  const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
-                  let paychecksThisMonth = 0;
-                  income.forEach((inc) => {
-                    if (!inc.next_pay_date || !inc.fixed_amount) return;
-                    const baseDate = new Date(inc.next_pay_date + "T12:00:00");
-                    const interval = inc.frequency === "weekly" ? 7 : inc.frequency === "biweekly" ? 14 : 0;
-                    if (interval === 0) {
-                      const payDay = baseDate.getDate();
-                      const candidate = new Date(now.getFullYear(), now.getMonth(), payDay, 12, 0, 0);
-                      if (candidate >= monthStart && candidate <= monthEnd) paychecksThisMonth++;
-                    } else {
-                      let payDate = new Date(baseDate);
-                      while (payDate > monthEnd) payDate.setDate(payDate.getDate() - interval);
-                      while (payDate <= monthEnd) {
-                        if (payDate >= monthStart) paychecksThisMonth++;
-                        payDate = new Date(payDate);
-                        payDate.setDate(payDate.getDate() + interval);
-                      }
-                    }
-                  });
-                  if (paychecksThisMonth === 0) paychecksThisMonth = 1;
+                  // Split bills into regular bills and explicit account transfers
+                  const periodBills = currentBreakdown?.bills || [];
+                  const regularBills = periodBills.filter((b) => !b.transfer_to_account_id);
+                  const transferBills = bills.filter((b) => !!b.transfer_to_account_id && b.is_active && isBillDue(b));
 
-                  // Bills section — grouped by destination account
+                  // Group regular bills by source account
                   const grouped = {};
-                  if (currentBreakdown) {
-                    currentBreakdown.bills.forEach((bill) => {
-                      const acct = accounts.find((a) => a.id === bill.account_id);
-                      const key = acct ? acct.id : "unassigned";
-                      if (!grouped[key]) {
-                        grouped[key] = {
-                          acctName: acct ? acct.name : "Unassigned",
-                          total: 0,
-                          bills: [],
-                          balance: acct?.current_balance || 0,
-                          buffer: acct?.minimum_buffer || 0,
-                        };
-                      }
-                      grouped[key].total += bill.amount || 0;
-                      grouped[key].bills.push(bill);
-                    });
-                  }
+                  regularBills.forEach((bill) => {
+                    const acct = accounts.find((a) => a.id === bill.account_id);
+                    const key = acct ? acct.id : "unassigned";
+                    if (!grouped[key]) {
+                      grouped[key] = {
+                        acctName: acct ? acct.name : "Unassigned",
+                        total: 0,
+                        bills: [],
+                        balance: acct?.current_balance || 0,
+                        buffer: acct?.minimum_buffer || 0,
+                      };
+                    }
+                    grouped[key].total += bill.amount || 0;
+                    grouped[key].bills.push(bill);
+                  });
 
-                  const primaryName = accounts.find((a) => a.is_primary && !a.is_accumulating)?.name || "Primary Account";
-
-                  const renderTransferRow = (accountId, label, suggestedAmount, subtitle) => {
-                    const transferred = transfers[accountId] || 0;
+                  const renderTransferRow = (rowKey, label, suggestedAmount, subtitle) => {
+                    const transferred = transfers[rowKey] || 0;
                     const remaining = Math.max(0, suggestedAmount - transferred);
                     const done = transferred >= suggestedAmount;
 
                     return (
-                      <div key={accountId} style={{ borderBottom: "1px solid rgba(255,255,255,0.04)", padding: "10px 0" }}>
+                      <div key={rowKey} style={{ borderBottom: "1px solid rgba(255,255,255,0.04)", padding: "10px 0" }}>
                         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                           <div>
                             <div className="row-name" style={{ color: done ? "#4ADE80" : "#F0F6FC" }}>
@@ -4663,18 +4701,21 @@ function Dashboard() {
                           </div>
                           <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
                             {!done && (
-                              <div className="row-amount" style={{ color: remaining < suggestedAmount ? "#00D4AA" : "#F0F6FC" }}>
-                                ${fmt(remaining)}
+                              <div style={{ textAlign: "right" }}>
+                                <div className="row-amount" style={{ color: remaining < suggestedAmount ? "#00D4AA" : "#F0F6FC" }}>
+                                  ${fmt(remaining)}
+                                </div>
+                                <div style={{ fontSize: "10px", color: "#8B8FA8" }}>this paycheck</div>
                               </div>
                             )}
-                            {!done && transferringId === accountId ? (
+                            {!done && transferringId === rowKey ? (
                               <>
                                 <input
                                   type="number"
                                   value={transferAmount}
                                   onChange={(e) => setTransferAmount(e.target.value)}
                                   onKeyDown={(e) => {
-                                    if (e.key === "Enter") confirmTransfer(accountId, transferAmount);
+                                    if (e.key === "Enter") confirmTransfer(rowKey, transferAmount);
                                     if (e.key === "Escape") { setTransferringId(null); setTransferAmount(""); }
                                   }}
                                   autoFocus
@@ -4682,7 +4723,7 @@ function Dashboard() {
                                   style={{ background: "#2D2B45", border: "1px solid #00D4AA", color: "#F0F6FC", padding: "4px 8px", borderRadius: "6px", fontSize: "13px", fontFamily: "'DM Mono', monospace", width: "90px", textAlign: "right" }}
                                 />
                                 <button
-                                  onClick={() => confirmTransfer(accountId, transferAmount)}
+                                  onClick={() => confirmTransfer(rowKey, transferAmount)}
                                   style={{ background: "#00D4AA", border: "none", color: "#0F1218", padding: "4px 10px", borderRadius: "6px", cursor: "pointer", fontSize: "11px", fontFamily: "'Inter', sans-serif", fontWeight: "600" }}
                                 >
                                   Confirm
@@ -4696,7 +4737,7 @@ function Dashboard() {
                               </>
                             ) : !done ? (
                               <button
-                                onClick={() => { setTransferringId(accountId); setTransferAmount(remaining.toFixed(2)); }}
+                                onClick={() => { setTransferringId(rowKey); setTransferAmount(remaining.toFixed(2)); }}
                                 style={{ background: "rgba(0,212,170,0.1)", border: "1px solid rgba(0,212,170,0.4)", color: "#00D4AA", padding: "4px 10px", borderRadius: "6px", cursor: "pointer", fontSize: "11px", fontFamily: "'Inter', sans-serif", fontWeight: "500" }}
                               >
                                 Transfer
@@ -4714,16 +4755,38 @@ function Dashboard() {
                     return renderTransferRow(key, `Transfer to ${data.acctName}`, transferNeeded, subtitle);
                   });
 
-                  // Accumulating accounts section
-                  const accumRows = accounts
-                    .filter((a) => a.is_accumulating && a.accumulation_target > 0)
-                    .map((acct) => {
-                      const perPaycheck = acct.accumulation_target / paychecksThisMonth;
-                      const subtitle = `$${fmt(acct.accumulation_current || acct.current_balance || 0)} of $${fmt(acct.accumulation_target)} saved`;
-                      return renderTransferRow(acct.id, `Transfer to ${acct.name}`, perPaycheck, subtitle);
-                    });
+                  const today = new Date();
+                  const currentPeriodIndex = payPeriods.findIndex((p) => {
+                    const start = new Date(p.start_date + "T00:00:00");
+                    const end = new Date(p.end_date + "T23:59:59");
+                    return today >= start && today <= end;
+                  });
 
-                  if (billRows.length === 0 && accumRows.length === 0) {
+                  const periodsUntilDue = (bill) => {
+                    let dueDate = new Date(today.getFullYear(), today.getMonth(), bill.due_day);
+                    if (dueDate < today) dueDate = new Date(today.getFullYear(), today.getMonth() + 1, bill.due_day);
+                    if (currentPeriodIndex === -1) return 1;
+                    let count = 0;
+                    for (let i = currentPeriodIndex; i < payPeriods.length; i++) {
+                      count++;
+                      if (dueDate <= new Date(payPeriods[i].end_date + "T23:59:59")) break;
+                    }
+                    return Math.max(1, count);
+                  };
+
+                  const transferRows = transferBills.map((bill) => {
+                    const destAcct = accounts.find((a) => a.id === bill.transfer_to_account_id);
+                    const destName = destAcct ? destAcct.name : "Unknown";
+                    const target = bill.amount;
+                    const saved = Math.min(destAcct?.current_balance || 0, target);
+                    const stillNeeded = Math.max(0, target - saved);
+                    const periods = periodsUntilDue(bill);
+                    const amountThisPeriod = stillNeeded > 0 ? stillNeeded / periods : 0;
+                    const subtitle = `$${fmt(saved)} of $${fmt(target)} saved`;
+                    return renderTransferRow(`transfer-${bill.id}`, destName, amountThisPeriod, subtitle);
+                  });
+
+                  if (billRows.length === 0 && transferRows.length === 0) {
                     return <div className="empty-state">No allocations this period</div>;
                   }
 
@@ -4735,10 +4798,10 @@ function Dashboard() {
                           {billRows}
                         </>
                       )}
-                      {accumRows.length > 0 && (
+                      {transferRows.length > 0 && (
                         <>
                           <div style={{ fontSize: "10px", color: "#8B8FA8", letterSpacing: "0.08em", textTransform: "uppercase", margin: billRows.length > 0 ? "16px 0 8px" : "0 0 8px" }}>Set Aside</div>
-                          {accumRows}
+                          {transferRows}
                         </>
                       )}
                     </>
