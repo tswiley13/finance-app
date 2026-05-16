@@ -143,6 +143,7 @@ function Dashboard() {
   const [transferringId, setTransferringId] = useState(null);
   const [transferAmount, setTransferAmount] = useState("");
   const [transfers, setTransfers] = useState({});
+  const [setAsideDone, setSetAsideDone] = useState({});
   const [quickEditIncomeId, setQuickEditIncomeId] = useState(null);
   const [quickEditIncomeAmount, setQuickEditIncomeAmount] = useState("");
   const [confirmDeleteBillId, setConfirmDeleteBillId] = useState(null);
@@ -567,7 +568,7 @@ function Dashboard() {
       }
       const totalPeriods = Math.max(1, periodsCount);
       coveredAccountIds.add(acct.id);
-      allContributions.push({ name: acct.name, amount: stillNeeded / totalPeriods, dueDate, saved, target });
+      allContributions.push({ name: acct.name, amount: stillNeeded / totalPeriods, dueDate, saved, target, accountId: acct.id });
     });
 
     // Bill-driven: bills that transfer to an accumulating account (e.g. Rent → Mortgage savings)
@@ -590,7 +591,7 @@ function Dashboard() {
       }
       const totalPeriods = Math.max(1, periodsCount);
       coveredAccountIds.add(dest.id);
-      allContributions.push({ name: dest.name, amount: stillNeeded / totalPeriods, dueDate, saved, target });
+      allContributions.push({ name: dest.name, amount: stillNeeded / totalPeriods, dueDate, saved, target, accountId: dest.id });
     });
 
     return upcomingPeriods.map((period) => {
@@ -4569,15 +4570,40 @@ function Dashboard() {
                       {item.contributions?.length > 0 && (
                         <div style={{ borderTop: "1px solid rgba(255,255,255,0.05)", paddingTop: "12px", marginBottom: item.bills.length > 0 ? "12px" : "0" }}>
                           <div style={{ fontSize: "9px", color: "#6C63FF", letterSpacing: "0.12em", textTransform: "uppercase", fontWeight: "600", marginBottom: "8px" }}>Set Aside</div>
-                          {item.contributions.map((c, j) => (
-                            <div key={j} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "5px 0", borderBottom: j < item.contributions.length - 1 ? "1px solid rgba(255,255,255,0.04)" : "none" }}>
-                              <div>
-                                <div style={{ fontSize: "13px", color: "#F0F6FC", fontWeight: "500" }}>→ {c.name}</div>
-                                <div style={{ fontSize: "11px", color: "#8B8FA8", marginTop: "2px" }}>${Math.round(c.saved).toLocaleString()} of ${Math.round(c.target).toLocaleString()} saved</div>
+                          {item.contributions.map((c, j) => {
+                            const saKey = `sa-${item.period.start_date}-${c.accountId}`;
+                            const done = !!setAsideDone[saKey];
+                            return (
+                              <div key={j} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "5px 0", borderBottom: j < item.contributions.length - 1 ? "1px solid rgba(255,255,255,0.04)" : "none" }}>
+                                <div>
+                                  <div style={{ fontSize: "13px", color: done ? "#4ADE80" : "#F0F6FC", fontWeight: "500" }}>{done ? "✓ " : "→ "}{c.name}</div>
+                                  <div style={{ fontSize: "11px", color: "#8B8FA8", marginTop: "2px" }}>${Math.round(c.saved).toLocaleString()} of ${Math.round(c.target).toLocaleString()} saved</div>
+                                </div>
+                                <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                                  {!done && <span style={{ fontFamily: "'DM Mono', monospace", fontSize: "13px", color: "#6C63FF" }}>${c.amount % 1 === 0 ? c.amount.toLocaleString() : c.amount.toFixed(2)}</span>}
+                                  {done ? (
+                                    <span style={{ fontSize: "11px", color: "#4ADE80", fontWeight: "600" }}>Transferred</span>
+                                  ) : (
+                                    <button
+                                      onClick={async (e) => {
+                                        e.stopPropagation();
+                                        const acct = accounts.find((a) => a.id === c.accountId);
+                                        if (acct) {
+                                          const newBalance = (acct.current_balance || 0) + c.amount;
+                                          await supabase.from("accounts").update({ current_balance: newBalance }).eq("id", c.accountId);
+                                          setAccounts((prev) => prev.map((a) => a.id === c.accountId ? { ...a, current_balance: newBalance } : a));
+                                        }
+                                        setSetAsideDone((prev) => ({ ...prev, [saKey]: true }));
+                                      }}
+                                      style={{ background: "rgba(108,99,255,0.15)", border: "1px solid rgba(108,99,255,0.4)", color: "#6C63FF", padding: "4px 10px", borderRadius: "6px", cursor: "pointer", fontSize: "11px", fontFamily: "'Inter', sans-serif", fontWeight: "500" }}
+                                    >
+                                      Transfer
+                                    </button>
+                                  )}
+                                </div>
                               </div>
-                              <span style={{ fontFamily: "'DM Mono', monospace", fontSize: "13px", color: "#6C63FF" }}>${c.amount % 1 === 0 ? c.amount.toLocaleString() : c.amount.toFixed(2)}</span>
-                            </div>
-                          ))}
+                            );
+                          })}
                         </div>
                       )}
 
