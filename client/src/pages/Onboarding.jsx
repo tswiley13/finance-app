@@ -864,7 +864,7 @@ function Onboarding({ onComplete }) {
     return (
       <div style={{ minHeight: "100vh", background: "#13111F", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", fontFamily: "'Inter', sans-serif", padding: "40px 20px" }}>
         <div style={{ marginBottom: "28px", textAlign: "center" }}>
-          <div style={{ fontSize: "20px", fontWeight: "800", letterSpacing: "0.06em", color: "#F0F6FC", textTransform: "uppercase" }}>Stryde</div>
+          <div style={{ fontSize: "28px", fontWeight: "900", letterSpacing: "0.12em", color: "#F0F6FC", textTransform: "uppercase" }}>Stryde</div>
         </div>
         <div style={{ display: "flex", gap: "6px", marginBottom: "28px" }}>
           {[1,2,3,4,5].map(s => (

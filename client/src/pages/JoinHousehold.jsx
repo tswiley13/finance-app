@@ -104,7 +104,7 @@ function JoinHousehold() {
     <div style={{ minHeight: "100vh", background: "#13111F", fontFamily: "'Inter', sans-serif", display: "flex", flexDirection: "column" }}>
       {/* Top bar */}
       <div className="auth-topbar">
-        <div style={{ fontSize: "20px", fontWeight: "800", letterSpacing: "0.08em", color: "#F0F6FC", textTransform: "uppercase" }}>
+        <div style={{ fontSize: "28px", fontWeight: "900", letterSpacing: "0.12em", color: "#F0F6FC", textTransform: "uppercase" }}>
           Stryde
         </div>
       </div>

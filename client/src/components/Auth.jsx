@@ -131,9 +131,9 @@ function AuthPage() {
       <div className="auth-topbar">
         <div
           style={{
-            fontSize: "20px",
-            fontWeight: "800",
-            letterSpacing: "0.08em",
+            fontSize: "28px",
+            fontWeight: "900",
+            letterSpacing: "0.12em",
             color: "#F0F6FC",
             textTransform: "uppercase",
           }}
@@ -170,8 +170,7 @@ function AuthPage() {
                 marginBottom: "40px",
               }}
             >
-              Paycheck to paycheck planning built for military families and
-              everyday households.
+              Real financial planning for every household.
             </div>
             <div
               style={{ display: "flex", flexDirection: "column", gap: "16px" }}
