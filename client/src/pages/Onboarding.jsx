@@ -1248,7 +1248,7 @@ function Onboarding({ onComplete }) {
                         <div style={{ fontSize: "12px", color: "#6C63FF" }}>→ {depositAcct.name}</div>
                       )}
                       {card.nextPayDate && (
-                        <div style={{ fontSize: "12px", color: "#8B8FA8" }}>Next: {new Date(card.nextPayDate).toLocaleDateString("en-US", { month: "short", day: "numeric" })}</div>
+                        <div style={{ fontSize: "12px", color: "#8B8FA8" }}>Last: {new Date(card.nextPayDate).toLocaleDateString("en-US", { month: "short", day: "numeric" })}</div>
                       )}
                     </div>
                   );
@@ -1313,7 +1313,7 @@ function Onboarding({ onComplete }) {
                     </div>
 
                     <div>
-                      <label style={cardLabel}>Next Deposit Date</label>
+                      <label style={cardLabel}>Last Deposit Date</label>
                       <input style={cardInput} type="date" value={card.nextPayDate} onChange={(e) => updateIncomeCard(index, { nextPayDate: e.target.value })} />
                     </div>
 
