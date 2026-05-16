@@ -11,6 +11,7 @@ import {
   TrendingDown,
   Settings,
   LogOut,
+  UserPlus,
 } from "lucide-react";
 
 const css = `
@@ -99,6 +100,7 @@ function Dashboard() {
   const [activeNav, setActiveNav] = useState(
     localStorage.getItem("activeNav") || "dashboard",
   );
+  const [scrollToInvite, setScrollToInvite] = useState(false);
   const [editingBill, setEditingBill] = useState(null);
   const [billName, setBillName] = useState("");
   const [billAmount, setBillAmount] = useState("");
@@ -176,6 +178,15 @@ function Dashboard() {
     localStorage.setItem("activeNav", page);
     setActiveNav(page);
   }
+
+  useEffect(() => {
+    if (scrollToInvite && activeNav === "settings") {
+      setTimeout(() => {
+        document.getElementById("invite-section")?.scrollIntoView({ behavior: "smooth", block: "center" });
+        setScrollToInvite(false);
+      }, 100);
+    }
+  }, [scrollToInvite, activeNav]);
 
   useEffect(() => {
     async function loadData() {
@@ -2089,7 +2100,7 @@ function Dashboard() {
               )}
             </div>
 
-            <div className="row-item">
+            <div className="row-item" id="invite-section">
               <div>
                 <div className="row-name">Invite Code</div>
                 <div className="row-sub">
@@ -4877,6 +4888,13 @@ function Dashboard() {
             </button>
           ))}
           <div className="nav-label">Account</div>
+          <button
+            className="nav-item"
+            onClick={() => { navigate("settings"); setScrollToInvite(true); }}
+          >
+            <UserPlus size={16} />
+            Invite Member
+          </button>
           <button
             className={`nav-item ${activeNav === "settings" ? "active" : ""}`}
             onClick={() => navigate("settings")}

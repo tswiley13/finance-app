@@ -3,8 +3,12 @@ import AuthPage from "../components/Auth";
 
 function Landing() {
   const [showAuth, setShowAuth] = useState(false);
+  const [signUp, setSignUp] = useState(false);
 
-  if (showAuth) return <AuthPage />;
+  function goToSignUp() { setSignUp(true); setShowAuth(true); }
+  function goToSignIn() { setSignUp(false); setShowAuth(true); }
+
+  if (showAuth) return <AuthPage defaultSignUp={signUp} />;
 
   return (
     <div style={{ minHeight: "100vh", background: "#13111F", fontFamily: "'Inter', sans-serif", color: "#F0F6FC" }}>
@@ -16,13 +20,13 @@ function Landing() {
           <a href="#features" style={{ fontSize: "14px", color: "#8B8FA8", textDecoration: "none" }}>Features</a>
           <a href="#pricing" style={{ fontSize: "14px", color: "#8B8FA8", textDecoration: "none" }}>Pricing</a>
           <button
-            onClick={() => setShowAuth(true)}
+            onClick={goToSignIn}
             style={{ fontSize: "14px", color: "#8B8FA8", background: "none", border: "none", cursor: "pointer", fontFamily: "'Inter', sans-serif" }}
           >
             Sign In
           </button>
           <button
-            onClick={() => setShowAuth(true)}
+            onClick={goToSignUp}
             style={{ fontSize: "14px", fontWeight: "700", color: "#13111F", background: "linear-gradient(135deg, #6C63FF, #948cf2)", border: "none", borderRadius: "8px", padding: "10px 20px", cursor: "pointer", fontFamily: "'Inter', sans-serif" }}
           >
             Get Started Free
@@ -44,7 +48,7 @@ function Landing() {
         </p>
         <div style={{ display: "flex", gap: "16px", justifyContent: "center", alignItems: "center" }}>
           <button
-            onClick={() => setShowAuth(true)}
+            onClick={goToSignUp}
             style={{ fontSize: "16px", fontWeight: "700", color: "#13111F", background: "linear-gradient(135deg, #6C63FF, #948cf2)", border: "none", borderRadius: "10px", padding: "16px 36px", cursor: "pointer", fontFamily: "'Inter', sans-serif" }}
           >
             Start Free Trial
@@ -177,7 +181,7 @@ function Landing() {
                   </div>
                 ))}
               </div>
-              <button onClick={() => setShowAuth(true)} style={{ width: "100%", padding: "13px", background: "none", border: "1px solid #30363D", borderRadius: "8px", color: "#F0F6FC", fontSize: "14px", fontWeight: "600", fontFamily: "'Inter', sans-serif", cursor: "pointer" }}>
+              <button onClick={goToSignUp} style={{ width: "100%", padding: "13px", background: "none", border: "1px solid #30363D", borderRadius: "8px", color: "#F0F6FC", fontSize: "14px", fontWeight: "600", fontFamily: "'Inter', sans-serif", cursor: "pointer" }}>
                 Start Free Trial
               </button>
             </div>
@@ -200,7 +204,7 @@ function Landing() {
                   </div>
                 ))}
               </div>
-              <button onClick={() => setShowAuth(true)} style={{ width: "100%", padding: "13px", background: "linear-gradient(135deg, #6C63FF, #948cf2)", border: "none", borderRadius: "8px", color: "#13111F", fontSize: "14px", fontWeight: "700", fontFamily: "'Inter', sans-serif", cursor: "pointer" }}>
+              <button onClick={goToSignUp} style={{ width: "100%", padding: "13px", background: "linear-gradient(135deg, #6C63FF, #948cf2)", border: "none", borderRadius: "8px", color: "#13111F", fontSize: "14px", fontWeight: "700", fontFamily: "'Inter', sans-serif", cursor: "pointer" }}>
                 Get Started
               </button>
             </div>
@@ -220,7 +224,7 @@ function Landing() {
                   </div>
                 ))}
               </div>
-              <button onClick={() => setShowAuth(true)} style={{ width: "100%", padding: "13px", background: "none", border: "1px solid #30363D", borderRadius: "8px", color: "#F0F6FC", fontSize: "14px", fontWeight: "600", fontFamily: "'Inter', sans-serif", cursor: "pointer" }}>
+              <button onClick={goToSignUp} style={{ width: "100%", padding: "13px", background: "none", border: "1px solid #30363D", borderRadius: "8px", color: "#F0F6FC", fontSize: "14px", fontWeight: "600", fontFamily: "'Inter', sans-serif", cursor: "pointer" }}>
                 Verify & Get Discount
               </button>
             </div>
@@ -238,7 +242,7 @@ function Landing() {
           Join households already planning ahead with Stryde.
         </p>
         <button
-          onClick={() => setShowAuth(true)}
+          onClick={goToSignUp}
           style={{ fontSize: "16px", fontWeight: "700", color: "#13111F", background: "linear-gradient(135deg, #6C63FF, #948cf2)", border: "none", borderRadius: "10px", padding: "16px 40px", cursor: "pointer", fontFamily: "'Inter', sans-serif" }}
         >
           Start Free Trial

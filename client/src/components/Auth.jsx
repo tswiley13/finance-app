@@ -1,12 +1,12 @@
 import { useState } from "react";
 import { supabase } from "../supabase";
 
-function AuthPage() {
+function AuthPage({ defaultSignUp = false }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [isSignUp, setIsSignUp] = useState(false);
+  const [isSignUp, setIsSignUp] = useState(defaultSignUp);
   const [signedUp, setSignedUp] = useState(false);
   const [resendLoading, setResendLoading] = useState(false);
   const [resendMessage, setResendMessage] = useState(null);
@@ -20,9 +20,8 @@ function AuthPage() {
       const { error } = await supabase.auth.signUp({ email, password });
       if (error) {
         setError(error.message);
-      } else {
-        setSignedUp(true);
       }
+      // On success, onAuthStateChange in App.jsx handles routing
     } else {
       const { error } = await supabase.auth.signInWithPassword({
         email,
