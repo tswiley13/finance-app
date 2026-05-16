@@ -881,10 +881,18 @@ function Onboarding({ onComplete }) {
         <div style={{ marginBottom: "28px", textAlign: "center" }}>
           <div style={{ fontSize: "28px", fontWeight: "900", letterSpacing: "0.12em", color: "#F0F6FC", textTransform: "uppercase" }}>Stryde</div>
         </div>
-        <div style={{ display: "flex", gap: "6px", marginBottom: "28px" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: "28px", position: "relative", width: "100%", maxWidth: "540px", justifyContent: "center" }}>
           {[1,2,3,4,5].map(s => (
             <div key={s} style={{ width: "32px", height: "3px", borderRadius: "2px", background: s <= stepNum ? "#6C63FF" : "rgba(255,255,255,0.08)" }} />
           ))}
+          {stepNum > 1 && (
+            <button
+              onClick={onComplete}
+              style={{ position: "absolute", right: 0, background: "none", border: "none", color: "#6E7681", fontSize: "12px", cursor: "pointer", padding: "4px 0", fontFamily: "'Inter', sans-serif" }}
+            >
+              Finish Later
+            </button>
+          )}
         </div>
         <div style={{ width: "100%", maxWidth, background: "#1A1826", borderRadius: "16px", border: "1px solid rgba(255,255,255,0.06)", padding: "40px" }}>
           <div style={{ marginBottom: "28px" }}>
