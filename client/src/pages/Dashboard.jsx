@@ -17,20 +17,19 @@ const css = `
   @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap');
 
   * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { background: #0F0E17; color: #F0F6FC; font-family: 'Inter', sans-serif; -webkit-font-smoothing: antialiased; }
+  body { background: #13111F; color: #F0F6FC; font-family: 'Inter', sans-serif; -webkit-font-smoothing: antialiased; }
 
   .app-shell { display: flex; min-height: 100vh; }
 
-  .sidebar { 
-    width: 260px; flex-shrink: 0; background: #13111F; 
-    border-right: 1px solid rgba(255,255,255,0.06); 
-    display: flex; flex-direction: column; 
-    position: fixed; top: 0; left: 0; bottom: 0; 
+  .sidebar {
+    width: 260px; flex-shrink: 0; background: #13111F;
+    display: flex; flex-direction: column;
+    position: fixed; top: 0; left: 0; bottom: 0;
   }
 
-  .sidebar-logo { padding: 24px 20px 20px; border-bottom: 1px solid rgba(255,255,255,0.06); }
-  .logo-text { font-size: 17px; font-weight: 800; letter-spacing: 0.06em; color: #F0F6FC; text-transform: uppercase; }
-  .logo-tag { font-size: 9px; color: #6C63FF; letter-spacing: 0.2em; text-transform: uppercase; margin-top: 2px; font-weight: 500; }
+  .sidebar-logo { height: 88px; padding: 0 20px; display: flex; flex-direction: column; justify-content: center; border-bottom: 1px solid rgba(255,255,255,0.06); flex-shrink: 0; }
+  .logo-text { font-size: 22px; font-weight: 800; letter-spacing: 0.06em; color: #F0F6FC; text-transform: uppercase; }
+  .logo-tag { font-size: 11px; color: #6C63FF; letter-spacing: 0.2em; text-transform: uppercase; margin-top: 3px; font-weight: 500; }
 
   .nav { padding: 8px 12px; flex: 1; display: flex; flex-direction: column; gap: 1px; overflow-y: auto; }
   .nav-label { font-size: 9px; color: #5C6080; letter-spacing: 0.15em; text-transform: uppercase; padding: 0 8px; margin: 20px 0 4px; font-weight: 600; }
@@ -46,22 +45,22 @@ const css = `
 
   .main { margin-left: 260px; flex: 1; min-width: 0; padding: 0; }
 
-  .topbar { display: flex; justify-content: space-between; align-items: center; padding: 24px 32px; border-bottom: 1px solid rgba(255,255,255,0.05); margin-bottom: 0; }
+  .topbar { display: flex; justify-content: space-between; align-items: center; height: 88px; padding: 0 32px; border-bottom: 1px solid rgba(255,255,255,0.05); margin-bottom: 0; }
   .welcome-name { font-size: 20px; font-weight: 700; color: #F0F6FC; letter-spacing: -0.02em; }
   .welcome-date { font-size: 12px; color: #8B8FA8; margin-top: 3px; }
 
   .period-badge { background: rgba(108,99,255,0.08); border: 1px solid rgba(108,99,255,0.2); border-radius: 10px; padding: 10px 16px; text-align: center; }
   .period-label { font-size: 13px; font-weight: 600; color: #F0F6FC; margin-bottom: 4px; }
   .period-name { font-size: 13px; font-weight: 600; color: #F0F6FC; margin-top: 3px; }
-  .period-dates { font-size: 13px; color: #6C63FF; margin-top: 6px; font-family: 'DM Mono', monospace; }
+  .period-dates { font-size: 13px; color: #00D4AA; margin-top: 6px; font-family: 'DM Mono', monospace; }
 
   .content-area { padding: 28px 32px 60px; width: 100%; }
 
   .stat-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 28px; }
   .stat-card { background: #1A1826; border: 1px solid rgba(255,255,255,0.06); border-radius: 12px; padding: 20px 22px; position: relative; overflow: hidden; }
-  .stat-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 1px; background: linear-gradient(90deg, rgba(108,99,255,0.8), transparent); }
+  .stat-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 1px; background: linear-gradient(90deg, rgba(0,212,170,0.8), transparent); }
   .stat-label { font-size: 10px; color: #8B8FA8; letter-spacing: 0.1em; text-transform: uppercase; font-weight: 600; margin-bottom: 10px; }
-  .stat-amount { font-family: 'DM Mono', monospace; font-size: 26px; font-weight: 500; color: #6C63FF; line-height: 1; }
+  .stat-amount { font-family: 'DM Mono', monospace; font-size: 26px; font-weight: 500; color: #00D4AA; line-height: 1; }
   .stat-amount.neutral { color: #4ADE80; }
   .stat-amount.negative { color: #F87171; }
 
@@ -69,7 +68,8 @@ const css = `
   .dashboard-left { display: flex; flex-direction: column; gap: 12px; }
   .dashboard-right { display: flex; flex-direction: column; gap: 12px; }
 
-  .panel { background: #1A1826; border: 1px solid rgba(255,255,255,0.06); border-radius: 12px; padding: 20px; }
+  .panel { background: #1A1826; border: 1px solid rgba(255,255,255,0.06); border-radius: 12px; padding: 20px; transition: border-color 0.2s ease, box-shadow 0.2s ease; }
+  .panel:hover { border-color: rgba(0,212,170,0.3); box-shadow: 0 0 0 1px rgba(0,212,170,0.1), 0 4px 20px rgba(0,212,170,0.05); }
   .panel-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
   .panel-title { font-size: 11px; color: #8B8FA8; letter-spacing: 0.1em; text-transform: uppercase; font-weight: 600; }
   .panel-count { font-size: 11px; color: #8B8FA8; font-family: 'DM Mono', monospace; }
@@ -78,11 +78,11 @@ const css = `
   .row-item:last-child { border-bottom: none; }
   .row-name { font-size: 13.5px; color: #F0F6FC; font-weight: 500; }
   .row-sub { font-size: 11px; color: #8B8FA8; margin-top: 3px; }
-  .row-amount { font-family: 'DM Mono', monospace; font-size: 14px; color: #6C63FF; font-weight: 500; }
+  .row-amount { font-family: 'DM Mono', monospace; font-size: 14px; color: #00D4AA; font-weight: 500; }
   .empty-state { font-size: 13px; color: #5C6080; font-style: italic; padding: 16px 0; }
 
   .accumulating-bar { height: 2px; background: rgba(255,255,255,0.06); border-radius: 2px; margin-top: 8px; overflow: hidden; }
-  .accumulating-fill { height: 100%; background: linear-gradient(90deg, #6C63FF, #948cf2); border-radius: 2px; }
+  .accumulating-fill { height: 100%; background: linear-gradient(90deg, #00D4AA, #6C63FF); border-radius: 2px; }
 
   .tag { display: inline-block; font-size: 9px; letter-spacing: 0.08em; text-transform: uppercase; padding: 2px 7px; border-radius: 4px; background: rgba(108,99,255,0.15); color: #6C63FF; margin-left: 8px; vertical-align: middle; font-weight: 600; }
 
@@ -1353,7 +1353,7 @@ function Dashboard() {
                   setDebtPayoffOrder("");
                 }}
                 style={{
-                  background: "#6C63FF",
+                  background: "#00D4AA",
                   border: "none",
                   color: "#0F1218",
                   padding: "8px 16px",
@@ -1587,7 +1587,7 @@ function Dashboard() {
                     <div
                       style={{
                         background: "#13111F",
-                        border: "1px solid rgba(108,99,255,0.3)",
+                        border: "1px solid rgba(0,212,170,0.3)",
                         borderRadius: "8px",
                         padding: "16px",
                         margin: "8px 0 4px",
@@ -1889,7 +1889,7 @@ function Dashboard() {
               dates. If your pay schedule changes, update your income's next
               deposit date on the{" "}
               <span
-                style={{ color: "#6C63FF", cursor: "pointer" }}
+                style={{ color: "#00D4AA", cursor: "pointer" }}
                 onClick={() => navigate("income")}
               >
                 Income page
@@ -1929,7 +1929,7 @@ function Dashboard() {
                               style={{
                                 marginLeft: "10px",
                                 fontSize: "9px",
-                                background: "#6C63FF",
+                                background: "#00D4AA",
                                 color: "#0F1218",
                                 padding: "2px 8px",
                                 borderRadius: "4px",
@@ -2002,7 +2002,7 @@ function Dashboard() {
                                   onFocus={(e) => e.target.select()}
                     style={{
                       background: "#2D2B45",
-                      border: "1px solid #6C63FF",
+                      border: "1px solid #00D4AA",
                       color: "#E8E6E1",
                       padding: "4px 8px",
                       borderRadius: "6px",
@@ -2088,7 +2088,7 @@ function Dashboard() {
                   style={{
                     fontFamily: "'DM Mono', monospace",
                     fontSize: "14px",
-                    color: "#6C63FF",
+                    color: "#00D4AA",
                     letterSpacing: "0.1em",
                   }}
                 >
@@ -2389,7 +2389,7 @@ function Dashboard() {
             <button
               onClick={() => setShowCategoryForm(!showCategoryForm)}
               style={{
-                background: "#6C63FF",
+                background: "#00D4AA",
                 border: "none",
                 color: "#0F1218",
                 padding: "8px 16px",
@@ -2537,7 +2537,7 @@ function Dashboard() {
                 setShowAccountForm(true);
               }}
               style={{
-                background: "#6C63FF",
+                background: "#00D4AA",
                 border: "none",
                 color: "#0C0E14",
                 padding: "8px 16px",
@@ -2839,7 +2839,7 @@ function Dashboard() {
                                   onFocus={(e) => e.target.select()}
                           style={{
                             background: "#2D2B45",
-                            border: "1px solid #6C63FF",
+                            border: "1px solid #00D4AA",
                             color: "#F0F6FC",
                             padding: "4px 8px",
                             borderRadius: "6px",
@@ -2959,7 +2959,7 @@ function Dashboard() {
                     <div
                       style={{
                         background: "#13111F",
-                        border: "1px solid rgba(108,99,255,0.3)",
+                        border: "1px solid rgba(0,212,170,0.3)",
                         borderRadius: "8px",
                         padding: "16px",
                         margin: "8px 0 4px",
@@ -3223,7 +3223,7 @@ function Dashboard() {
                 setDepositAccountId("");
               }}
               style={{
-                background: "#6C63FF",
+                background: "#00D4AA",
                 border: "none",
                 color: "#0F1218",
                 padding: "8px 16px",
@@ -3364,7 +3364,7 @@ function Dashboard() {
                                   onFocus={(e) => e.target.select()}
                             style={{
                               background: "#2D2B45",
-                              border: "1px solid #6C63FF",
+                              border: "1px solid #00D4AA",
                               color: "#F0F6FC",
                               padding: "4px 8px",
                               borderRadius: "6px",
@@ -3476,7 +3476,7 @@ function Dashboard() {
                       <div
                         style={{
                           background: "#13111F",
-                          border: "1px solid rgba(108,99,255,0.3)",
+                          border: "1px solid rgba(0,212,170,0.3)",
                           borderRadius: "8px",
                           padding: "16px",
                           margin: "8px 0 4px",
@@ -3705,7 +3705,7 @@ function Dashboard() {
                 setIsVariable(false);
               }}
               style={{
-                background: "#6C63FF",
+                background: "#00D4AA",
                 border: "none",
                 color: "#0F1218",
                 padding: "8px 16px",
@@ -3848,7 +3848,7 @@ function Dashboard() {
                                   onFocus={(e) => e.target.select()}
                             style={{
                               background: "#2D2B45",
-                              border: "1px solid #6C63FF",
+                              border: "1px solid #00D4AA",
                               color: "#F0F6FC",
                               padding: "4px 8px",
                               borderRadius: "6px",
@@ -3941,7 +3941,7 @@ function Dashboard() {
                       <div
                         style={{
                           background: "#13111F",
-                          border: "1px solid rgba(108,99,255,0.3)",
+                          border: "1px solid rgba(0,212,170,0.3)",
                           borderRadius: "8px",
                           padding: "16px",
                           margin: "8px 0 4px",
@@ -4279,8 +4279,8 @@ function Dashboard() {
                           <span
                             style={{
                               fontSize: "9px",
-                              background: "#6C63FF",
-                              color: "#F0F6FC",
+                              background: "#00D4AA",
+                              color: "#0F1218",
                               padding: "2px 8px",
                               borderRadius: "4px",
                               letterSpacing: "0.08em",
@@ -4558,7 +4558,7 @@ function Dashboard() {
                                   onFocus={(e) => e.target.select()}
                           style={{
                             background: "#2D2B45",
-                            border: "1px solid #6C63FF",
+                            border: "1px solid #00D4AA",
                             color: "#F0F6FC",
                             padding: "4px 8px",
                             borderRadius: "6px",
@@ -4656,14 +4656,14 @@ function Dashboard() {
                             </div>
                             {subtitle && <div className="row-sub">{subtitle}</div>}
                             {transferred > 0 && !done && (
-                              <div style={{ fontSize: "10px", color: "#948cf2", marginTop: "2px" }}>
+                              <div style={{ fontSize: "10px", color: "#00D4AA", marginTop: "2px" }}>
                                 ${fmt(transferred)} transferred · ${fmt(remaining)} remaining
                               </div>
                             )}
                           </div>
                           <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
                             {!done && (
-                              <div className="row-amount" style={{ color: remaining < suggestedAmount ? "#948cf2" : "#F0F6FC" }}>
+                              <div className="row-amount" style={{ color: remaining < suggestedAmount ? "#00D4AA" : "#F0F6FC" }}>
                                 ${fmt(remaining)}
                               </div>
                             )}
@@ -4679,11 +4679,11 @@ function Dashboard() {
                                   }}
                                   autoFocus
                                   onFocus={(e) => e.target.select()}
-                                  style={{ background: "#2D2B45", border: "1px solid #6C63FF", color: "#F0F6FC", padding: "4px 8px", borderRadius: "6px", fontSize: "13px", fontFamily: "'DM Mono', monospace", width: "90px", textAlign: "right" }}
+                                  style={{ background: "#2D2B45", border: "1px solid #00D4AA", color: "#F0F6FC", padding: "4px 8px", borderRadius: "6px", fontSize: "13px", fontFamily: "'DM Mono', monospace", width: "90px", textAlign: "right" }}
                                 />
                                 <button
                                   onClick={() => confirmTransfer(accountId, transferAmount)}
-                                  style={{ background: "#6C63FF", border: "none", color: "#F0F6FC", padding: "4px 10px", borderRadius: "6px", cursor: "pointer", fontSize: "11px", fontFamily: "'Inter', sans-serif", fontWeight: "600" }}
+                                  style={{ background: "#00D4AA", border: "none", color: "#0F1218", padding: "4px 10px", borderRadius: "6px", cursor: "pointer", fontSize: "11px", fontFamily: "'Inter', sans-serif", fontWeight: "600" }}
                                 >
                                   Confirm
                                 </button>
@@ -4697,7 +4697,7 @@ function Dashboard() {
                             ) : !done ? (
                               <button
                                 onClick={() => { setTransferringId(accountId); setTransferAmount(remaining.toFixed(2)); }}
-                                style={{ background: "rgba(108,99,255,0.15)", border: "1px solid rgba(108,99,255,0.4)", color: "#948cf2", padding: "4px 10px", borderRadius: "6px", cursor: "pointer", fontSize: "11px", fontFamily: "'Inter', sans-serif", fontWeight: "500" }}
+                                style={{ background: "rgba(0,212,170,0.1)", border: "1px solid rgba(0,212,170,0.4)", color: "#00D4AA", padding: "4px 10px", borderRadius: "6px", cursor: "pointer", fontSize: "11px", fontFamily: "'Inter', sans-serif", fontWeight: "500" }}
                               >
                                 Transfer
                               </button>

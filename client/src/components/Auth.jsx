@@ -8,6 +8,8 @@ function AuthPage() {
   const [error, setError] = useState(null);
   const [isSignUp, setIsSignUp] = useState(false);
   const [signedUp, setSignedUp] = useState(false);
+  const [resendLoading, setResendLoading] = useState(false);
+  const [resendMessage, setResendMessage] = useState(null);
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -31,12 +33,20 @@ function AuthPage() {
     setLoading(false);
   }
 
+  async function handleResend() {
+    setResendLoading(true);
+    setResendMessage(null);
+    const { error } = await supabase.auth.resend({ type: "signup", email });
+    setResendMessage(error ? "Couldn't resend. Try again in a moment." : "Sent! Check your inbox.");
+    setResendLoading(false);
+  }
+
   if (signedUp) {
     return (
       <div
         style={{
           minHeight: "100vh",
-          background: "#0D1117",
+          background: "#13111F",
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
@@ -85,6 +95,23 @@ function AuthPage() {
             <span style={{ color: "#6C63FF" }}>{email}</span>. Click it to
             activate your account.
           </div>
+          <div style={{ marginTop: "28px", paddingTop: "24px", borderTop: "1px solid rgba(255,255,255,0.06)" }}>
+            {resendMessage ? (
+              <div style={{ fontSize: "13px", color: resendMessage.startsWith("Sent") ? "#00D4AA" : "#F87171" }}>
+                {resendMessage}
+              </div>
+            ) : (
+              <div style={{ fontSize: "13px", color: "#6E7681" }}>
+                Didn't receive it?{" "}
+                <span
+                  onClick={resendLoading ? undefined : handleResend}
+                  style={{ color: "#6C63FF", cursor: resendLoading ? "default" : "pointer", fontWeight: "600" }}
+                >
+                  {resendLoading ? "Sending..." : "Resend confirmation"}
+                </span>
+              </div>
+            )}
+          </div>
         </div>
       </div>
     );
@@ -94,7 +121,7 @@ function AuthPage() {
     <div
       style={{
         minHeight: "100vh",
-        background: "#0D1117",
+        background: "#13111F",
         fontFamily: "'Inter', sans-serif",
         display: "flex",
         flexDirection: "column",
@@ -278,18 +305,8 @@ function AuthPage() {
                   placeholder="you@example.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  style={{
-                    width: "100%",
-                    padding: "12px 14px",
-                    background: "#0D1117",
-                    border: "1px solid #30363D",
-                    borderRadius: "8px",
-                    color: "#F0F6FC",
-                    fontSize: "14px",
-                    fontFamily: "'Inter', sans-serif",
-                    outline: "none",
-                    boxSizing: "border-box",
-                  }}
+                  className="auth-input"
+                  style={{ fontSize: "14px" }}
                 />
               </div>
               <div>
@@ -311,18 +328,8 @@ function AuthPage() {
                   placeholder="••••••••"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  style={{
-                    width: "100%",
-                    padding: "12px 14px",
-                    background: "#0D1117",
-                    border: "1px solid #30363D",
-                    borderRadius: "8px",
-                    color: "#F0F6FC",
-                    fontSize: "14px",
-                    fontFamily: "'Inter', sans-serif",
-                    outline: "none",
-                    boxSizing: "border-box",
-                  }}
+                  className="auth-input"
+                  style={{ fontSize: "14px" }}
                 />
               </div>
 
@@ -350,7 +357,7 @@ function AuthPage() {
                   background: "linear-gradient(135deg, #6C63FF, #948cf2)",
                   border: "none",
                   borderRadius: "8px",
-                  color: "#0D1117",
+                  color: "#13111F",
                   fontSize: "14px",
                   fontWeight: "700",
                   fontFamily: "'Inter', sans-serif",

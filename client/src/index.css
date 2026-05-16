@@ -4,6 +4,33 @@
   padding: 0;
 }
 
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus {
+  -webkit-box-shadow: 0 0 0px 1000px #13111F inset;
+  -webkit-text-fill-color: #F0F6FC;
+  transition: background-color 5000s ease-in-out 0s;
+}
+
+.auth-input {
+  width: 100%;
+  padding: 12px 14px;
+  background: #13111F;
+  border: 1px solid rgba(108,99,255,0.25);
+  border-radius: 8px;
+  color: #F0F6FC;
+  fontSize: 14px;
+  font-family: 'Inter', sans-serif;
+  outline: none;
+  box-sizing: border-box;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.auth-input:focus {
+  border-color: #6C63FF;
+  box-shadow: 0 0 0 3px rgba(108,99,255,0.15), 0 0 12px rgba(108,99,255,0.1);
+}
+
 body {
   margin: 0;
 }

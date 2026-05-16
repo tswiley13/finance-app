@@ -73,7 +73,7 @@ function JoinHousehold() {
     <div
       style={{
         minHeight: "100vh",
-        background: "#0F1218",
+        background: "#13111F",
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
@@ -213,7 +213,7 @@ function JoinHousehold() {
             style={{
               background: "#E8B84B",
               border: "none",
-              color: "#0F1218",
+              color: "#13111F",
               padding: "12px",
               borderRadius: "6px",
               cursor: "pointer",

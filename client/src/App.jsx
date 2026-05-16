@@ -35,10 +35,9 @@ function App() {
       setCheckingHousehold(true);
       async function checkHousehold() {
         const { data } = await supabase
-          .from("household_members")
-          .select("household_id")
-          .eq("user_id", session.user.id)
-          .limit(1)
+          .from("households")
+          .select("id")
+          .eq("created_by", session.user.id)
           .maybeSingle();
 
         if (data) {
@@ -58,7 +57,7 @@ function App() {
 
   if (session === undefined || checkingHousehold) {
     return (
-      <div style={{ minHeight: "100vh", background: "#0F1218", opacity: 0 }} />
+      <div style={{ minHeight: "100vh", background: "#13111F", opacity: 0 }} />
     );
   }
 
