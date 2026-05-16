@@ -4295,7 +4295,12 @@ function Dashboard() {
                   const dueDate = new Date(currentYear, currentMonth, b.due_day);
                   return dueDate.getMonth() === currentMonth && dueDate.getFullYear() === currentYear;
                 })
-                .reduce((sum, b) => sum + (b.amount || 0), 0);
+                .reduce((sum, b) => {
+                  const amount = b.amount || 0;
+                  const acct = accounts.find((a) => a.id === b.account_id && a.is_accumulating);
+                  const saved = acct ? Math.min(acct.current_balance || 0, amount) : 0;
+                  return sum + Math.max(0, amount - saved);
+                }, 0);
               const leftAfterBills = primaryBalance - remainingBills;
               return (
                 <>
