@@ -4291,13 +4291,17 @@ function Dashboard() {
               const currentYear = now.getFullYear();
               const remainingBills = bills
                 .filter((b) => {
-                  if (b.is_paid) return false;
-                  const dueDate = new Date(currentYear, currentMonth, b.due_day);
-                  return dueDate.getMonth() === currentMonth && dueDate.getFullYear() === currentYear;
+                  if (!isBillDue(b)) return false;
+                  // Advance to next month if due_day has already passed this month
+                  let dueDate = new Date(currentYear, currentMonth, b.due_day);
+                  if (dueDate < now) dueDate = new Date(currentYear, currentMonth + 1, b.due_day);
+                  return dueDate.getMonth() === now.getMonth() && dueDate.getFullYear() === now.getFullYear();
                 })
                 .reduce((sum, b) => {
                   const amount = b.amount || 0;
-                  const acct = accounts.find((a) => a.id === b.account_id && a.is_accumulating);
+                  const acct = accounts.find((a) =>
+                    (a.id === b.account_id || a.id === b.transfer_to_account_id) && a.is_accumulating
+                  );
                   const saved = acct ? Math.min(acct.current_balance || 0, amount) : 0;
                   return sum + Math.max(0, amount - saved);
                 }, 0);
