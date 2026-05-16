@@ -129,30 +129,16 @@ function AuthPage() {
     >
       {/* Top bar */}
       <div className="auth-topbar">
-        <div>
-          <div
-            style={{
-              fontSize: "11px",
-              fontWeight: "700",
-              letterSpacing: "0.2em",
-              color: "#6C63FF",
-              textTransform: "uppercase",
-              marginBottom: "2px",
-            }}
-          >
-            Bravo Six
-          </div>
-          <div
-            style={{
-              fontSize: "20px",
-              fontWeight: "800",
-              letterSpacing: "0.08em",
-              color: "#F0F6FC",
-              textTransform: "uppercase",
-            }}
-          >
-            Slate
-          </div>
+        <div
+          style={{
+            fontSize: "20px",
+            fontWeight: "800",
+            letterSpacing: "0.08em",
+            color: "#F0F6FC",
+            textTransform: "uppercase",
+          }}
+        >
+          Stryde
         </div>
       </div>
 
@@ -171,9 +157,9 @@ function AuthPage() {
                 marginBottom: "24px",
               }}
             >
-              Don't go
+              Stop guessing.
               <br />
-              <span style={{ color: "#6C63FF" }}>dark.</span>
+              <span style={{ color: "#6C63FF" }}>Start knowing.</span>
             </div>
             <div
               style={{
@@ -245,7 +231,7 @@ function AuthPage() {
               <div style={{ fontSize: "14px", color: "#6E7681" }}>
                 {isSignUp
                   ? "Start managing your finances today"
-                  : "Sign in to continue to Slate"}
+                  : "Sign in to continue to Stryde"}
               </div>
             </div>
 
@@ -368,7 +354,7 @@ function AuthPage() {
       {/* Footer */}
       <div className="auth-footer">
         <div style={{ fontSize: "12px", color: "#484F58" }}>
-          © 2026 Bravo Six. All rights reserved.
+          © 2026 Stryde. All rights reserved.
         </div>
         <div style={{ fontSize: "12px", color: "#484F58" }}>
           Built for those who serve.

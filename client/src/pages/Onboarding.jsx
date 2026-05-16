@@ -864,8 +864,7 @@ function Onboarding({ onComplete }) {
     return (
       <div style={{ minHeight: "100vh", background: "#13111F", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", fontFamily: "'Inter', sans-serif", padding: "40px 20px" }}>
         <div style={{ marginBottom: "28px", textAlign: "center" }}>
-          <div style={{ fontSize: "9px", color: "#6C63FF", letterSpacing: "0.2em", textTransform: "uppercase", fontWeight: "600", marginBottom: "2px" }}>Bravo Six</div>
-          <div style={{ fontSize: "20px", fontWeight: "800", letterSpacing: "0.06em", color: "#F0F6FC", textTransform: "uppercase" }}>Slate</div>
+          <div style={{ fontSize: "20px", fontWeight: "800", letterSpacing: "0.06em", color: "#F0F6FC", textTransform: "uppercase" }}>Stryde</div>
         </div>
         <div style={{ display: "flex", gap: "6px", marginBottom: "28px" }}>
           {[1,2,3,4,5].map(s => (
@@ -885,7 +884,7 @@ function Onboarding({ onComplete }) {
   }
 
   if (step === 1) {
-    return shell(1, "Name your household", "This is how you and your household will be identified in Slate.", (
+    return shell(1, "Name your household", "This is how you and your household will be identified in Stryde.", (
       <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
         <div>
           <label style={labelStyle}>Household Name</label>
@@ -1411,7 +1410,7 @@ function Onboarding({ onComplete }) {
   }
 
   if (step === 5) {
-    return shell(5, "Add your bills", "Add your recurring monthly bills. Slate will use these to calculate your pay period budget.", (
+    return shell(5, "Add your bills", "Add your recurring monthly bills. Stryde will use these to calculate your pay period budget.", (
       <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
           <div style={{ gridColumn: "1 / -1" }}>

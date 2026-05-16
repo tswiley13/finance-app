@@ -104,13 +104,8 @@ function JoinHousehold() {
     <div style={{ minHeight: "100vh", background: "#13111F", fontFamily: "'Inter', sans-serif", display: "flex", flexDirection: "column" }}>
       {/* Top bar */}
       <div className="auth-topbar">
-        <div>
-          <div style={{ fontSize: "11px", fontWeight: "700", letterSpacing: "0.2em", color: "#6C63FF", textTransform: "uppercase", marginBottom: "2px" }}>
-            Bravo Six
-          </div>
-          <div style={{ fontSize: "20px", fontWeight: "800", letterSpacing: "0.08em", color: "#F0F6FC", textTransform: "uppercase" }}>
-            Slate
-          </div>
+        <div style={{ fontSize: "20px", fontWeight: "800", letterSpacing: "0.08em", color: "#F0F6FC", textTransform: "uppercase" }}>
+          Stryde
         </div>
       </div>
 
@@ -126,7 +121,7 @@ function JoinHousehold() {
               <span style={{ color: "#6C63FF" }}>invited.</span>
             </div>
             <div style={{ fontSize: "18px", color: "#6E7681", lineHeight: "1.6", maxWidth: "420px", marginBottom: "40px" }}>
-              Someone added you to their Slate household. Create your account to view shared finances, bills, and pay periods.
+              Someone added you to their Stryde household. Create your account to view shared finances, bills, and pay periods.
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
               {[
@@ -151,7 +146,7 @@ function JoinHousehold() {
                 Create your account
               </div>
               <div style={{ fontSize: "14px", color: "#6E7681" }}>
-                Join your household on Slate
+                Join your household on Stryde
               </div>
             </div>
 
@@ -244,7 +239,7 @@ function JoinHousehold() {
 
       {/* Footer */}
       <div className="auth-footer">
-        <div style={{ fontSize: "12px", color: "#484F58" }}>© 2026 Bravo Six. All rights reserved.</div>
+        <div style={{ fontSize: "12px", color: "#484F58" }}>© 2026 Stryde. All rights reserved.</div>
         <div style={{ fontSize: "12px", color: "#484F58" }}>Built for those who serve.</div>
       </div>
     </div>

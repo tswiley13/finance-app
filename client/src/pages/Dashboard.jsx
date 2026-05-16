@@ -1283,7 +1283,7 @@ function Dashboard() {
         }}
       >
         <style>{css}</style>
-        Loading Slate...
+        Loading Stryde...
       </div>
     );
   }
@@ -4823,8 +4823,8 @@ function Dashboard() {
 
       <aside className="sidebar">
         <div className="sidebar-logo">
-          <div className="logo-text">Slate</div>
-          <div className="logo-tag">Don't go dark.</div>
+          <div className="logo-text">Stryde</div>
+          <div className="logo-tag">Stop guessing. Start knowing.</div>
         </div>
         <nav className="nav">
           <div className="nav-label">Main</div>
