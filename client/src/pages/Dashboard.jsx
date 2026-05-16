@@ -4891,7 +4891,7 @@ function Dashboard() {
                   };
 
                   const billRows = Object.entries(grouped).flatMap(([key, data]) => {
-                    const transferNeeded = Math.max(0, data.total + data.buffer - data.balance);
+                    const transferNeeded = Math.max(0, data.total + data.buffer);
                     if (transferNeeded === 0) return [];
                     const subtitle = data.buffer > 0 ? `Includes $${fmt(data.buffer)} buffer` : null;
                     return [renderTransferRow(key, `Transfer to ${data.acctName}`, transferNeeded, subtitle)];
