@@ -4680,7 +4680,18 @@ function Dashboard() {
                   // Split bills into regular bills and explicit account transfers
                   const periodBills = currentBreakdown?.bills || [];
                   const regularBills = periodBills.filter((b) => !b.transfer_to_account_id);
-                  const transferBills = bills.filter((b) => !!b.transfer_to_account_id && b.is_active && isBillDue(b));
+                  // Non-accumulating transfer bills: show this period's bills at full amount
+                  const periodTransferBills = periodBills.filter((b) => {
+                    if (!b.transfer_to_account_id) return false;
+                    const dest = accounts.find((a) => a.id === b.transfer_to_account_id);
+                    return !dest?.is_accumulating;
+                  });
+                  // Accumulating transfer bills: spread remaining balance over future periods
+                  const transferBills = bills.filter((b) => {
+                    if (!b.transfer_to_account_id || !b.is_active || !isBillDue(b)) return false;
+                    const dest = accounts.find((a) => a.id === b.transfer_to_account_id);
+                    return !!dest?.is_accumulating;
+                  });
 
                   // Group regular bills by source account
                   const grouped = {};
@@ -4795,31 +4806,28 @@ function Dashboard() {
                     return Math.max(1, count);
                   };
 
+                  // Non-accumulating: show full bill amount for this period's transfer bills
+                  const periodTransferRows = periodTransferBills.map((bill) => {
+                    const destAcct = accounts.find((a) => a.id === bill.transfer_to_account_id);
+                    const destName = destAcct ? destAcct.name : "Unknown";
+                    return renderTransferRow(`transfer-${bill.id}`, destName, bill.amount, null);
+                  });
+
+                  // Accumulating: spread remaining balance over future periods
                   const transferRows = transferBills.flatMap((bill) => {
                     const destAcct = accounts.find((a) => a.id === bill.transfer_to_account_id);
                     const destName = destAcct ? destAcct.name : "Unknown";
                     const target = bill.amount;
+                    const saved = Math.min(destAcct?.current_balance || 0, target);
+                    const stillNeeded = Math.max(0, target - saved);
+                    if (stillNeeded === 0) return [];
                     const periods = periodsUntilDue(bill);
-                    const isAccumulating = destAcct?.is_accumulating;
-
-                    let amountThisPeriod;
-                    let subtitle;
-
-                    if (isAccumulating) {
-                      const saved = Math.min(destAcct?.current_balance || 0, target);
-                      const stillNeeded = Math.max(0, target - saved);
-                      if (stillNeeded === 0) return [];
-                      amountThisPeriod = stillNeeded / periods;
-                      subtitle = `$${fmt(saved)} of $${fmt(target)} saved`;
-                    } else {
-                      amountThisPeriod = target / periods;
-                      subtitle = null;
-                    }
-
+                    const amountThisPeriod = stillNeeded / periods;
+                    const subtitle = `$${fmt(saved)} of $${fmt(target)} saved`;
                     return [renderTransferRow(`transfer-${bill.id}`, destName, amountThisPeriod, subtitle)];
                   });
 
-                  if (billRows.length === 0 && transferRows.length === 0) {
+                  if (billRows.length === 0 && periodTransferRows.length === 0 && transferRows.length === 0) {
                     return <div className="empty-state">No allocations this period</div>;
                   }
 
@@ -4831,9 +4839,10 @@ function Dashboard() {
                           {billRows}
                         </>
                       )}
-                      {transferRows.length > 0 && (
+                      {(periodTransferRows.length > 0 || transferRows.length > 0) && (
                         <>
-                          <div style={{ fontSize: "10px", color: "#8B8FA8", letterSpacing: "0.08em", textTransform: "uppercase", margin: billRows.length > 0 ? "16px 0 8px" : "0 0 8px" }}>Set Aside</div>
+                          <div style={{ fontSize: "10px", color: "#8B8FA8", letterSpacing: "0.08em", textTransform: "uppercase", margin: billRows.length > 0 ? "16px 0 8px" : "0 0 8px" }}>Transfers</div>
+                          {periodTransferRows}
                           {transferRows}
                         </>
                       )}
