@@ -557,8 +557,12 @@ function Dashboard() {
       if (stillNeeded === 0) return;
       let dueDate = new Date(today.getFullYear(), today.getMonth(), acct.due_day);
       if (dueDate <= today) dueDate = new Date(today.getFullYear(), today.getMonth() + 1, acct.due_day);
-      const savingPeriods = upcomingPeriods.filter((p) => new Date(p.end_date + "T23:59:59") < dueDate);
-      const totalPeriods = Math.max(1, savingPeriods.length);
+      let periodsCount = 0;
+      for (const p of upcomingPeriods) {
+        periodsCount++;
+        if (dueDate <= new Date(p.end_date + "T23:59:59")) break;
+      }
+      const totalPeriods = Math.max(1, periodsCount);
       allContributions.push({
         name: acct.name,
         amount: stillNeeded / totalPeriods,
@@ -669,8 +673,8 @@ function Dashboard() {
         })
         .reduce((sum, b) => sum + (b.amount || 0), 0);
 
-      // Include accumulating contributions for periods that end before each bill's due date
-      const contributions = allContributions.filter((c) => periodEnd < c.dueDate);
+      // Show Set Aside in all periods where saving is still relevant (due date hasn't passed at period start)
+      const contributions = allContributions.filter((c) => periodStart < c.dueDate);
 
       return {
         period,
@@ -847,6 +851,7 @@ function Dashboard() {
     setIsAccumulating(false);
     setAccumulationTarget("");
     setAccumulationCurrent("");
+    setAccDueDay("");
     setResetType("manual");
     setResetDay("");
     setMinimumBuffer(acct.minimum_buffer || "");
@@ -2584,6 +2589,7 @@ function Dashboard() {
                 setIsAccumulating(false);
                 setAccumulationTarget("");
                 setAccumulationCurrent("");
+                setAccDueDay("");
                 setResetType("manual");
                 setResetDay("");
                 setShowAccountForm(true);
@@ -2790,6 +2796,7 @@ function Dashboard() {
                     setIsAccumulating(false);
                     setAccumulationTarget("");
                     setAccumulationCurrent("");
+                    setAccDueDay("");
                     setShowAccountForm(false);
                   }}
                   style={{
