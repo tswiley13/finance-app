@@ -69,7 +69,7 @@ const css = `
   .dashboard-right { display: flex; flex-direction: column; gap: 12px; }
 
   .panel { background: #1A1826; border: 1px solid rgba(255,255,255,0.06); border-radius: 12px; padding: 20px; transition: border-color 0.2s ease, box-shadow 0.2s ease; }
-  .panel:hover { border-color: rgba(0,212,170,0.3); box-shadow: 0 0 0 1px rgba(0,212,170,0.1), 0 4px 20px rgba(0,212,170,0.05); }
+  .panel:hover { border-color: rgba(108,99,255,0.3); box-shadow: 0 0 0 1px rgba(108,99,255,0.1), 0 4px 20px rgba(108,99,255,0.05); }
   .panel-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
   .panel-title { font-size: 11px; color: #8B8FA8; letter-spacing: 0.1em; text-transform: uppercase; font-weight: 600; }
   .panel-count { font-size: 11px; color: #8B8FA8; font-family: 'DM Mono', monospace; }
@@ -1362,7 +1362,7 @@ function Dashboard() {
                   setDebtPayoffOrder("");
                 }}
                 style={{
-                  background: "#00D4AA",
+                  background: "#6C63FF",
                   border: "none",
                   color: "#0F1218",
                   padding: "8px 16px",
@@ -1596,7 +1596,7 @@ function Dashboard() {
                     <div
                       style={{
                         background: "#13111F",
-                        border: "1px solid rgba(0,212,170,0.3)",
+                        border: "1px solid rgba(108,99,255,0.3)",
                         borderRadius: "8px",
                         padding: "16px",
                         margin: "8px 0 4px",
@@ -1898,7 +1898,7 @@ function Dashboard() {
               dates. If your pay schedule changes, update your income's next
               deposit date on the{" "}
               <span
-                style={{ color: "#00D4AA", cursor: "pointer" }}
+                style={{ color: "#6C63FF", cursor: "pointer" }}
                 onClick={() => navigate("income")}
               >
                 Income page
@@ -1938,7 +1938,7 @@ function Dashboard() {
                               style={{
                                 marginLeft: "10px",
                                 fontSize: "9px",
-                                background: "#00D4AA",
+                                background: "#6C63FF",
                                 color: "#0F1218",
                                 padding: "2px 8px",
                                 borderRadius: "4px",
@@ -2011,7 +2011,7 @@ function Dashboard() {
                                   onFocus={(e) => e.target.select()}
                     style={{
                       background: "#2D2B45",
-                      border: "1px solid #00D4AA",
+                      border: "1px solid #6C63FF",
                       color: "#E8E6E1",
                       padding: "4px 8px",
                       borderRadius: "6px",
@@ -2097,7 +2097,7 @@ function Dashboard() {
                   style={{
                     fontFamily: "'DM Mono', monospace",
                     fontSize: "14px",
-                    color: "#00D4AA",
+                    color: "#6C63FF",
                     letterSpacing: "0.1em",
                   }}
                 >
@@ -2400,7 +2400,7 @@ function Dashboard() {
             <button
               onClick={() => setShowCategoryForm(!showCategoryForm)}
               style={{
-                background: "#00D4AA",
+                background: "#6C63FF",
                 border: "none",
                 color: "#0F1218",
                 padding: "8px 16px",
@@ -2548,7 +2548,7 @@ function Dashboard() {
                 setShowAccountForm(true);
               }}
               style={{
-                background: "#00D4AA",
+                background: "#6C63FF",
                 border: "none",
                 color: "#0C0E14",
                 padding: "8px 16px",
@@ -2850,7 +2850,7 @@ function Dashboard() {
                                   onFocus={(e) => e.target.select()}
                           style={{
                             background: "#2D2B45",
-                            border: "1px solid #00D4AA",
+                            border: "1px solid #6C63FF",
                             color: "#F0F6FC",
                             padding: "4px 8px",
                             borderRadius: "6px",
@@ -2970,7 +2970,7 @@ function Dashboard() {
                     <div
                       style={{
                         background: "#13111F",
-                        border: "1px solid rgba(0,212,170,0.3)",
+                        border: "1px solid rgba(108,99,255,0.3)",
                         borderRadius: "8px",
                         padding: "16px",
                         margin: "8px 0 4px",
@@ -3234,7 +3234,7 @@ function Dashboard() {
                 setDepositAccountId("");
               }}
               style={{
-                background: "#00D4AA",
+                background: "#6C63FF",
                 border: "none",
                 color: "#0F1218",
                 padding: "8px 16px",
@@ -3375,7 +3375,7 @@ function Dashboard() {
                                   onFocus={(e) => e.target.select()}
                             style={{
                               background: "#2D2B45",
-                              border: "1px solid #00D4AA",
+                              border: "1px solid #6C63FF",
                               color: "#F0F6FC",
                               padding: "4px 8px",
                               borderRadius: "6px",
@@ -3487,7 +3487,7 @@ function Dashboard() {
                       <div
                         style={{
                           background: "#13111F",
-                          border: "1px solid rgba(0,212,170,0.3)",
+                          border: "1px solid rgba(108,99,255,0.3)",
                           borderRadius: "8px",
                           padding: "16px",
                           margin: "8px 0 4px",
@@ -3716,7 +3716,7 @@ function Dashboard() {
                 setIsVariable(false);
               }}
               style={{
-                background: "#00D4AA",
+                background: "#6C63FF",
                 border: "none",
                 color: "#0F1218",
                 padding: "8px 16px",
@@ -3879,7 +3879,7 @@ function Dashboard() {
                                   onFocus={(e) => e.target.select()}
                             style={{
                               background: "#2D2B45",
-                              border: "1px solid #00D4AA",
+                              border: "1px solid #6C63FF",
                               color: "#F0F6FC",
                               padding: "4px 8px",
                               borderRadius: "6px",
@@ -3974,7 +3974,7 @@ function Dashboard() {
                       <div
                         style={{
                           background: "#13111F",
-                          border: "1px solid rgba(0,212,170,0.3)",
+                          border: "1px solid rgba(108,99,255,0.3)",
                           borderRadius: "8px",
                           padding: "16px",
                           margin: "8px 0 4px",
@@ -4622,7 +4622,7 @@ function Dashboard() {
                                   onFocus={(e) => e.target.select()}
                           style={{
                             background: "#2D2B45",
-                            border: "1px solid #00D4AA",
+                            border: "1px solid #6C63FF",
                             color: "#F0F6FC",
                             padding: "4px 8px",
                             borderRadius: "6px",
@@ -4696,7 +4696,7 @@ function Dashboard() {
                             </div>
                             {subtitle && <div className="row-sub">{subtitle}</div>}
                             {transferred > 0 && !done && (
-                              <div style={{ fontSize: "10px", color: "#00D4AA", marginTop: "2px" }}>
+                              <div style={{ fontSize: "10px", color: "#6C63FF", marginTop: "2px" }}>
                                 ${fmt(transferred)} transferred · ${fmt(remaining)} remaining
                               </div>
                             )}
@@ -4704,7 +4704,7 @@ function Dashboard() {
                           <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
                             {!done && (
                               <div style={{ textAlign: "right" }}>
-                                <div className="row-amount" style={{ color: remaining < suggestedAmount ? "#00D4AA" : "#F0F6FC" }}>
+                                <div className="row-amount" style={{ color: remaining < suggestedAmount ? "#6C63FF" : "#F0F6FC" }}>
                                   ${fmt(remaining)}
                                 </div>
                                 <div style={{ fontSize: "10px", color: "#8B8FA8" }}>this paycheck</div>
@@ -4722,11 +4722,11 @@ function Dashboard() {
                                   }}
                                   autoFocus
                                   onFocus={(e) => e.target.select()}
-                                  style={{ background: "#2D2B45", border: "1px solid #00D4AA", color: "#F0F6FC", padding: "4px 8px", borderRadius: "6px", fontSize: "13px", fontFamily: "'DM Mono', monospace", width: "90px", textAlign: "right" }}
+                                  style={{ background: "#2D2B45", border: "1px solid #6C63FF", color: "#F0F6FC", padding: "4px 8px", borderRadius: "6px", fontSize: "13px", fontFamily: "'DM Mono', monospace", width: "90px", textAlign: "right" }}
                                 />
                                 <button
                                   onClick={() => confirmTransfer(rowKey, transferAmount)}
-                                  style={{ background: "#00D4AA", border: "none", color: "#0F1218", padding: "4px 10px", borderRadius: "6px", cursor: "pointer", fontSize: "11px", fontFamily: "'Inter', sans-serif", fontWeight: "600" }}
+                                  style={{ background: "#6C63FF", border: "none", color: "#0F1218", padding: "4px 10px", borderRadius: "6px", cursor: "pointer", fontSize: "11px", fontFamily: "'Inter', sans-serif", fontWeight: "600" }}
                                 >
                                   Confirm
                                 </button>
