@@ -6,6 +6,7 @@ function Onboarding({ onComplete }) {
   const [householdId, setHouseholdId] = useState(null);
   const [accountError, setAccountError] = useState(null);
   const [householdName, setHouseholdName] = useState("");
+  const [yourName, setYourName] = useState("");
   const [memberList, setMemberList] = useState([]);
   const [memberName, setMemberName] = useState("");
   const [memberError, setMemberError] = useState(null);
@@ -159,7 +160,7 @@ function Onboarding({ onComplete }) {
     await supabase.from("household_members").insert({
       household_id: created.id,
       user_id: user.id,
-      name: user.user_metadata?.name || user.email,
+      name: yourName.trim() || user.user_metadata?.name || user.email,
       role: "owner",
     });
 
@@ -907,15 +908,19 @@ function Onboarding({ onComplete }) {
   }
 
   if (step === 1) {
-    return shell(1, "Name your household", "This is how you and your household will be identified in Stryde.", (
+    return shell(1, "Let's get started", "Tell us a little about yourself and your household.", (
       <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
         <div>
+          <label style={labelStyle}>Your Name</label>
+          <input style={inputStyle} type="text" placeholder="e.g. Travis" value={yourName} onChange={(e) => setYourName(e.target.value)} autoFocus />
+        </div>
+        <div>
           <label style={labelStyle}>Household Name</label>
-          <input style={inputStyle} type="text" placeholder="e.g. The Smith Family" value={householdName} onChange={(e) => setHouseholdName(e.target.value)} onKeyDown={(e) => e.key === "Enter" && householdName && createHousehold()} autoFocus />
+          <input style={inputStyle} type="text" placeholder="e.g. The Smith Family" value={householdName} onChange={(e) => setHouseholdName(e.target.value)} onKeyDown={(e) => e.key === "Enter" && householdName && yourName && createHousehold()} />
         </div>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <button style={ghostBtn} onClick={() => supabase.auth.signOut()}>Sign Out</button>
-          <button style={primaryBtn} onClick={createHousehold} disabled={!householdName}>Continue</button>
+          <button style={primaryBtn} onClick={createHousehold} disabled={!householdName || !yourName}>Continue</button>
         </div>
       </div>
     ));

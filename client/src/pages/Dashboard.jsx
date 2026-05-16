@@ -4250,8 +4250,9 @@ function Dashboard() {
                       : hour < 17
                         ? "Good afternoon"
                         : "Good evening";
+                  const ownerName = members.find((m) => m.role === "owner")?.name;
                   const firstName =
-                    members.find((m) => m.role === "owner")?.name ||
+                    (ownerName && !ownerName.includes("@") ? ownerName : null) ||
                     household?.name;
                   return `${greeting}, ${firstName}`;
                 })()}
