@@ -103,7 +103,7 @@ function JoinHousehold() {
   return (
     <div style={{ minHeight: "100vh", background: "#13111F", fontFamily: "'Inter', sans-serif", display: "flex", flexDirection: "column" }}>
       {/* Top bar */}
-      <div style={{ padding: "28px 48px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+      <div className="auth-topbar">
         <div>
           <div style={{ fontSize: "11px", fontWeight: "700", letterSpacing: "0.2em", color: "#6C63FF", textTransform: "uppercase", marginBottom: "2px" }}>
             Bravo Six
@@ -115,11 +115,11 @@ function JoinHousehold() {
       </div>
 
       {/* Main content */}
-      <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 48px 60px" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: "80px", maxWidth: "1200px", width: "100%" }}>
+      <div className="auth-main">
+        <div className="auth-split">
 
           {/* Left — context */}
-          <div style={{ flex: 1 }}>
+          <div className="auth-left">
             <div style={{ fontSize: "56px", fontWeight: "800", color: "#F0F6FC", lineHeight: "1.1", letterSpacing: "-0.03em", marginBottom: "24px" }}>
               You're
               <br />
@@ -145,7 +145,7 @@ function JoinHousehold() {
           </div>
 
           {/* Right — form card */}
-          <div style={{ width: "400px", flexShrink: 0, background: "#161B22", borderRadius: "20px", border: "1px solid #30363D", padding: "40px", boxShadow: "0 24px 64px rgba(0,0,0,0.4)" }}>
+          <div className="auth-card">
             <div style={{ marginBottom: "32px" }}>
               <div style={{ fontSize: "22px", fontWeight: "700", color: "#F0F6FC", marginBottom: "6px" }}>
                 Create your account
@@ -243,7 +243,7 @@ function JoinHousehold() {
       </div>
 
       {/* Footer */}
-      <div style={{ padding: "20px 48px", borderTop: "1px solid #21262D", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+      <div className="auth-footer">
         <div style={{ fontSize: "12px", color: "#484F58" }}>© 2026 Bravo Six. All rights reserved.</div>
         <div style={{ fontSize: "12px", color: "#484F58" }}>Built for those who serve.</div>
       </div>

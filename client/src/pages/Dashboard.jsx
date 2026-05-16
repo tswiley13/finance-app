@@ -2124,17 +2124,19 @@ function Dashboard() {
             </div>
             <div className="row-item">
               <div className="row-name">QR Code</div>
-              <div
-                style={{
-                  background: "#ffffff",
-                  padding: "8px",
-                  borderRadius: "8px",
-                }}
-              >
-                <QRCode
-                  value={`${import.meta.env.VITE_APP_URL || window.location.origin}/join?code=${household?.invite_code}`}
-                  size={180}
-                />
+              <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: "10px" }}>
+                <div style={{ background: "#ffffff", padding: "8px", borderRadius: "8px" }}>
+                  <QRCode
+                    value={`${import.meta.env.VITE_APP_URL || window.location.origin}/join?code=${household?.invite_code}`}
+                    size={180}
+                  />
+                </div>
+                <button
+                  onClick={() => navigator.clipboard.writeText(`${import.meta.env.VITE_APP_URL || window.location.origin}/join?code=${household?.invite_code}`)}
+                  style={{ fontSize: "12px", fontWeight: "600", color: "#6C63FF", background: "rgba(108,99,255,0.1)", border: "1px solid rgba(108,99,255,0.25)", borderRadius: "6px", padding: "6px 14px", cursor: "pointer", fontFamily: "'Inter', sans-serif" }}
+                >
+                  Copy Invite Link
+                </button>
               </div>
             </div>
           </div>
