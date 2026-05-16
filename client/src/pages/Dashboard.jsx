@@ -549,6 +549,9 @@ function Dashboard() {
 
     // Pre-compute per-period contributions from accumulating accounts with a due_day
     const allContributions = [];
+    const coveredAccountIds = new Set();
+
+    // Account-driven: accumulating accounts with due_day + accumulation_target
     accounts.forEach((acct) => {
       if (!acct.is_accumulating || !acct.due_day || !acct.accumulation_target) return;
       const target = acct.accumulation_target;
@@ -563,13 +566,31 @@ function Dashboard() {
         if (dueDate <= new Date(p.end_date + "T23:59:59")) break;
       }
       const totalPeriods = Math.max(1, periodsCount);
-      allContributions.push({
-        name: acct.name,
-        amount: stillNeeded / totalPeriods,
-        dueDate,
-        saved,
-        target,
-      });
+      coveredAccountIds.add(acct.id);
+      allContributions.push({ name: acct.name, amount: stillNeeded / totalPeriods, dueDate, saved, target });
+    });
+
+    // Bill-driven: bills that transfer to an accumulating account (e.g. Rent → Mortgage savings)
+    // Use the bill's due_day and the destination account's current balance
+    bills.forEach((bill) => {
+      if (!bill.transfer_to_account_id) return;
+      const dest = accounts.find((a) => a.id === bill.transfer_to_account_id);
+      if (!dest?.is_accumulating) return;
+      if (coveredAccountIds.has(dest.id)) return; // already handled by account-driven
+      const target = bill.amount;
+      const saved = Math.min(dest.current_balance || 0, target);
+      const stillNeeded = Math.max(0, target - saved);
+      if (stillNeeded === 0) return;
+      let dueDate = new Date(today.getFullYear(), today.getMonth(), bill.due_day);
+      if (dueDate <= today) dueDate = new Date(today.getFullYear(), today.getMonth() + 1, bill.due_day);
+      let periodsCount = 0;
+      for (const p of upcomingPeriods) {
+        periodsCount++;
+        if (dueDate <= new Date(p.end_date + "T23:59:59")) break;
+      }
+      const totalPeriods = Math.max(1, periodsCount);
+      coveredAccountIds.add(dest.id);
+      allContributions.push({ name: dest.name, amount: stillNeeded / totalPeriods, dueDate, saved, target });
     });
 
     return upcomingPeriods.map((period) => {
@@ -4868,7 +4889,8 @@ function Dashboard() {
                     return renderTransferRow(`transfer-${bill.id}`, destName, bill.amount, null);
                   });
 
-                  // Accumulating accounts: spread remaining over periods until due
+                  // Account-driven: accumulating accounts with due_day + accumulation_target
+                  const coveredAcctIds = new Set(accumulatingAccounts.map((a) => a.id));
                   const accumulatingRows = accumulatingAccounts.flatMap((acct) => {
                     const target = acct.accumulation_target;
                     const saved = Math.min(acct.current_balance || 0, target);
@@ -4880,7 +4902,27 @@ function Dashboard() {
                     return [renderTransferRow(`acct-${acct.id}`, acct.name, amountThisPeriod, subtitle)];
                   });
 
-                  const allTransferRows = [...periodTransferRows, ...accumulatingRows];
+                  // Bill-driven: bills that transfer to an accumulating account (e.g. Rent → Mortgage savings)
+                  const billDrivenRows = bills
+                    .filter((b) => {
+                      if (!b.transfer_to_account_id) return false;
+                      const dest = accounts.find((a) => a.id === b.transfer_to_account_id);
+                      if (!dest?.is_accumulating) return false;
+                      return !coveredAcctIds.has(dest.id);
+                    })
+                    .flatMap((bill) => {
+                      const dest = accounts.find((a) => a.id === bill.transfer_to_account_id);
+                      const target = bill.amount;
+                      const saved = Math.min(dest.current_balance || 0, target);
+                      const stillNeeded = Math.max(0, target - saved);
+                      if (stillNeeded === 0) return [];
+                      const periods = periodsUntilDue(bill);
+                      const amountThisPeriod = stillNeeded / periods;
+                      const subtitle = `$${fmt(saved)} of $${fmt(target)} saved`;
+                      return [renderTransferRow(`bill-acct-${bill.id}`, dest.name, amountThisPeriod, subtitle)];
+                    });
+
+                  const allTransferRows = [...periodTransferRows, ...accumulatingRows, ...billDrivenRows];
 
                   if (billRows.length === 0 && allTransferRows.length === 0) {
                     return <div className="empty-state">No allocations this period</div>;
