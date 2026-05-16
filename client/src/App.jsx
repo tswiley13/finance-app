@@ -34,16 +34,52 @@ function App() {
     setTimeout(() => {
       setCheckingHousehold(true);
       async function checkHousehold() {
-        const { data } = await supabase
+        // Complete any pending household join from invite link signup
+        const pending = session.user.user_metadata?.pending_household_id;
+        const memberName = session.user.user_metadata?.name;
+        if (pending) {
+          const { data: existing } = await supabase
+            .from("household_members")
+            .select("id")
+            .eq("household_id", pending)
+            .eq("user_id", session.user.id)
+            .maybeSingle();
+
+          if (!existing) {
+            await supabase.from("household_members").insert({
+              household_id: pending,
+              user_id: session.user.id,
+              name: memberName || "Member",
+              role: "member",
+            });
+          }
+
+          await supabase.auth.updateUser({ data: { pending_household_id: null } });
+        }
+
+        // Check if user created a household
+        const { data: created } = await supabase
           .from("households")
           .select("id")
           .eq("created_by", session.user.id)
           .maybeSingle();
 
-        if (data) {
-          localStorage.setItem("activeNav", "dashboard");
+        if (created) {
+          if (!localStorage.getItem("activeNav")) localStorage.setItem("activeNav", "dashboard");
+          setHasHousehold(true);
+          setCheckingHousehold(false);
+          return;
         }
-        setHasHousehold(!!data);
+
+        // Check if user is a member of any household (joined via invite)
+        const { data: membership } = await supabase
+          .from("household_members")
+          .select("id")
+          .eq("user_id", session.user.id)
+          .maybeSingle();
+
+        if (membership && !localStorage.getItem("activeNav")) localStorage.setItem("activeNav", "dashboard");
+        setHasHousehold(!!membership);
         setCheckingHousehold(false);
       }
 
