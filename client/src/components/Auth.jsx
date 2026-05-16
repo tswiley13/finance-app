@@ -90,9 +90,7 @@ function AuthPage({ defaultSignUp = false }) {
           <div
             style={{ fontSize: "14px", color: "#6E7681", lineHeight: "1.6" }}
           >
-            We sent a confirmation link to{" "}
-            <span style={{ color: "#6C63FF" }}>{email}</span>. Click it to
-            activate your account.
+            We sent a confirmation link to your inbox. Click it to activate your account.
           </div>
           <div style={{ marginTop: "28px", paddingTop: "24px", borderTop: "1px solid rgba(255,255,255,0.06)" }}>
             {resendMessage ? (
