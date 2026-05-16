@@ -51,7 +51,7 @@ function Onboarding({ onComplete }) {
     accountName: "", bankName: "", lastFour: "",
     accountType: "checking", currentBalance: "",
     isPrimary: false, isAccumulating: false,
-    accumulationTarget: "", resetType: "manual", resetDay: "",
+    accumulationTarget: "", accDueDay: "", resetType: "manual", resetDay: "",
   }]);
   const [billList, setBillList] = useState([]);
   const [billName, setBillName] = useState("");
@@ -556,7 +556,7 @@ function Onboarding({ onComplete }) {
       accountName: "", bankName: "", lastFour: "",
       accountType: "checking", currentBalance: "",
       isPrimary: false, isAccumulating: false,
-      accumulationTarget: "", resetType: "manual", resetDay: "",
+      accumulationTarget: "", accDueDay: "", resetType: "manual", resetDay: "",
     };
   }
 
@@ -572,6 +572,10 @@ function Onboarding({ onComplete }) {
     }
     if (card.lastFour && !/^\d{4}$/.test(card.lastFour)) {
       updateCard(index, { error: "Last 4 must be exactly 4 digits." });
+      return false;
+    }
+    if (card.isAccumulating && (!card.accumulationTarget || !card.accDueDay)) {
+      updateCard(index, { error: "Saving accounts require a savings target and due day of month." });
       return false;
     }
 
@@ -592,6 +596,7 @@ function Onboarding({ onComplete }) {
       is_primary: card.isPrimary,
       is_accumulating: card.isAccumulating,
       accumulation_target: card.accumulationTarget ? parseFloat(card.accumulationTarget) : null,
+      due_day: card.isAccumulating && card.accDueDay ? parseInt(card.accDueDay) : null,
       reset_type: card.resetType,
       reset_day: card.resetDay ? parseInt(card.resetDay) : null,
     };
@@ -1121,10 +1126,16 @@ function Onboarding({ onComplete }) {
                       <span style={{ fontSize: "12px", color: "#8B8FA8" }}>Accumulating</span>
                     </label>
                     {card.isAccumulating && (
-                      <div>
-                        <label style={cardLabel}>Target Amount</label>
-                        <input style={cardInput} type="number" placeholder="0.00" value={card.accumulationTarget} onChange={(e) => updateCard(index, { accumulationTarget: e.target.value })} />
-                      </div>
+                      <>
+                        <div>
+                          <label style={cardLabel}>Savings Target</label>
+                          <input style={cardInput} type="number" placeholder="0.00" value={card.accumulationTarget} onChange={(e) => updateCard(index, { accumulationTarget: e.target.value })} />
+                        </div>
+                        <div>
+                          <label style={cardLabel}>Due Day of Month</label>
+                          <input style={cardInput} type="number" placeholder="e.g. 1 for the 1st" min="1" max="31" value={card.accDueDay} onChange={(e) => updateCard(index, { accDueDay: e.target.value })} />
+                        </div>
+                      </>
                     )}
                     {card.error && (
                       <div style={{ fontSize: "12px", color: "#F87171", background: "rgba(248,113,113,0.08)", padding: "8px 12px", borderRadius: "6px" }}>

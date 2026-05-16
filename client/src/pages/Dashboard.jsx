@@ -815,6 +815,10 @@ function Dashboard() {
       alert("Please fill in all required account fields.");
       return;
     }
+    if (isAccumulating && (!accumulationTarget || !accDueDay)) {
+      alert("Saving accounts require a savings target and due day of month.");
+      return;
+    }
 
     const { error } = await supabase
       .from("accounts")
@@ -2782,6 +2786,10 @@ function Dashboard() {
                   onClick={async () => {
                     if (!accountName || !bankName || !lastFour) {
                       alert("Please fill in all required fields.");
+                      return;
+                    }
+                    if (isAccumulating && (!accumulationTarget || !accDueDay)) {
+                      alert("Saving accounts require a savings target and due day of month.");
                       return;
                     }
                     const { data: savedAccount, error } = await supabase
