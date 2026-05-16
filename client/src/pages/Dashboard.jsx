@@ -4795,16 +4795,28 @@ function Dashboard() {
                     return Math.max(1, count);
                   };
 
-                  const transferRows = transferBills.map((bill) => {
+                  const transferRows = transferBills.flatMap((bill) => {
                     const destAcct = accounts.find((a) => a.id === bill.transfer_to_account_id);
                     const destName = destAcct ? destAcct.name : "Unknown";
                     const target = bill.amount;
-                    const saved = Math.min(destAcct?.current_balance || 0, target);
-                    const stillNeeded = Math.max(0, target - saved);
                     const periods = periodsUntilDue(bill);
-                    const amountThisPeriod = stillNeeded > 0 ? stillNeeded / periods : 0;
-                    const subtitle = `$${fmt(saved)} of $${fmt(target)} saved`;
-                    return renderTransferRow(`transfer-${bill.id}`, destName, amountThisPeriod, subtitle);
+                    const isAccumulating = destAcct?.is_accumulating;
+
+                    let amountThisPeriod;
+                    let subtitle;
+
+                    if (isAccumulating) {
+                      const saved = Math.min(destAcct?.current_balance || 0, target);
+                      const stillNeeded = Math.max(0, target - saved);
+                      if (stillNeeded === 0) return [];
+                      amountThisPeriod = stillNeeded / periods;
+                      subtitle = `$${fmt(saved)} of $${fmt(target)} saved`;
+                    } else {
+                      amountThisPeriod = target / periods;
+                      subtitle = null;
+                    }
+
+                    return [renderTransferRow(`transfer-${bill.id}`, destName, amountThisPeriod, subtitle)];
                   });
 
                   if (billRows.length === 0 && transferRows.length === 0) {
