@@ -1468,16 +1468,17 @@ function Onboarding({ onComplete }) {
               <option value="Other">Other</option>
             </select>
           </div>
-          <div>
-            <label style={labelStyle}>Payment Method</label>
-            <select style={selectStyle} value={paymentMethod} onChange={(e) => setPaymentMethod(e.target.value)}>
-              <option value="auto">Auto</option>
-              <option value="transfer">Transfer</option>
-              <option value="zelle">Zelle</option>
-              <option value="check">Check</option>
-              <option value="manual">Manual</option>
-            </select>
-          </div>
+          {!isBillAccumulating && (
+            <div>
+              <label style={labelStyle}>Payment Method</label>
+              <select style={selectStyle} value={paymentMethod} onChange={(e) => setPaymentMethod(e.target.value)}>
+                <option value="auto">Auto</option>
+                <option value="zelle">Zelle</option>
+                <option value="check">Check</option>
+                <option value="manual">Manual</option>
+              </select>
+            </div>
+          )}
           <div>
             <label style={labelStyle}>Owner</label>
             <select style={selectStyle} value={billOwner} onChange={(e) => setBillOwner(e.target.value)}>
@@ -1486,7 +1487,7 @@ function Onboarding({ onComplete }) {
             </select>
           </div>
           <div style={{ gridColumn: "1 / -1" }}>
-            <label style={labelStyle}>Paid From Account</label>
+            <label style={labelStyle}>{isBillAccumulating ? "Transfer from account" : "Paid from account"}</label>
             <select style={selectStyle} value={billAccountId} onChange={(e) => setBillAccountId(e.target.value)}>
               <option value="">Select account</option>
               {accountList.map((a, i) => <option key={i} value={a.id}>{a.name}</option>)}
@@ -1501,14 +1502,14 @@ function Onboarding({ onComplete }) {
 
         <label style={checkRowStyle}>
           <input type="checkbox" checked={isBillAccumulating} onChange={(e) => { setIsBillAccumulating(e.target.checked); if (!e.target.checked) setBillTransferToAccountId(""); }} />
-          <span style={checkLabelStyle}>This bill accumulates into another account</span>
+          <span style={checkLabelStyle}>This is a transfer to another account</span>
         </label>
         {isBillAccumulating && (
           <div>
-            <label style={labelStyle}>Accumulates Into</label>
+            <label style={labelStyle}>Transfer to which account?</label>
             <select style={selectStyle} value={billTransferToAccountId} onChange={(e) => setBillTransferToAccountId(e.target.value)}>
               <option value="">Select account</option>
-              {accountList.map((a, i) => <option key={i} value={a.id}>{a.name}{a.is_accumulating ? " (accumulating)" : ""}</option>)}
+              {accountList.map((a, i) => <option key={i} value={a.id}>{a.name}{a.is_accumulating ? " (saving)" : ""}</option>)}
             </select>
           </div>
         )}

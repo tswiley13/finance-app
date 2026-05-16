@@ -132,6 +132,7 @@ function Dashboard() {
   const [isPrimary, setIsPrimary] = useState(false);
   const [isAccumulating, setIsAccumulating] = useState(false);
   const [accumulationTarget, setAccumulationTarget] = useState("");
+  const [accDueDay, setAccDueDay] = useState("");
   const [accumulationCurrent, setAccumulationCurrent] = useState("");
   const [resetType, setResetType] = useState("manual");
   const [resetDay, setResetDay] = useState("");
@@ -546,6 +547,27 @@ function Dashboard() {
       .sort((a, b) => new Date(a.start_date) - new Date(b.start_date))
       .slice(0, 4);
 
+    // Pre-compute per-period contributions from accumulating accounts with a due_day
+    const allContributions = [];
+    accounts.forEach((acct) => {
+      if (!acct.is_accumulating || !acct.due_day || !acct.accumulation_target) return;
+      const target = acct.accumulation_target;
+      const saved = Math.min(acct.current_balance || 0, target);
+      const stillNeeded = Math.max(0, target - saved);
+      if (stillNeeded === 0) return;
+      let dueDate = new Date(today.getFullYear(), today.getMonth(), acct.due_day);
+      if (dueDate <= today) dueDate = new Date(today.getFullYear(), today.getMonth() + 1, acct.due_day);
+      const savingPeriods = upcomingPeriods.filter((p) => new Date(p.end_date + "T23:59:59") < dueDate);
+      const totalPeriods = Math.max(1, savingPeriods.length);
+      allContributions.push({
+        name: acct.name,
+        amount: stillNeeded / totalPeriods,
+        dueDate,
+        saved,
+        target,
+      });
+    });
+
     return upcomingPeriods.map((period) => {
       const periodStart = new Date(period.start_date + "T00:00:00");
       const periodEnd = new Date(period.end_date + "T23:59:59");
@@ -647,6 +669,9 @@ function Dashboard() {
         })
         .reduce((sum, b) => sum + (b.amount || 0), 0);
 
+      // Include accumulating contributions for periods that end before each bill's due date
+      const contributions = allContributions.filter((c) => periodEnd < c.dueDate);
+
       return {
         period,
         isCurrentPeriod,
@@ -655,6 +680,7 @@ function Dashboard() {
         bills: periodBills,
         billsTotal: periodBillsTotal,
         leftOver: periodIncome - leftOverBillsTotal,
+        contributions,
       };
     });
   }
@@ -775,12 +801,9 @@ function Dashboard() {
         current_balance: parseFloat(currentBalance) || 0,
         is_primary: isPrimary,
         is_accumulating: isAccumulating,
-        accumulation_target: accumulationTarget
-          ? parseFloat(accumulationTarget)
-          : null,
-        accumulation_current: accumulationCurrent
-          ? parseFloat(accumulationCurrent)
-          : 0,
+        accumulation_target: accumulationTarget ? parseFloat(accumulationTarget) : null,
+        accumulation_current: accumulationCurrent ? parseFloat(accumulationCurrent) : 0,
+        due_day: isAccumulating && accDueDay ? parseInt(accDueDay) : null,
         reset_type: resetType,
         reset_day: resetDay ? parseInt(resetDay) : null,
         minimum_buffer: minimumBuffer ? parseFloat(minimumBuffer) : 0,
@@ -806,6 +829,7 @@ function Dashboard() {
               is_accumulating: isAccumulating,
               accumulation_target: parseFloat(accumulationTarget) || null,
               accumulation_current: parseFloat(accumulationCurrent) || 0,
+              due_day: isAccumulating && accDueDay ? parseInt(accDueDay) : null,
               reset_type: resetType,
               reset_day: parseInt(resetDay) || null,
             }
@@ -2707,21 +2731,23 @@ function Dashboard() {
                   </label>
                 </div>
                 {isAccumulating && (
-                  <input
-                    type="number"
-                    placeholder="Accumulation target"
-                    value={accumulationTarget}
-                    onChange={(e) => setAccumulationTarget(e.target.value)}
-                    style={{
-                      background: "rgba(255,255,255,0.06)",
-                      border: "1px solid rgba(255,255,255,0.1)",
-                      color: "#F2F0EB",
-                      padding: "8px 12px",
-                      borderRadius: "6px",
-                      fontSize: "13px",
-                      fontFamily: "'Inter', sans-serif",
-                    }}
-                  />
+                  <>
+                    <input
+                      type="number"
+                      placeholder="Savings target (e.g. 2500)"
+                      value={accumulationTarget}
+                      onChange={(e) => setAccumulationTarget(e.target.value)}
+                      style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", color: "#F2F0EB", padding: "8px 12px", borderRadius: "6px", fontSize: "13px", fontFamily: "'Inter', sans-serif" }}
+                    />
+                    <input
+                      type="number"
+                      placeholder="Due day of month (e.g. 1 for the 1st)"
+                      value={accDueDay}
+                      onChange={(e) => setAccDueDay(e.target.value)}
+                      min="1" max="31"
+                      style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", color: "#F2F0EB", padding: "8px 12px", borderRadius: "6px", fontSize: "13px", fontFamily: "'Inter', sans-serif" }}
+                    />
+                  </>
                 )}
               </div>
               <div style={{ display: "flex", gap: "8px", marginTop: "12px" }}>
@@ -2742,10 +2768,9 @@ function Dashboard() {
                         current_balance: parseFloat(currentBalance) || 0,
                         is_primary: isPrimary,
                         is_accumulating: isAccumulating,
-                        accumulation_target: accumulationTarget
-                          ? parseFloat(accumulationTarget)
-                          : null,
+                        accumulation_target: accumulationTarget ? parseFloat(accumulationTarget) : null,
                         accumulation_current: 0,
+                        due_day: isAccumulating && accDueDay ? parseInt(accDueDay) : null,
                         reset_type: resetType,
                         reset_day: resetDay ? parseInt(resetDay) : null,
                       })
@@ -2903,12 +2928,9 @@ function Dashboard() {
                             setCurrentBalance(acct.current_balance ?? "");
                             setIsPrimary(acct.is_primary);
                             setIsAccumulating(acct.is_accumulating);
-                            setAccumulationTarget(
-                              acct.accumulation_target || "",
-                            );
-                            setAccumulationCurrent(
-                              acct.accumulation_current || "",
-                            );
+                            setAccumulationTarget(acct.accumulation_target || "");
+                            setAccumulationCurrent(acct.accumulation_current || "");
+                            setAccDueDay(acct.due_day || "");
                             setResetType(acct.reset_type || "manual");
                             setResetDay(acct.reset_day || "");
                             setMinimumBuffer(acct.minimum_buffer || "");
@@ -3140,20 +3162,18 @@ function Dashboard() {
                           <>
                             <input
                               type="number"
-                              placeholder="Accumulation target"
+                              placeholder="Savings target (e.g. 2500)"
                               value={accumulationTarget}
-                              onChange={(e) =>
-                                setAccumulationTarget(e.target.value)
-                              }
-                              style={{
-                                background: "#2D2B45",
-                                border: "1px solid rgba(255,255,255,0.1)",
-                                color: "#F0F6FC",
-                                padding: "8px 12px",
-                                borderRadius: "6px",
-                                fontSize: "13px",
-                                fontFamily: "'Inter', sans-serif",
-                              }}
+                              onChange={(e) => setAccumulationTarget(e.target.value)}
+                              style={{ background: "#2D2B45", border: "1px solid rgba(255,255,255,0.1)", color: "#F0F6FC", padding: "8px 12px", borderRadius: "6px", fontSize: "13px", fontFamily: "'Inter', sans-serif" }}
+                            />
+                            <input
+                              type="number"
+                              placeholder="Due day of month (e.g. 1 for the 1st)"
+                              value={accDueDay}
+                              onChange={(e) => setAccDueDay(e.target.value)}
+                              min="1" max="31"
+                              style={{ background: "#2D2B45", border: "1px solid rgba(255,255,255,0.1)", color: "#F0F6FC", padding: "8px 12px", borderRadius: "6px", fontSize: "13px", fontFamily: "'Inter', sans-serif" }}
                             />
                             <input
                               type="number"
@@ -4292,10 +4312,8 @@ function Dashboard() {
               const remainingBills = bills
                 .filter((b) => {
                   if (!isBillDue(b)) return false;
-                  // Advance to next month if due_day has already passed this month
-                  let dueDate = new Date(currentYear, currentMonth, b.due_day);
-                  if (dueDate < now) dueDate = new Date(currentYear, currentMonth + 1, b.due_day);
-                  return dueDate.getMonth() === now.getMonth() && dueDate.getFullYear() === now.getFullYear();
+                  const dueDate = new Date(currentYear, currentMonth, b.due_day);
+                  return dueDate.getMonth() === currentMonth && dueDate.getFullYear() === currentYear;
                 })
                 .reduce((sum, b) => {
                   const amount = b.amount || 0;
@@ -4512,6 +4530,21 @@ function Dashboard() {
                         </div>
                       </div>
 
+                      {item.contributions?.length > 0 && (
+                        <div style={{ borderTop: "1px solid rgba(255,255,255,0.05)", paddingTop: "12px", marginBottom: item.bills.length > 0 ? "12px" : "0" }}>
+                          <div style={{ fontSize: "9px", color: "#6C63FF", letterSpacing: "0.12em", textTransform: "uppercase", fontWeight: "600", marginBottom: "8px" }}>Set Aside</div>
+                          {item.contributions.map((c, j) => (
+                            <div key={j} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "5px 0", borderBottom: j < item.contributions.length - 1 ? "1px solid rgba(255,255,255,0.04)" : "none" }}>
+                              <div>
+                                <div style={{ fontSize: "13px", color: "#F0F6FC", fontWeight: "500" }}>→ {c.name}</div>
+                                <div style={{ fontSize: "11px", color: "#8B8FA8", marginTop: "2px" }}>${Math.round(c.saved).toLocaleString()} of ${Math.round(c.target).toLocaleString()} saved</div>
+                              </div>
+                              <span style={{ fontFamily: "'DM Mono', monospace", fontSize: "13px", color: "#6C63FF" }}>${c.amount % 1 === 0 ? c.amount.toLocaleString() : c.amount.toFixed(2)}</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
                       {item.bills.length > 0 && (
                         <div
                           style={{
@@ -4688,19 +4721,25 @@ function Dashboard() {
 
                   // Split bills into regular bills and explicit account transfers
                   const periodBills = currentBreakdown?.bills || [];
-                  const regularBills = periodBills.filter((b) => !b.transfer_to_account_id);
-                  // Non-accumulating transfer bills: show this period's bills at full amount
+
+                  // Regular bills: current period only, not transfer bills, not assigned to accumulating accounts
+                  const regularBills = periodBills.filter((b) => {
+                    if (b.transfer_to_account_id) return false;
+                    const acct = accounts.find((a) => a.id === b.account_id);
+                    return !acct?.is_accumulating;
+                  });
+
+                  // Non-accumulating transfer bills: show full amount for current period
                   const periodTransferBills = periodBills.filter((b) => {
                     if (!b.transfer_to_account_id) return false;
                     const dest = accounts.find((a) => a.id === b.transfer_to_account_id);
                     return !dest?.is_accumulating;
                   });
-                  // Accumulating transfer bills: spread remaining balance over future periods
-                  const transferBills = bills.filter((b) => {
-                    if (!b.transfer_to_account_id || !b.is_active || !isBillDue(b)) return false;
-                    const dest = accounts.find((a) => a.id === b.transfer_to_account_id);
-                    return !!dest?.is_accumulating;
-                  });
+
+                  // Accumulating accounts with a due_day drive their own contribution rows
+                  const accumulatingAccounts = accounts.filter(
+                    (a) => a.is_accumulating && a.due_day && a.accumulation_target
+                  );
 
                   // Group regular bills by source account
                   const grouped = {};
@@ -4815,28 +4854,28 @@ function Dashboard() {
                     return Math.max(1, count);
                   };
 
-                  // Non-accumulating: show full bill amount for this period's transfer bills
+                  // Non-accumulating transfer bills: show full amount for current period
                   const periodTransferRows = periodTransferBills.map((bill) => {
                     const destAcct = accounts.find((a) => a.id === bill.transfer_to_account_id);
                     const destName = destAcct ? destAcct.name : "Unknown";
                     return renderTransferRow(`transfer-${bill.id}`, destName, bill.amount, null);
                   });
 
-                  // Accumulating: spread remaining balance over future periods
-                  const transferRows = transferBills.flatMap((bill) => {
-                    const destAcct = accounts.find((a) => a.id === bill.transfer_to_account_id);
-                    const destName = destAcct ? destAcct.name : "Unknown";
-                    const target = bill.amount;
-                    const saved = Math.min(destAcct?.current_balance || 0, target);
+                  // Accumulating accounts: spread remaining over periods until due
+                  const accumulatingRows = accumulatingAccounts.flatMap((acct) => {
+                    const target = acct.accumulation_target;
+                    const saved = Math.min(acct.current_balance || 0, target);
                     const stillNeeded = Math.max(0, target - saved);
                     if (stillNeeded === 0) return [];
-                    const periods = periodsUntilDue(bill);
+                    const periods = periodsUntilDue({ due_day: acct.due_day });
                     const amountThisPeriod = stillNeeded / periods;
                     const subtitle = `$${fmt(saved)} of $${fmt(target)} saved`;
-                    return [renderTransferRow(`transfer-${bill.id}`, destName, amountThisPeriod, subtitle)];
+                    return [renderTransferRow(`acct-${acct.id}`, acct.name, amountThisPeriod, subtitle)];
                   });
 
-                  if (billRows.length === 0 && periodTransferRows.length === 0 && transferRows.length === 0) {
+                  const allTransferRows = [...periodTransferRows, ...accumulatingRows];
+
+                  if (billRows.length === 0 && allTransferRows.length === 0) {
                     return <div className="empty-state">No allocations this period</div>;
                   }
 
@@ -4848,11 +4887,10 @@ function Dashboard() {
                           {billRows}
                         </>
                       )}
-                      {(periodTransferRows.length > 0 || transferRows.length > 0) && (
+                      {allTransferRows.length > 0 && (
                         <>
                           <div style={{ fontSize: "10px", color: "#8B8FA8", letterSpacing: "0.08em", textTransform: "uppercase", margin: billRows.length > 0 ? "16px 0 8px" : "0 0 8px" }}>Transfers</div>
-                          {periodTransferRows}
-                          {transferRows}
+                          {allTransferRows}
                         </>
                       )}
                     </>
