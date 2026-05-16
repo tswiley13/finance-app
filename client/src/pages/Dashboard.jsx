@@ -3800,7 +3800,7 @@ function Dashboard() {
                   onChange={(e) => setBillAccountId(e.target.value)}
                   style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", color: "#F2F0EB", padding: "8px 12px", borderRadius: "6px", fontSize: "13px", fontFamily: "'Inter', sans-serif" }}
                 >
-                  <option value="">Which account pays this?</option>
+                  <option value="">{isBillAccumulating ? "Transfer from which account?" : "Which account pays this?"}</option>
                   {accounts.map((acct, i) => (
                     <option key={i} value={acct.id}>{acct.name}</option>
                   ))}
@@ -3812,7 +3812,7 @@ function Dashboard() {
                   checked={isBillAccumulating}
                   onChange={(e) => { setIsBillAccumulating(e.target.checked); if (!e.target.checked) setTransferToAccountId(""); }}
                 />
-                <span style={{ fontSize: "13px", color: "#8B8FA8" }}>This bill accumulates into another account</span>
+                <span style={{ fontSize: "13px", color: "#8B8FA8" }}>This is a transfer to another account</span>
               </label>
               {isBillAccumulating && (
                 <select
@@ -3820,9 +3820,9 @@ function Dashboard() {
                   onChange={(e) => setTransferToAccountId(e.target.value)}
                   style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", color: "#F2F0EB", padding: "8px 12px", borderRadius: "6px", fontSize: "13px", fontFamily: "'Inter', sans-serif" }}
                 >
-                  <option value="">Accumulates into which account?</option>
+                  <option value="">Transfer to which account?</option>
                   {accounts.map((acct, i) => (
-                    <option key={i} value={acct.id}>{acct.name}{acct.is_accumulating ? " (accumulating)" : ""}</option>
+                    <option key={i} value={acct.id}>{acct.name}{acct.is_accumulating ? " (saving)" : ""}</option>
                   ))}
                 </select>
               )}
@@ -4100,7 +4100,7 @@ function Dashboard() {
                               fontFamily: "'Inter', sans-serif",
                             }}
                           >
-                            <option value="">Which account pays this?</option>
+                            <option value="">{isBillAccumulating ? "Transfer from which account?" : "Which account pays this?"}</option>
                             {accounts.map((acct, i) => (
                               <option key={i} value={acct.id}>
                                 {acct.name}
@@ -4114,7 +4114,7 @@ function Dashboard() {
                             checked={isBillAccumulating}
                             onChange={(e) => { setIsBillAccumulating(e.target.checked); if (!e.target.checked) setTransferToAccountId(""); }}
                           />
-                          <span style={{ fontSize: "13px", color: "#8B8FA8" }}>This bill accumulates into another account</span>
+                          <span style={{ fontSize: "13px", color: "#8B8FA8" }}>This is a transfer to another account</span>
                         </label>
                         {isBillAccumulating && (
                           <select
@@ -4131,10 +4131,10 @@ function Dashboard() {
                               marginTop: "4px",
                             }}
                           >
-                            <option value="">Accumulates into which account?</option>
+                            <option value="">Transfer to which account?</option>
                             {accounts.map((acct, i) => (
                               <option key={i} value={acct.id}>
-                                {acct.name}{acct.is_accumulating ? " (accumulating)" : ""}
+                                {acct.name}{acct.is_accumulating ? " (saving)" : ""}
                               </option>
                             ))}
                           </select>
