@@ -4,6 +4,7 @@ import AuthPage from "./components/Auth";
 import Onboarding from "./pages/Onboarding";
 import Dashboard from "./pages/Dashboard";
 import JoinHousehold from "./pages/JoinHousehold";
+import Landing from "./pages/Landing";
 
 function App() {
   const [session, setSession] = useState(undefined);
@@ -98,7 +99,7 @@ function App() {
   }
 
   if (!session) {
-    return <AuthPage />;
+    return <Landing />;
   }
 
   if (hasHousehold) {

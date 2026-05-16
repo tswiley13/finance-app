@@ -155,6 +155,14 @@ function Onboarding({ onComplete }) {
       return;
     }
 
+    // Auto-add creator to household_members so dashboard can find them
+    await supabase.from("household_members").insert({
+      household_id: created.id,
+      user_id: user.id,
+      name: user.user_metadata?.name || user.email,
+      role: "owner",
+    });
+
     setHouseholdId(created.id);
     setStep(2);
   }
@@ -716,11 +724,18 @@ function Onboarding({ onComplete }) {
   function calculatePayPeriods() {
     const paychecks = incomeList.filter((i) => i.frequency !== "monthly");
 
-    // Generate 8 occurrences of each biweekly paycheck (covers ~4 months)
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    // Generate occurrences forward and backward to cover today + ~4 months ahead
     const allDates = [];
     paychecks.forEach((income) => {
       const baseDate = new Date(income.next_pay_date);
-      for (let i = 0; i < 8; i++) {
+      // Go back enough periods to cover today
+      const daysUntilNext = Math.ceil((baseDate - today) / (1000 * 60 * 60 * 24));
+      const periodsBack = Math.ceil(daysUntilNext / 14) + 1;
+      const startOffset = -periodsBack;
+      for (let i = startOffset; i < 8; i++) {
         const date = new Date(baseDate);
         date.setDate(baseDate.getDate() + i * 14);
         allDates.push(date);

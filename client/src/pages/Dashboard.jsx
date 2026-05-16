@@ -1195,11 +1195,17 @@ function Dashboard() {
       (i) => i.frequency !== "monthly" && i.next_pay_date,
     );
 
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
     const allDates = [];
     paychecks.forEach((inc) => {
       const baseDate = new Date(inc.next_pay_date + "T12:00:00");
       const interval = inc.frequency === "weekly" ? 7 : 14;
-      for (let i = 0; i < 8; i++) {
+      const daysUntilNext = Math.ceil((baseDate - today) / (1000 * 60 * 60 * 24));
+      const periodsBack = Math.ceil(daysUntilNext / interval) + 1;
+      const startOffset = -periodsBack;
+      for (let i = startOffset; i < 8; i++) {
         const date = new Date(baseDate);
         date.setDate(baseDate.getDate() + i * interval);
         allDates.push(date);
