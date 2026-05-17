@@ -94,7 +94,7 @@ function App() {
   if (session) {
     if (inviteCode) return <JoinHousehold />;
     if (hasHousehold) return <Dashboard />;
-    return <Onboarding onComplete={() => setHasHousehold(true)} />;
+    return <Onboarding onComplete={() => { localStorage.setItem("activeNav", "dashboard"); setHasHousehold(true); }} />;
   }
 
   // Logged-out routing

@@ -93,6 +93,9 @@ const css = `
 
   .content-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
 
+  .desktop-only { display: flex; }
+  .mobile-only { display: none; }
+
   .hamburger-btn {
     display: none;
     align-items: center; justify-content: center;
