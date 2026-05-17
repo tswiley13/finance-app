@@ -5152,7 +5152,7 @@ function Dashboard() {
               {item.icon}{item.label}
             </button>
           ))}
-          <button className={`nav-item ${activeNav === "settings" ? "active" : ""}`} onClick={() => { setScrollToInvite(true); navigate("settings"); setMobileMenuOpen(false); }}>
+          <button className="nav-item" onClick={() => { setScrollToInvite(true); navigate("settings"); setMobileMenuOpen(false); }}>
             <UserPlus size={16} />Invite Member
           </button>
           <button className={`nav-item ${activeNav === "settings" ? "active" : ""}`} onClick={() => { navigate("settings"); setMobileMenuOpen(false); }}>
