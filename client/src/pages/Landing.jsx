@@ -1,15 +1,11 @@
-import { useState } from "react";
-import AuthPage from "../components/Auth";
+import { useNavigate } from "react-router-dom";
 import "./Landing.css";
 
 function Landing() {
-  const [showAuth, setShowAuth] = useState(false);
-  const [signUp, setSignUp] = useState(false);
+  const navigate = useNavigate();
 
-  function goToSignUp() { setSignUp(true); setShowAuth(true); }
-  function goToSignIn() { setSignUp(false); setShowAuth(true); }
-
-  if (showAuth) return <AuthPage defaultSignUp={signUp} />;
+  function goToSignUp() { navigate("/signup"); }
+  function goToSignIn() { navigate("/signin"); }
 
   return (
     <div style={{ minHeight: "100vh", background: "#13111F", fontFamily: "'Inter', sans-serif", color: "#F0F6FC" }}>

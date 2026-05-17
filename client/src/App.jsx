@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { Routes, Route, Navigate, useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "./supabase";
 import AuthPage from "./components/Auth";
 import Onboarding from "./pages/Onboarding";
@@ -10,9 +11,9 @@ function App() {
   const [session, setSession] = useState(undefined);
   const [hasHousehold, setHasHousehold] = useState(false);
   const [checkingHousehold, setCheckingHousehold] = useState(false);
-
-  const params = new URLSearchParams(window.location.search);
-  const inviteCode = params.get("code");
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const inviteCode = searchParams.get("code");
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -35,7 +36,6 @@ function App() {
     setTimeout(() => {
       setCheckingHousehold(true);
       async function checkHousehold() {
-        // Complete any pending household join from invite link signup
         const pending = session.user.user_metadata?.pending_household_id;
         const memberName = session.user.user_metadata?.name;
         if (pending) {
@@ -58,7 +58,6 @@ function App() {
           await supabase.auth.updateUser({ data: { pending_household_id: null } });
         }
 
-        // Check if user created a household
         const { data: created } = await supabase
           .from("households")
           .select("id")
@@ -72,7 +71,6 @@ function App() {
           return;
         }
 
-        // Check if user is a member of any household (joined via invite)
         const { data: membership } = await supabase
           .from("household_members")
           .select("id")
@@ -88,25 +86,28 @@ function App() {
     }, 0);
   }, [session]);
 
-  if (inviteCode) {
-    return <JoinHousehold />;
-  }
-
   if (session === undefined || checkingHousehold) {
-    return (
-      <div style={{ minHeight: "100vh", background: "#13111F", opacity: 0 }} />
-    );
+    return <div style={{ minHeight: "100vh", background: "#13111F", opacity: 0 }} />;
   }
 
-  if (!session) {
-    return <Landing />;
+  // Logged-in users always go to the app
+  if (session) {
+    if (inviteCode) return <JoinHousehold />;
+    if (hasHousehold) return <Dashboard />;
+    return <Onboarding onComplete={() => setHasHousehold(true)} />;
   }
 
-  if (hasHousehold) {
-    return <Dashboard />;
-  }
+  // Logged-out routing
+  if (inviteCode) return <JoinHousehold />;
 
-  return <Onboarding onComplete={() => setHasHousehold(true)} />;
+  return (
+    <Routes>
+      <Route path="/" element={<Landing />} />
+      <Route path="/signin" element={<AuthPage defaultSignUp={false} />} />
+      <Route path="/signup" element={<AuthPage defaultSignUp={true} />} />
+      <Route path="*" element={<Navigate to="/" replace />} />
+    </Routes>
+  );
 }
 
 export default App;
