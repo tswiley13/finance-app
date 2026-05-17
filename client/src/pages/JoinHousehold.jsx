@@ -133,7 +133,7 @@ function JoinHousehold() {
                   <div style={{ width: "20px", height: "20px", borderRadius: "50%", background: "rgba(0,212,170,0.15)", border: "1px solid rgba(0,212,170,0.4)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
                     <div style={{ width: "6px", height: "6px", borderRadius: "50%", background: "#6C63FF" }} />
                   </div>
-                  <div style={{ fontSize: "15px", color: "#8B949E" }}>{item}</div>
+                  <div style={{ fontSize: "15px", color: "#8B8FA8" }}>{item}</div>
                 </div>
               ))}
             </div>

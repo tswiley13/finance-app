@@ -203,7 +203,7 @@ function AuthPage({ defaultSignUp = false }) {
                       }}
                     />
                   </div>
-                  <div style={{ fontSize: "15px", color: "#8B949E" }}>
+                  <div style={{ fontSize: "15px", color: "#8B8FA8" }}>
                     {item}
                   </div>
                 </div>
