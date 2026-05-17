@@ -5147,13 +5147,15 @@ function Dashboard() {
           ))}
           <div className="nav-label">Account</div>
           {[
-            { key: "invite", label: "Invite Member", icon: <UserPlus size={16} /> },
             { key: "settings", label: "Settings", icon: <Settings size={16} /> },
           ].map((item) => (
             <button key={item.key} className={`nav-item ${activeNav === item.key ? "active" : ""}`} onClick={() => { navigate(item.key); setMobileMenuOpen(false); }}>
               {item.icon}{item.label}
             </button>
           ))}
+          <button className={`nav-item ${activeNav === "settings" ? "active" : ""}`} onClick={() => { setScrollToInvite(true); navigate("settings"); setMobileMenuOpen(false); }}>
+            <UserPlus size={16} />Invite Member
+          </button>
         </nav>
         <div className="mobile-nav-drawer-footer">
           <button className="signout-btn" onClick={() => supabase.auth.signOut()}>
