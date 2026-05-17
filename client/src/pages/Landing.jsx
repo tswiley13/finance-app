@@ -1,5 +1,6 @@
 import { useState } from "react";
 import AuthPage from "../components/Auth";
+import "./Landing.css";
 
 function Landing() {
   const [showAuth, setShowAuth] = useState(false);
@@ -14,9 +15,9 @@ function Landing() {
     <div style={{ minHeight: "100vh", background: "#13111F", fontFamily: "'Inter', sans-serif", color: "#F0F6FC" }}>
 
       {/* Nav */}
-      <nav style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "24px 64px", borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
+      <nav className="landing-nav">
         <div style={{ fontSize: "22px", fontWeight: "900", letterSpacing: "0.12em", textTransform: "uppercase" }}>Stryde</div>
-        <div style={{ display: "flex", alignItems: "center", gap: "32px" }}>
+        <div className="landing-nav-links">
           <a href="#features" style={{ fontSize: "14px", color: "#8B8FA8", textDecoration: "none" }}>Features</a>
           <a href="#pricing" style={{ fontSize: "14px", color: "#8B8FA8", textDecoration: "none" }}>Pricing</a>
           <button
@@ -35,18 +36,18 @@ function Landing() {
       </nav>
 
       {/* Hero */}
-      <section style={{ textAlign: "center", padding: "100px 64px 80px" }}>
+      <section className="landing-hero">
         <div style={{ display: "inline-block", fontSize: "11px", fontWeight: "700", letterSpacing: "0.2em", textTransform: "uppercase", color: "#6C63FF", background: "rgba(108,99,255,0.1)", border: "1px solid rgba(108,99,255,0.2)", borderRadius: "20px", padding: "6px 16px", marginBottom: "32px" }}>
           Now in Beta
         </div>
-        <h1 style={{ fontSize: "72px", fontWeight: "900", lineHeight: "1.05", letterSpacing: "-0.03em", marginBottom: "24px", maxWidth: "800px", margin: "0 auto 24px" }}>
+        <h1>
           Stop guessing.<br />
           <span style={{ color: "#6C63FF" }}>Start knowing.</span>
         </h1>
-        <p style={{ fontSize: "20px", color: "#8B8FA8", lineHeight: "1.6", maxWidth: "560px", margin: "0 auto 48px" }}>
+        <p>
           Real financial planning for every household. Know exactly where every dollar is going — before the bills hit.
         </p>
-        <div style={{ display: "flex", gap: "16px", justifyContent: "center", alignItems: "center" }}>
+        <div className="landing-hero-cta">
           <button
             onClick={goToSignUp}
             style={{ fontSize: "16px", fontWeight: "700", color: "#13111F", background: "linear-gradient(135deg, #6C63FF, #948cf2)", border: "none", borderRadius: "10px", padding: "16px 36px", cursor: "pointer", fontFamily: "'Inter', sans-serif" }}
@@ -61,7 +62,7 @@ function Landing() {
       </section>
 
       {/* App preview */}
-      <section style={{ padding: "0 64px 100px" }}>
+      <section className="landing-preview">
         <div style={{ maxWidth: "1100px", margin: "0 auto" }}>
           {/* Browser chrome */}
           <div style={{ background: "#1C1A2E", border: "1px solid rgba(255,255,255,0.08)", borderRadius: "16px", overflow: "hidden", boxShadow: "0 40px 80px rgba(0,0,0,0.6)" }}>
@@ -85,14 +86,14 @@ function Landing() {
       </section>
 
       {/* Features */}
-      <section id="features" style={{ padding: "80px 64px", background: "rgba(255,255,255,0.01)", borderTop: "1px solid rgba(255,255,255,0.04)" }}>
+      <section id="features" className="landing-section" style={{ background: "rgba(255,255,255,0.01)", borderTop: "1px solid rgba(255,255,255,0.04)" }}>
         <div style={{ maxWidth: "1100px", margin: "0 auto" }}>
           <div style={{ textAlign: "center", marginBottom: "64px" }}>
             <div style={{ fontSize: "11px", fontWeight: "700", letterSpacing: "0.2em", textTransform: "uppercase", color: "#6C63FF", marginBottom: "16px" }}>Features</div>
             <h2 style={{ fontSize: "42px", fontWeight: "800", letterSpacing: "-0.02em", marginBottom: "16px" }}>Built to keep you ahead</h2>
             <p style={{ fontSize: "17px", color: "#8B8FA8", maxWidth: "480px", margin: "0 auto" }}>Not another app that shows you what you already spent. Stryde plans what's coming.</p>
           </div>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: "24px" }}>
+          <div className="landing-features-grid">
             {[
               {
                 icon: "📅",
@@ -137,13 +138,13 @@ function Landing() {
       </section>
 
       {/* How it works */}
-      <section style={{ padding: "80px 64px", borderTop: "1px solid rgba(255,255,255,0.04)" }}>
+      <section className="landing-section" style={{ borderTop: "1px solid rgba(255,255,255,0.04)" }}>
         <div style={{ maxWidth: "1100px", margin: "0 auto" }}>
           <div style={{ textAlign: "center", marginBottom: "64px" }}>
             <div style={{ fontSize: "11px", fontWeight: "700", letterSpacing: "0.2em", textTransform: "uppercase", color: "#6C63FF", marginBottom: "16px" }}>How It Works</div>
             <h2 style={{ fontSize: "42px", fontWeight: "800", letterSpacing: "-0.02em" }}>Up and running in minutes</h2>
           </div>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "40px" }}>
+          <div className="landing-steps-grid">
             {[
               { step: "01", title: "Set up your household", desc: "Add your accounts, income sources, and pay schedule. Takes about 5 minutes." },
               { step: "02", title: "Add your bills", desc: "Enter your recurring bills and due dates. Stryde maps them to your pay periods automatically." },
@@ -160,14 +161,14 @@ function Landing() {
       </section>
 
       {/* Pricing */}
-      <section id="pricing" style={{ padding: "80px 64px", background: "rgba(255,255,255,0.01)", borderTop: "1px solid rgba(255,255,255,0.04)" }}>
+      <section id="pricing" className="landing-section" style={{ background: "rgba(255,255,255,0.01)", borderTop: "1px solid rgba(255,255,255,0.04)" }}>
         <div style={{ maxWidth: "1100px", margin: "0 auto" }}>
           <div style={{ textAlign: "center", marginBottom: "64px" }}>
             <div style={{ fontSize: "11px", fontWeight: "700", letterSpacing: "0.2em", textTransform: "uppercase", color: "#6C63FF", marginBottom: "16px" }}>Pricing</div>
             <h2 style={{ fontSize: "42px", fontWeight: "800", letterSpacing: "-0.02em", marginBottom: "16px" }}>Simple, transparent pricing</h2>
             <p style={{ fontSize: "17px", color: "#8B8FA8" }}>Start free. No credit card required.</p>
           </div>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "24px", alignItems: "start" }}>
+          <div className="landing-pricing-grid">
 
             {/* Free trial */}
             <div style={{ background: "#161B22", border: "1px solid #30363D", borderRadius: "16px", padding: "36px" }}>
@@ -237,8 +238,8 @@ function Landing() {
       </section>
 
       {/* CTA */}
-      <section style={{ padding: "100px 64px", textAlign: "center", borderTop: "1px solid rgba(255,255,255,0.04)" }}>
-        <h2 style={{ fontSize: "52px", fontWeight: "900", letterSpacing: "-0.03em", marginBottom: "20px" }}>
+      <section className="landing-cta-section" style={{ borderTop: "1px solid rgba(255,255,255,0.04)" }}>
+        <h2>
           Ready to stop guessing?
         </h2>
         <p style={{ fontSize: "18px", color: "#8B8FA8", marginBottom: "40px" }}>
@@ -254,7 +255,7 @@ function Landing() {
       </section>
 
       {/* Footer */}
-      <footer style={{ padding: "32px 64px", borderTop: "1px solid rgba(255,255,255,0.05)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+      <footer className="landing-footer">
         <div style={{ fontSize: "18px", fontWeight: "900", letterSpacing: "0.12em", textTransform: "uppercase" }}>Stryde</div>
         <div style={{ fontSize: "12px", color: "#4A4F5C" }}>© 2026 Stryde Financial LLC. All rights reserved.</div>
         <div style={{ fontSize: "12px", color: "#4A4F5C" }}>Built for those who plan ahead.</div>
