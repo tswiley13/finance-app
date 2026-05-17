@@ -60,24 +60,27 @@ function Landing() {
         <p style={{ fontSize: "12px", color: "#4A4F5C", marginTop: "20px" }}>No credit card required · 14-day free trial</p>
       </section>
 
-      {/* App preview placeholder */}
+      {/* App preview */}
       <section style={{ padding: "0 64px 100px" }}>
-        <div style={{ maxWidth: "1100px", margin: "0 auto", background: "#161B22", border: "1px solid #30363D", borderRadius: "16px", padding: "48px", textAlign: "center" }}>
-          <div style={{ fontSize: "13px", color: "#4A4F5C", letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: "16px" }}>Dashboard Preview</div>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "12px", marginBottom: "24px" }}>
-            {[
-              { label: "Available Funds", value: "$4,250.00", color: "#00D4AA" },
-              { label: "Remaining Bills", value: "$1,840.00", color: "#00D4AA" },
-              { label: "Left After Bills", value: "$2,410.00", color: "#4ADE80" },
-            ].map((card, i) => (
-              <div key={i} style={{ background: "#1A1826", border: "1px solid rgba(255,255,255,0.06)", borderRadius: "12px", padding: "20px", textAlign: "left", position: "relative", overflow: "hidden" }}>
-                <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: "1px", background: "linear-gradient(90deg, rgba(0,212,170,0.8), transparent)" }} />
-                <div style={{ fontSize: "10px", color: "#8B8FA8", letterSpacing: "0.1em", textTransform: "uppercase", fontWeight: "600", marginBottom: "10px" }}>{card.label}</div>
-                <div style={{ fontFamily: "'DM Mono', monospace", fontSize: "26px", fontWeight: "500", color: card.color }}>{card.value}</div>
+        <div style={{ maxWidth: "1100px", margin: "0 auto" }}>
+          {/* Browser chrome */}
+          <div style={{ background: "#1C1A2E", border: "1px solid rgba(255,255,255,0.08)", borderRadius: "16px", overflow: "hidden", boxShadow: "0 40px 80px rgba(0,0,0,0.6)" }}>
+            <div style={{ background: "#161422", padding: "12px 16px", display: "flex", alignItems: "center", gap: "8px", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+              <div style={{ display: "flex", gap: "6px" }}>
+                <div style={{ width: "10px", height: "10px", borderRadius: "50%", background: "#FF5F57" }} />
+                <div style={{ width: "10px", height: "10px", borderRadius: "50%", background: "#FEBC2E" }} />
+                <div style={{ width: "10px", height: "10px", borderRadius: "50%", background: "#28C840" }} />
               </div>
-            ))}
+              <div style={{ flex: 1, background: "rgba(255,255,255,0.05)", borderRadius: "6px", padding: "4px 12px", fontSize: "11px", color: "#4A4F5C", textAlign: "center" }}>
+                stryde.money
+              </div>
+            </div>
+            <img
+              src="/dashboard-preview.png"
+              alt="Stryde dashboard showing pay periods, bills, and where the money goes"
+              style={{ width: "100%", display: "block" }}
+            />
           </div>
-          <div style={{ fontSize: "12px", color: "#4A4F5C" }}>Plan every pay period. Know what's left before it's gone.</div>
         </div>
       </section>
 
