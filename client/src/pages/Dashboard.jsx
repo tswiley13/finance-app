@@ -5147,7 +5147,6 @@ function Dashboard() {
           ))}
           <div className="nav-label">Account</div>
           {[
-            { key: "settings", label: "Settings", icon: <Settings size={16} /> },
           ].map((item) => (
             <button key={item.key} className={`nav-item ${activeNav === item.key ? "active" : ""}`} onClick={() => { navigate(item.key); setMobileMenuOpen(false); }}>
               {item.icon}{item.label}
@@ -5155,6 +5154,9 @@ function Dashboard() {
           ))}
           <button className={`nav-item ${activeNav === "settings" ? "active" : ""}`} onClick={() => { setScrollToInvite(true); navigate("settings"); setMobileMenuOpen(false); }}>
             <UserPlus size={16} />Invite Member
+          </button>
+          <button className={`nav-item ${activeNav === "settings" ? "active" : ""}`} onClick={() => { navigate("settings"); setMobileMenuOpen(false); }}>
+            <Settings size={16} />Settings
           </button>
         </nav>
         <div className="mobile-nav-drawer-footer">
