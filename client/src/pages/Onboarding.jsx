@@ -66,6 +66,16 @@ function Onboarding({ onComplete }) {
   const [billTransferToAccountId, setBillTransferToAccountId] = useState("");
   const [editingBill, setEditingBill] = useState(null);
   const [billError, setBillError] = useState(null);
+  const [debtList, setDebtList] = useState([]);
+  const [debtName, setDebtName] = useState("");
+  const [debtOwner, setDebtOwner] = useState("joint");
+  const [debtCategory, setDebtCategory] = useState("Credit Card");
+  const [debtBalance, setDebtBalance] = useState("");
+  const [debtInterestRate, setDebtInterestRate] = useState("");
+  const [debtMinPayment, setDebtMinPayment] = useState("");
+  const [debtPayoffOrder, setDebtPayoffOrder] = useState("");
+  const [editingDebt, setEditingDebt] = useState(null);
+  const [debtError, setDebtError] = useState(null);
   const [payPeriodList, setPayPeriodList] = useState([]);
   const [depositAccountId, setDepositAccountId] = useState("");
   useEffect(() => {
@@ -722,6 +732,63 @@ function Onboarding({ onComplete }) {
     setBillTransferToAccountId("");
   }
 
+  function resetDebtForm() {
+    setDebtName(""); setDebtOwner("joint"); setDebtCategory("Credit Card");
+    setDebtBalance(""); setDebtInterestRate(""); setDebtMinPayment("");
+    setDebtPayoffOrder(""); setEditingDebt(null); setDebtError(null);
+  }
+
+  async function addDebt() {
+    setDebtError(null);
+    if (!debtName) { setDebtError("Please enter a debt name."); return false; }
+    if (!debtBalance) { setDebtError("Please enter the current balance."); return false; }
+    if (!debtMinPayment) { setDebtError("Please enter the minimum payment."); return false; }
+
+    const { data: saved, error } = await supabase.from("debts").insert({
+      household_id: householdId,
+      name: debtName,
+      owner: debtOwner,
+      category: debtCategory,
+      balance: parseFloat(debtBalance),
+      interest_rate: debtInterestRate ? parseFloat(debtInterestRate) / 100 : null,
+      minimum_payment: parseFloat(debtMinPayment),
+      payoff_order: debtPayoffOrder ? parseInt(debtPayoffOrder) : null,
+      is_paid_off: false,
+    }).select().single();
+
+    if (error) { setDebtError(error.message); return false; }
+    setDebtList([...debtList, saved]);
+    resetDebtForm();
+    return true;
+  }
+
+  async function updateDebt() {
+    setDebtError(null);
+    if (!debtName) { setDebtError("Please enter a debt name."); return; }
+    if (!debtBalance) { setDebtError("Please enter the current balance."); return; }
+    if (!debtMinPayment) { setDebtError("Please enter the minimum payment."); return; }
+
+    const { error } = await supabase.from("debts").update({
+      name: debtName,
+      owner: debtOwner,
+      category: debtCategory,
+      balance: parseFloat(debtBalance),
+      interest_rate: debtInterestRate ? parseFloat(debtInterestRate) / 100 : null,
+      minimum_payment: parseFloat(debtMinPayment),
+      payoff_order: debtPayoffOrder ? parseInt(debtPayoffOrder) : null,
+    }).eq("id", editingDebt.id);
+
+    if (error) { setDebtError(error.message); return; }
+    setDebtList(debtList.map((d) => d.id === editingDebt.id ? {
+      ...d, name: debtName, owner: debtOwner, category: debtCategory,
+      balance: parseFloat(debtBalance),
+      interest_rate: debtInterestRate ? parseFloat(debtInterestRate) / 100 : null,
+      minimum_payment: parseFloat(debtMinPayment),
+      payoff_order: debtPayoffOrder ? parseInt(debtPayoffOrder) : null,
+    } : d));
+    resetDebtForm();
+  }
+
   function formatDate(dateString) {
     const date = new Date(dateString);
     return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
@@ -893,8 +960,8 @@ function Onboarding({ onComplete }) {
           <div style={{ fontSize: "28px", fontWeight: "900", letterSpacing: "0.12em", color: "#F0F6FC", textTransform: "uppercase" }}>Stryde</div>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: "28px", position: "relative", width: "100%", maxWidth: "540px", justifyContent: "center" }}>
-          {[1,2,3,4,5].map(s => (
-            <div key={s} style={{ width: "32px", height: "3px", borderRadius: "2px", background: s <= stepNum ? "#6C63FF" : "rgba(255,255,255,0.08)" }} />
+          {[1,2,3,4,5,6].map(s => (
+            <div key={s} style={{ width: "28px", height: "3px", borderRadius: "2px", background: s <= stepNum ? "#6C63FF" : "rgba(255,255,255,0.08)" }} />
           ))}
           {stepNum > 1 && (
             <button
@@ -907,7 +974,7 @@ function Onboarding({ onComplete }) {
         </div>
         <div className="onboarding-shell-card" style={{ width: "100%", maxWidth, background: "#1A1826", borderRadius: "16px", border: "1px solid rgba(255,255,255,0.06)", padding: "40px" }}>
           <div style={{ marginBottom: "28px" }}>
-            <div style={{ fontSize: "10px", color: "#6C63FF", letterSpacing: "0.15em", textTransform: "uppercase", fontWeight: "600", marginBottom: "8px" }}>Step {stepNum} of 5</div>
+            <div style={{ fontSize: "10px", color: "#6C63FF", letterSpacing: "0.15em", textTransform: "uppercase", fontWeight: "600", marginBottom: "8px" }}>Step {stepNum} of 6</div>
             <div style={{ fontSize: "22px", fontWeight: "700", color: "#F0F6FC", marginBottom: "6px" }}>{title}</div>
             {subtitle && <div style={{ fontSize: "14px", color: "#8B8FA8", lineHeight: "1.5" }}>{subtitle}</div>}
           </div>
@@ -1796,9 +1863,102 @@ function Onboarding({ onComplete }) {
 
         <div style={{ display: "flex", justifyContent: "space-between", marginTop: "8px" }}>
           <button style={ghostBtn} onClick={() => setStep(4)}>Back</button>
-          <button style={{ ...primaryBtn, background: "#00D4AA", color: "#0F1218" }} onClick={async () => {
+          <button style={primaryBtn} onClick={async () => {
             if (billName) {
               const ok = await addBill();
+              if (!ok) return;
+            }
+            setStep(6);
+          }}>
+            Continue
+          </button>
+        </div>
+      </div>
+    ));
+  }
+
+  if (step === 6) {
+    const isMobile = window.innerWidth <= 640;
+    const selectStyle = { ...inputStyle, cursor: "pointer" };
+    return shell(6, "Add your debts", "Optional — add any debts you're paying off. You can always add more from the Debts page.", (
+      <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+        <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: "12px" }}>
+          <div style={{ gridColumn: "1 / -1" }}>
+            <label style={labelStyle}>Debt Name</label>
+            <input style={inputStyle} type="text" placeholder="e.g. Chase Sapphire" value={debtName} onChange={(e) => setDebtName(e.target.value)} autoFocus />
+          </div>
+          <div>
+            <label style={labelStyle}>Category</label>
+            <select style={selectStyle} value={debtCategory} onChange={(e) => setDebtCategory(e.target.value)}>
+              <option value="Credit Card">Credit Card</option>
+              <option value="Student Loan">Student Loan</option>
+              <option value="Car Loan">Car Loan</option>
+              <option value="Medical">Medical</option>
+              <option value="Personal Loan">Personal Loan</option>
+              <option value="Other">Other</option>
+            </select>
+          </div>
+          <div>
+            <label style={labelStyle}>Owner</label>
+            <select style={selectStyle} value={debtOwner} onChange={(e) => setDebtOwner(e.target.value)}>
+              <option value="joint">Joint</option>
+              {memberList.map((m, i) => <option key={i} value={m.name}>{m.name}</option>)}
+            </select>
+          </div>
+          <div>
+            <label style={labelStyle}>Current Balance</label>
+            <input style={inputStyle} type="number" placeholder="0.00" value={debtBalance} onChange={(e) => setDebtBalance(e.target.value)} />
+          </div>
+          <div>
+            <label style={labelStyle}>Minimum Payment</label>
+            <input style={inputStyle} type="number" placeholder="0.00" value={debtMinPayment} onChange={(e) => setDebtMinPayment(e.target.value)} />
+          </div>
+          <div>
+            <label style={labelStyle}>Interest Rate (%)</label>
+            <input style={inputStyle} type="number" placeholder="e.g. 19.99" value={debtInterestRate} onChange={(e) => setDebtInterestRate(e.target.value)} />
+          </div>
+          <div>
+            <label style={labelStyle}>Payoff Priority</label>
+            <input style={inputStyle} type="number" placeholder="e.g. 1 (lowest first)" value={debtPayoffOrder} onChange={(e) => setDebtPayoffOrder(e.target.value)} />
+          </div>
+        </div>
+
+        {debtError && (
+          <div style={{ fontSize: "13px", color: "#F87171", background: "rgba(248,113,113,0.08)", padding: "10px 14px", borderRadius: "8px", border: "1px solid rgba(248,113,113,0.2)" }}>
+            {debtError}
+          </div>
+        )}
+
+        <button style={addBtn} onClick={editingDebt ? updateDebt : addDebt}>{editingDebt ? "Save Changes" : "+ Add Debt"}</button>
+
+        {debtList.length > 0 && (
+          <div style={{ borderTop: "1px solid rgba(255,255,255,0.06)", paddingTop: "12px" }}>
+            {debtList.map((debt, i) => (
+              <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 0", borderBottom: "1px solid rgba(255,255,255,0.04)" }}>
+                <div>
+                  <div style={{ fontSize: "14px", color: "#F0F6FC", fontWeight: "500" }}>{debt.name}</div>
+                  <div style={{ fontSize: "11px", color: "#8B8FA8", marginTop: "2px" }}>${debt.balance?.toLocaleString()} · ${debt.minimum_payment}/mo · {debt.category}</div>
+                </div>
+                <button style={ghostBtn} onClick={() => {
+                  setEditingDebt(debt);
+                  setDebtName(debt.name);
+                  setDebtOwner(debt.owner);
+                  setDebtCategory(debt.category);
+                  setDebtBalance(debt.balance);
+                  setDebtInterestRate(debt.interest_rate ? (debt.interest_rate * 100).toString() : "");
+                  setDebtMinPayment(debt.minimum_payment);
+                  setDebtPayoffOrder(debt.payoff_order?.toString() || "");
+                }}>Edit</button>
+              </div>
+            ))}
+          </div>
+        )}
+
+        <div style={{ display: "flex", justifyContent: "space-between", marginTop: "8px" }}>
+          <button style={ghostBtn} onClick={() => setStep(5)}>Back</button>
+          <button style={{ ...primaryBtn, background: "#00D4AA", color: "#0F1218" }} onClick={async () => {
+            if (debtName) {
+              const ok = await addDebt();
               if (!ok) return;
             }
             const periods = calculatePayPeriods();
