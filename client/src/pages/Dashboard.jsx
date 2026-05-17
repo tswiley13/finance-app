@@ -12,6 +12,9 @@ import {
   Settings,
   LogOut,
   UserPlus,
+  Landmark,
+  Menu,
+  X,
 } from "lucide-react";
 
 const css = `
@@ -88,6 +91,45 @@ const css = `
   .tag { display: inline-block; font-size: 9px; letter-spacing: 0.08em; text-transform: uppercase; padding: 2px 7px; border-radius: 4px; background: rgba(108,99,255,0.15); color: #6C63FF; margin-left: 8px; vertical-align: middle; font-weight: 600; }
 
   .content-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+
+  .hamburger-btn {
+    display: none;
+    align-items: center; justify-content: center;
+    background: none; border: none; cursor: pointer;
+    color: #F0F6FC; padding: 6px; border-radius: 6px;
+    transition: background 0.15s ease;
+  }
+  .hamburger-btn:hover { background: rgba(255,255,255,0.08); }
+
+  .topbar-greeting { display: flex; flex-direction: column; gap: 1px; }
+  .topbar-period { }
+
+  .mobile-nav-overlay {
+    display: none;
+    position: fixed; inset: 0; background: rgba(0,0,0,0.55); z-index: 199;
+  }
+  .mobile-nav-drawer {
+    display: none;
+    flex-direction: column;
+    position: fixed; top: 0; left: 0; bottom: 0; width: 280px;
+    background: #13111F; z-index: 200;
+    border-right: 1px solid rgba(255,255,255,0.08);
+    overflow-y: auto;
+  }
+  .mobile-nav-drawer-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 20px 16px; border-bottom: 1px solid rgba(255,255,255,0.06);
+  }
+  .mobile-nav-drawer-logo {
+    font-size: 20px; font-weight: 800; letter-spacing: 0.06em;
+    color: #F0F6FC; text-transform: uppercase;
+  }
+  .mobile-nav-close {
+    background: none; border: none; cursor: pointer;
+    color: #8B8FA8; padding: 4px; border-radius: 6px;
+  }
+  .mobile-nav-drawer-nav { padding: 8px 12px; flex: 1; display: flex; flex-direction: column; gap: 1px; }
+  .mobile-nav-drawer-footer { padding: 12px; border-top: 1px solid rgba(255,255,255,0.06); }
 `;
 
 function Dashboard() {
@@ -153,6 +195,7 @@ function Dashboard() {
   const [newCategory, setNewCategory] = useState("");
   const [showCategoryForm, setShowCategoryForm] = useState(false);
   const [members, setMembers] = useState([]);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [regenerating, setRegenerating] = useState(false);
   const [confirmRegenerate, setConfirmRegenerate] = useState(false);
   const [debts, setDebts] = useState([]);
@@ -4276,65 +4319,55 @@ function Dashboard() {
     return (
       <>
         <div className="topbar">
-          <div style={{ display: "flex", alignItems: "center", gap: "14px" }}>
-            <div
-              style={{
-                width: "38px",
-                height: "38px",
-                borderRadius: "50%",
-                background: "linear-gradient(135deg, #6C63FF, #948cf2)",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                fontSize: "14px",
-                fontWeight: "700",
-                color: "#0D1117",
-                flexShrink: 0,
-              }}
-            >
-              {members
-                .find((m) => m.role === "owner")
-                ?.name?.charAt(0)
-                .toUpperCase() || "?"}
+          {/* Mobile: hamburger — hidden on desktop via CSS */}
+          <button className="hamburger-btn" onClick={() => setMobileMenuOpen(true)}>
+            <Menu size={22} />
+          </button>
+
+          {/* Desktop: avatar + greeting — hidden on mobile via CSS */}
+          <div className="desktop-only" style={{ alignItems: "center", gap: "14px" }}>
+            <div style={{ width: "38px", height: "38px", borderRadius: "50%", background: "linear-gradient(135deg, #6C63FF, #948cf2)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "14px", fontWeight: "700", color: "#0D1117", flexShrink: 0 }}>
+              {members.find((m) => m.role === "owner")?.name?.charAt(0).toUpperCase() || "?"}
             </div>
             <div>
               <div className="welcome-name">
                 {(() => {
                   const hour = new Date().getHours();
-                  const greeting =
-                    hour < 12
-                      ? "Good morning"
-                      : hour < 17
-                        ? "Good afternoon"
-                        : "Good evening";
+                  const greeting = hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
                   const ownerName = members.find((m) => m.role === "owner")?.name;
-                  const firstName =
-                    (ownerName && !ownerName.includes("@") ? ownerName : null) ||
-                    household?.name;
+                  const firstName = (ownerName && !ownerName.includes("@") ? ownerName : null) || household?.name;
                   return `${greeting}, ${firstName}`;
                 })()}
               </div>
               <div className="welcome-date">
-                {new Date().toLocaleDateString("en-US", {
-                  weekday: "long",
-                  year: "numeric",
-                  month: "long",
-                  day: "numeric",
-                })}
+                {new Date().toLocaleDateString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric" })}
               </div>
             </div>
           </div>
-          <div className="period-badge">
+
+          {/* Mobile: compact greeting — hidden on desktop */}
+          <div className="mobile-only" style={{ flexDirection: "column", gap: "1px" }}>
+            <div style={{ fontSize: "15px", fontWeight: "700", color: "#F0F6FC", letterSpacing: "-0.01em" }}>
+              {(() => {
+                const hour = new Date().getHours();
+                const greeting = hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
+                const ownerName = members.find((m) => m.role === "owner")?.name;
+                const firstName = (ownerName && !ownerName.includes("@") ? ownerName : null) || household?.name;
+                return `${greeting}, ${firstName}`;
+              })()}
+            </div>
+            <div style={{ fontSize: "11px", color: "#8B8FA8" }}>
+              {new Date().toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })}
+            </div>
+          </div>
+
+          {/* Desktop: period badge */}
+          <div className="period-badge topbar-period">
             <div className="period-label">Current Pay Period</div>
             {currentPeriod ? (
-              <div className="period-dates">
-                {fmtDate(currentPeriod.start_date)} —{" "}
-                {fmtDate(currentPeriod.end_date)}
-              </div>
+              <div className="period-dates">{fmtDate(currentPeriod.start_date)} — {fmtDate(currentPeriod.end_date)}</div>
             ) : (
-              <div className="period-label" style={{ color: "#8B8FA8" }}>
-                No active period
-              </div>
+              <div className="period-label" style={{ color: "#8B8FA8" }}>No active period</div>
             )}
           </div>
         </div>
@@ -5074,6 +5107,56 @@ function Dashboard() {
           <div className="content-area">{renderContent()}</div>
         )}
       </main>
+
+      {/* Mobile nav drawer */}
+      {mobileMenuOpen && (
+        <div className="mobile-nav-overlay" onClick={() => setMobileMenuOpen(false)} />
+      )}
+      <div className="mobile-nav-drawer" style={{ transform: mobileMenuOpen ? "translateX(0)" : "translateX(-100%)", transition: "transform 0.25s ease" }}>
+        <div className="mobile-nav-drawer-header">
+          <div className="mobile-nav-drawer-logo">Stryde</div>
+          <button className="mobile-nav-close" onClick={() => setMobileMenuOpen(false)}>
+            <X size={20} />
+          </button>
+        </div>
+        <nav className="mobile-nav-drawer-nav">
+          <div className="nav-label">Main</div>
+          {[
+            { key: "dashboard", label: "Dashboard", icon: <LayoutDashboard size={16} /> },
+            { key: "bills", label: "Bills", icon: <Receipt size={16} /> },
+            { key: "income", label: "Income", icon: <Wallet size={16} /> },
+            { key: "accounts", label: "Accounts", icon: <CreditCard size={16} /> },
+            { key: "categories", label: "Categories", icon: <Tag size={16} /> },
+          ].map((item) => (
+            <button key={item.key} className={`nav-item ${activeNav === item.key ? "active" : ""}`} onClick={() => { navigate(item.key); setMobileMenuOpen(false); }}>
+              {item.icon}{item.label}
+            </button>
+          ))}
+          <div className="nav-label">Planning</div>
+          {[
+            { key: "payperiods", label: "Pay Periods", icon: <Calendar size={16} /> },
+            { key: "debts", label: "Debts", icon: <TrendingDown size={16} /> },
+          ].map((item) => (
+            <button key={item.key} className={`nav-item ${activeNav === item.key ? "active" : ""}`} onClick={() => { navigate(item.key); setMobileMenuOpen(false); }}>
+              {item.icon}{item.label}
+            </button>
+          ))}
+          <div className="nav-label">Account</div>
+          {[
+            { key: "invite", label: "Invite Member", icon: <UserPlus size={16} /> },
+            { key: "settings", label: "Settings", icon: <Settings size={16} /> },
+          ].map((item) => (
+            <button key={item.key} className={`nav-item ${activeNav === item.key ? "active" : ""}`} onClick={() => { navigate(item.key); setMobileMenuOpen(false); }}>
+              {item.icon}{item.label}
+            </button>
+          ))}
+        </nav>
+        <div className="mobile-nav-drawer-footer">
+          <button className="signout-btn" onClick={() => supabase.auth.signOut()}>
+            <LogOut size={16} />Sign Out
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

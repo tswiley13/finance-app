@@ -35,16 +35,34 @@ body {
   margin: 0;
 }
 
-/* Dashboard mobile layout — injected here so Safari/iOS applies it reliably */
+/* Prevent iOS Safari zoom on input focus (requires font-size >= 16px) */
 @media (max-width: 768px) {
+  input, select, textarea { font-size: 16px !important; }
+
+  /* Dashboard mobile layout */
   .sidebar { display: none !important; }
-  .mobile-bottom-nav { display: block !important; }
+  .mobile-bottom-nav { display: none !important; }
   .main { margin-left: 0 !important; }
-  .content-area { padding: 16px 16px 90px !important; }
-  .topbar { padding: 0 16px !important; height: 64px !important; }
+  .content-area { padding: 16px 16px 24px !important; }
+  .topbar { padding: 0 16px !important; height: 56px !important; }
   .stat-row { grid-template-columns: 1fr !important; gap: 8px !important; }
   .dashboard-grid { grid-template-columns: 1fr !important; }
   .content-grid { grid-template-columns: 1fr !important; }
+  .panel { padding: 14px !important; }
+
+  /* Show/hide helpers */
+  .desktop-only { display: none !important; }
+  .mobile-only { display: flex !important; }
+
+  /* Hamburger button (hidden on desktop, shown on mobile) */
+  .hamburger-btn { display: flex !important; }
+
+  /* Period badge hidden from topbar on mobile */
+  .topbar-period { display: none !important; }
+
+  /* Mobile nav drawer */
+  .mobile-nav-overlay { display: block !important; }
+  .mobile-nav-drawer { display: flex !important; }
 }
 
 #root {
