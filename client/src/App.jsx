@@ -33,8 +33,8 @@ function App() {
     if (session === undefined) return;
     if (!session) return;
 
-    setTimeout(() => {
-      setCheckingHousehold(true);
+    setCheckingHousehold(true);
+    {
       async function checkHousehold() {
         const pending = session.user.user_metadata?.pending_household_id;
         const memberName = session.user.user_metadata?.name;
@@ -83,7 +83,7 @@ function App() {
       }
 
       checkHousehold();
-    }, 0);
+    }
   }, [session]);
 
   if (session === undefined || checkingHousehold) {

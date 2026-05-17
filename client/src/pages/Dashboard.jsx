@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
 import { supabase } from "../supabase";
 import { QRCodeSVG as QRCode } from "qrcode.react";
 import {
@@ -139,8 +140,9 @@ function Dashboard() {
   const [bills, setBills] = useState([]);
   const [accounts, setAccounts] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [searchParams, setSearchParams] = useSearchParams();
   const [activeNav, setActiveNav] = useState(
-    localStorage.getItem("activeNav") || "dashboard",
+    searchParams.get("tab") || localStorage.getItem("activeNav") || "dashboard",
   );
   const [scrollToInvite, setScrollToInvite] = useState(false);
   const [editingBill, setEditingBill] = useState(null);
@@ -222,7 +224,14 @@ function Dashboard() {
   function navigate(page) {
     localStorage.setItem("activeNav", page);
     setActiveNav(page);
+    setSearchParams({ tab: page }, { replace: false });
   }
+
+  // Sync activeNav when browser back/forward changes URL
+  useEffect(() => {
+    const tab = searchParams.get("tab") || "dashboard";
+    setActiveNav(tab);
+  }, [searchParams]);
 
   useEffect(() => {
     if (scrollToInvite && activeNav === "settings") {
@@ -4315,64 +4324,8 @@ function Dashboard() {
   }
 
   function renderDashboard() {
-    const currentPeriod = getCurrentPayPeriod();
     return (
-      <>
-        <div className="topbar">
-          {/* Mobile: hamburger — hidden on desktop via CSS */}
-          <button className="hamburger-btn" onClick={() => setMobileMenuOpen(true)}>
-            <Menu size={22} />
-          </button>
-
-          {/* Desktop: avatar + greeting — hidden on mobile via CSS */}
-          <div className="desktop-only" style={{ alignItems: "center", gap: "14px" }}>
-            <div style={{ width: "38px", height: "38px", borderRadius: "50%", background: "linear-gradient(135deg, #6C63FF, #948cf2)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "14px", fontWeight: "700", color: "#0D1117", flexShrink: 0 }}>
-              {members.find((m) => m.role === "owner")?.name?.charAt(0).toUpperCase() || "?"}
-            </div>
-            <div>
-              <div className="welcome-name">
-                {(() => {
-                  const hour = new Date().getHours();
-                  const greeting = hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
-                  const ownerName = members.find((m) => m.role === "owner")?.name;
-                  const firstName = (ownerName && !ownerName.includes("@") ? ownerName : null) || household?.name;
-                  return `${greeting}, ${firstName}`;
-                })()}
-              </div>
-              <div className="welcome-date">
-                {new Date().toLocaleDateString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric" })}
-              </div>
-            </div>
-          </div>
-
-          {/* Mobile: compact greeting — hidden on desktop */}
-          <div className="mobile-only" style={{ flexDirection: "column", gap: "1px" }}>
-            <div style={{ fontSize: "15px", fontWeight: "700", color: "#F0F6FC", letterSpacing: "-0.01em" }}>
-              {(() => {
-                const hour = new Date().getHours();
-                const greeting = hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
-                const ownerName = members.find((m) => m.role === "owner")?.name;
-                const firstName = (ownerName && !ownerName.includes("@") ? ownerName : null) || household?.name;
-                return `${greeting}, ${firstName}`;
-              })()}
-            </div>
-            <div style={{ fontSize: "11px", color: "#8B8FA8" }}>
-              {new Date().toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })}
-            </div>
-          </div>
-
-          {/* Desktop: period badge */}
-          <div className="period-badge topbar-period">
-            <div className="period-label">Current Pay Period</div>
-            {currentPeriod ? (
-              <div className="period-dates">{fmtDate(currentPeriod.start_date)} — {fmtDate(currentPeriod.end_date)}</div>
-            ) : (
-              <div className="period-label" style={{ color: "#8B8FA8" }}>No active period</div>
-            )}
-          </div>
-        </div>
-
-        <div className="content-area">
+      <div className="content-area">
           <div className="stat-row">
             {(() => {
               const primaryBalance = accounts.filter((a) => a.is_primary && !a.is_accumulating).reduce((sum, a) => sum + (a.current_balance || 0), 0);
@@ -5016,7 +4969,6 @@ function Dashboard() {
             </div>
           </div>
         </div>
-      </>
     );
   }
 
@@ -5100,13 +5052,62 @@ function Dashboard() {
         </div>
       </aside>
 
-      <main className="main">
-        {activeNav === "dashboard" ? (
-          renderContent()
-        ) : (
-          <div className="content-area">{renderContent()}</div>
-        )}
-      </main>
+      <div className="main">
+        {/* Shared topbar — appears on every page */}
+        <div className="topbar">
+          <button className="hamburger-btn" onClick={() => setMobileMenuOpen(true)}>
+            <Menu size={22} />
+          </button>
+
+          {/* Desktop: avatar + greeting */}
+          {(() => {
+            const on = members.find((m) => m.role === "owner")?.name;
+            const fn = (on && !on.includes("@") ? on : null) || household?.name;
+            const h = new Date().getHours();
+            const gr = h < 12 ? "Good morning" : h < 17 ? "Good afternoon" : "Good evening";
+            return (
+              <div className="desktop-only" style={{ alignItems: "center", gap: "14px" }}>
+                <div style={{ width: "38px", height: "38px", borderRadius: "50%", background: "linear-gradient(135deg, #6C63FF, #948cf2)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "14px", fontWeight: "700", color: "#0D1117", flexShrink: 0 }}>
+                  {fn?.charAt(0).toUpperCase() || "?"}
+                </div>
+                <div>
+                  <div className="welcome-name">{gr}, {fn}</div>
+                  <div className="welcome-date">{new Date().toLocaleDateString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric" })}</div>
+                </div>
+              </div>
+            );
+          })()}
+
+          {/* Mobile: centered app name */}
+          <div className="mobile-only" style={{ flex: 1, justifyContent: "center" }}>
+            <div style={{ fontSize: "18px", fontWeight: "900", letterSpacing: "0.1em", color: "#F0F6FC", textTransform: "uppercase" }}>Stryde</div>
+          </div>
+
+          {/* Mobile: avatar on right */}
+          {(() => {
+            const on = members.find((m) => m.role === "owner")?.name;
+            const fn = (on && !on.includes("@") ? on : null) || household?.name;
+            return (
+              <div className="mobile-only" style={{ width: "32px", height: "32px", borderRadius: "50%", background: "linear-gradient(135deg, #6C63FF, #948cf2)", alignItems: "center", justifyContent: "center", fontSize: "13px", fontWeight: "700", color: "#0D1117", flexShrink: 0 }}>
+                {fn?.charAt(0).toUpperCase() || "?"}
+              </div>
+            );
+          })()}
+
+          {/* Desktop: period badge */}
+          <div className="period-badge topbar-period">
+            <div className="period-label">Current Pay Period</div>
+            {currentPeriod ? (
+              <div className="period-dates">{fmtDate(currentPeriod.start_date)} — {fmtDate(currentPeriod.end_date)}</div>
+            ) : (
+              <div className="period-label" style={{ color: "#8B8FA8" }}>No active period</div>
+            )}
+          </div>
+        </div>
+
+        {/* Page content */}
+        {activeNav === "dashboard" ? renderContent() : <div className="content-area">{renderContent()}</div>}
+      </div>
 
       {/* Mobile nav drawer */}
       {mobileMenuOpen && (
