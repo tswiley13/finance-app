@@ -1022,6 +1022,98 @@ function Onboarding({ onComplete }) {
       fontFamily: "'Inter', sans-serif",
     };
 
+    if (window.innerWidth <= 640) {
+      const ac = carouselCards[activeIndex];
+      return shell(3, "Set up your accounts", "Fill in your account details. Tap Add Account to save and add more.", (
+        <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+          {carouselCards.some(c => c.saved) && (
+            <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+              {carouselCards.map((card, idx) => !card.saved ? null : (
+                <div key={idx} style={{ background: "rgba(0,212,170,0.05)", border: "1px solid rgba(0,212,170,0.25)", borderRadius: "10px", padding: "12px 14px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <div>
+                    <div style={{ fontSize: "14px", fontWeight: "600", color: "#F0F6FC" }}>{card.accountName}</div>
+                    <div style={{ fontSize: "12px", color: "#8B8FA8", marginTop: "2px" }}>{card.accountType}{card.bankName ? ` · ${card.bankName}` : ""}{card.currentBalance ? ` · $${parseFloat(card.currentBalance).toLocaleString()}` : ""}</div>
+                  </div>
+                  <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                    <span style={{ fontSize: "11px", color: "#00D4AA", fontWeight: "600" }}>✓</span>
+                    <button style={{ ...ghostBtn, padding: "3px 10px", fontSize: "11px" }} onClick={() => { setActiveIndex(idx); updateCard(idx, { saved: false }); }}>Edit</button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+          {!ac.saved && (
+            <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+              {carouselCards.some(c => c.saved) && (
+                <div style={{ fontSize: "11px", color: "#6C63FF", fontWeight: "700", letterSpacing: "0.1em", textTransform: "uppercase" }}>Add Another Account</div>
+              )}
+              <div>
+                <label style={cardLabel}>Name</label>
+                <input style={cardInput} type="text" placeholder="Joint Checking" value={ac.accountName} onChange={(e) => updateCard(activeIndex, { accountName: e.target.value })} autoFocus />
+              </div>
+              <div style={{ display: "flex", gap: "8px" }}>
+                <div style={{ flex: 2 }}>
+                  <label style={cardLabel}>Bank</label>
+                  <input style={cardInput} type="text" placeholder="USAA" value={ac.bankName} onChange={(e) => updateCard(activeIndex, { bankName: e.target.value })} />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <label style={cardLabel}>Last 4</label>
+                  <input style={cardInput} type="text" placeholder="0000" maxLength={4} value={ac.lastFour} onChange={(e) => updateCard(activeIndex, { lastFour: e.target.value })} />
+                </div>
+              </div>
+              <div style={{ display: "flex", gap: "8px" }}>
+                <div style={{ flex: 1 }}>
+                  <label style={cardLabel}>Type</label>
+                  <select style={{ ...cardInput, cursor: "pointer" }} value={ac.accountType} onChange={(e) => updateCard(activeIndex, { accountType: e.target.value })}>
+                    <option value="checking">Checking</option>
+                    <option value="savings">Savings</option>
+                  </select>
+                </div>
+                <div style={{ flex: 1 }}>
+                  <label style={cardLabel}>Balance</label>
+                  <input style={cardInput} type="number" placeholder="0.00" value={ac.currentBalance} onChange={(e) => updateCard(activeIndex, { currentBalance: e.target.value })} />
+                </div>
+              </div>
+              <label style={{ display: "flex", alignItems: "center", gap: "8px", cursor: "pointer" }}>
+                <input type="checkbox" checked={ac.isPrimary} onChange={(e) => updateCard(activeIndex, { isPrimary: e.target.checked })} />
+                <span style={{ fontSize: "12px", color: "#8B8FA8" }}>Primary account</span>
+              </label>
+              <label style={{ display: "flex", alignItems: "center", gap: "8px", cursor: "pointer" }}>
+                <input type="checkbox" checked={ac.isAccumulating} onChange={(e) => updateCard(activeIndex, { isAccumulating: e.target.checked })} />
+                <span style={{ fontSize: "12px", color: "#8B8FA8" }}>Accumulating (saving toward a goal)</span>
+              </label>
+              {ac.isAccumulating && (
+                <>
+                  <div>
+                    <label style={cardLabel}>Savings Target</label>
+                    <input style={cardInput} type="number" placeholder="0.00" value={ac.accumulationTarget} onChange={(e) => updateCard(activeIndex, { accumulationTarget: e.target.value })} />
+                  </div>
+                  <div>
+                    <label style={cardLabel}>Due Day of Month</label>
+                    <input style={cardInput} type="number" placeholder="e.g. 1" min="1" max="31" value={ac.accDueDay} onChange={(e) => updateCard(activeIndex, { accDueDay: e.target.value })} />
+                  </div>
+                </>
+              )}
+              {ac.error && (
+                <div style={{ fontSize: "12px", color: "#F87171", background: "rgba(248,113,113,0.08)", padding: "8px 12px", borderRadius: "6px" }}>{ac.error}</div>
+              )}
+              <button style={{ ...addBtn, width: "100%", opacity: ac.loading ? 0.6 : 1 }} onClick={() => saveCard(activeIndex)} disabled={ac.loading}>
+                {ac.loading ? "Saving..." : "+ Add Account"}
+              </button>
+            </div>
+          )}
+          <div style={{ display: "flex", justifyContent: "space-between", marginTop: "4px" }}>
+            <button style={ghostBtn} onClick={() => setStep(2)}>Back</button>
+            <button style={primaryBtn} onClick={async () => {
+              const card = carouselCards[activeIndex];
+              if (!card.saved && card.accountName) { const ok = await saveCard(activeIndex); if (!ok) return; }
+              setStep(4);
+            }}>Continue</button>
+          </div>
+        </div>
+      ));
+    }
+
     return shell(3, "Set up your accounts", "Fill out a card for each account. Hit Add Account to keep going.", (
       <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
 
@@ -1211,6 +1303,155 @@ function Onboarding({ onComplete }) {
       display: "flex", alignItems: "center", justifyContent: "center",
       fontFamily: "'Inter', sans-serif",
     };
+
+    if (window.innerWidth <= 640) {
+      const ai = incomeCards[incomeActiveIndex];
+      const depositAcct = accountList.find(a => a.id === ai.depositAccountId);
+      return shell(4, "Add your income", "Fill in each income source. Tap Add Income to save and add more.", (
+        <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+          {incomeCards.some(c => c.saved) && (
+            <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+              {incomeCards.map((card, idx) => !card.saved ? null : (
+                <div key={idx} style={{ background: "rgba(0,212,170,0.05)", border: "1px solid rgba(0,212,170,0.25)", borderRadius: "10px", padding: "12px 14px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <div>
+                    <div style={{ fontSize: "14px", fontWeight: "600", color: "#F0F6FC" }}>{card.incomeName}</div>
+                    <div style={{ fontSize: "12px", color: "#8B8FA8", marginTop: "2px" }}>
+                      {card.incomeOwner || "Joint"} · {card.incomeFrequency}{card.fixedAmount ? ` · $${parseFloat(card.fixedAmount).toLocaleString()}` : ""}
+                    </div>
+                  </div>
+                  <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                    <span style={{ fontSize: "11px", color: "#00D4AA", fontWeight: "600" }}>✓</span>
+                    <button style={{ ...ghostBtn, padding: "3px 10px", fontSize: "11px" }} onClick={() => { setIncomeActiveIndex(idx); updateIncomeCard(idx, { saved: false }); }}>Edit</button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+          {!ai.saved && (
+            <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+              {incomeCards.some(c => c.saved) && (
+                <div style={{ fontSize: "11px", color: "#6C63FF", fontWeight: "700", letterSpacing: "0.1em", textTransform: "uppercase" }}>Add Another Income</div>
+              )}
+              <div>
+                <label style={cardLabel}>Name</label>
+                <input style={cardInput} type="text" placeholder="VA Disability" value={ai.incomeName} onChange={(e) => updateIncomeCard(incomeActiveIndex, { incomeName: e.target.value, error: null })} autoFocus />
+              </div>
+              <div style={{ display: "flex", gap: "8px" }}>
+                <div style={{ flex: 1 }}>
+                  <label style={cardLabel}>Who is this for?</label>
+                  <select style={{ ...cardInput, cursor: "pointer" }} value={ai.incomeOwner} onChange={(e) => updateIncomeCard(incomeActiveIndex, { incomeOwner: e.target.value })}>
+                    <option value="">Select</option>
+                    <option value="joint">Joint</option>
+                    {memberList.map((m, i) => <option key={i} value={m.name}>{m.name}</option>)}
+                  </select>
+                </div>
+                <div style={{ flex: 1 }}>
+                  <label style={cardLabel}>Type</label>
+                  <select style={{ ...cardInput, cursor: "pointer" }} value={ai.incomeType} onChange={(e) => updateIncomeCard(incomeActiveIndex, { incomeType: e.target.value, incomeEntryMode: "" })}>
+                    <option value="salary">Salary</option>
+                    <option value="hourly">Hourly</option>
+                    <option value="benefits">Benefits</option>
+                    <option value="fixed">Fixed</option>
+                    <option value="variable">Variable</option>
+                  </select>
+                </div>
+              </div>
+              <div style={{ display: "flex", gap: "8px" }}>
+                <div style={{ flex: 1 }}>
+                  <label style={cardLabel}>Frequency</label>
+                  <select style={{ ...cardInput, cursor: "pointer" }} value={ai.incomeFrequency} onChange={(e) => updateIncomeCard(incomeActiveIndex, { incomeFrequency: e.target.value })}>
+                    <option value="biweekly">Biweekly</option>
+                    <option value="monthly">Monthly</option>
+                    <option value="weekly">Weekly</option>
+                  </select>
+                </div>
+                <div style={{ flex: 1 }}>
+                  <label style={cardLabel}>Deposits Into</label>
+                  <select style={{ ...cardInput, cursor: "pointer" }} value={ai.depositAccountId} onChange={(e) => updateIncomeCard(incomeActiveIndex, { depositAccountId: e.target.value })}>
+                    <option value="">Select</option>
+                    {accountList.map((a, i) => <option key={i} value={a.id}>{a.name}</option>)}
+                  </select>
+                </div>
+              </div>
+              <div>
+                <label style={cardLabel}>Last Deposit Date</label>
+                <input style={cardInput} type="date" value={ai.nextPayDate} onChange={(e) => updateIncomeCard(incomeActiveIndex, { nextPayDate: e.target.value })} />
+              </div>
+              {ai.incomeType !== "variable" && ai.incomeType !== "hourly" && (
+                <div style={{ background: "rgba(255,255,255,0.03)", borderRadius: "8px", border: "1px solid rgba(255,255,255,0.06)", padding: "12px" }}>
+                  {ai.incomeEntryMode === "" ? (
+                    <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                      <div style={{ fontSize: "11px", color: "#8B8FA8" }}>How would you like to enter your income?</div>
+                      <label style={{ display: "flex", alignItems: "center", gap: "8px", cursor: "pointer", fontSize: "12px", color: "#F0F6FC" }}>
+                        <input type="radio" name="incomeModeM" onChange={() => updateIncomeCard(incomeActiveIndex, { incomeEntryMode: "net" })} />
+                        After-tax (what hits my bank)
+                      </label>
+                      <label style={{ display: "flex", alignItems: "center", gap: "8px", cursor: "pointer", fontSize: "12px", color: "#F0F6FC" }}>
+                        <input type="radio" name="incomeModeM" onChange={() => updateIncomeCard(incomeActiveIndex, { incomeEntryMode: "gross" })} />
+                        Gross (app calculates take-home)
+                      </label>
+                    </div>
+                  ) : (
+                    <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                        <span style={{ fontSize: "11px", color: "#8B8FA8" }}>{ai.incomeEntryMode === "net" ? "After-tax" : "Gross pay"}</span>
+                        <button style={{ ...ghostBtn, padding: "2px 8px", fontSize: "10px" }} onClick={() => updateIncomeCard(incomeActiveIndex, { incomeEntryMode: "" })}>Change</button>
+                      </div>
+                      <div>
+                        <label style={cardLabel}>{ai.incomeEntryMode === "net" ? "Amount Deposited" : "Gross Amount"}</label>
+                        <input style={cardInput} type="number" placeholder="0.00" value={ai.fixedAmount} onChange={(e) => updateIncomeCard(incomeActiveIndex, { fixedAmount: e.target.value })} />
+                      </div>
+                      {ai.incomeEntryMode === "gross" && (
+                        <div>
+                          <label style={cardLabel}>Tax Rate (%)</label>
+                          <input style={cardInput} type="number" placeholder="e.g. 20" value={ai.taxRate} onChange={(e) => updateIncomeCard(incomeActiveIndex, { taxRate: e.target.value })} />
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+              {ai.incomeType === "variable" && (
+                <div>
+                  <label style={cardLabel}>Estimated Amount</label>
+                  <input style={cardInput} type="number" placeholder="0.00" value={ai.fixedAmount} onChange={(e) => updateIncomeCard(incomeActiveIndex, { fixedAmount: e.target.value })} />
+                </div>
+              )}
+              {ai.incomeType === "hourly" && (
+                <div style={{ display: "flex", gap: "8px" }}>
+                  <div style={{ flex: 1 }}>
+                    <label style={cardLabel}>Rate/hr</label>
+                    <input style={cardInput} type="number" placeholder="0.00" value={ai.hourlyRate} onChange={(e) => updateIncomeCard(incomeActiveIndex, { hourlyRate: e.target.value })} />
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <label style={cardLabel}>Hrs/Week</label>
+                    <input style={cardInput} type="number" placeholder="40" value={ai.hoursPerWeek} onChange={(e) => updateIncomeCard(incomeActiveIndex, { hoursPerWeek: e.target.value })} />
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <label style={cardLabel}>OT Rate</label>
+                    <input style={cardInput} type="number" placeholder="0.00" value={ai.overtimeRate} onChange={(e) => updateIncomeCard(incomeActiveIndex, { overtimeRate: e.target.value })} />
+                  </div>
+                </div>
+              )}
+              {ai.error && (
+                <div style={{ fontSize: "12px", color: "#F87171", background: "rgba(248,113,113,0.08)", padding: "8px 12px", borderRadius: "6px" }}>{ai.error}</div>
+              )}
+              <button style={{ ...addBtn, width: "100%", opacity: ai.loading ? 0.6 : 1 }} onClick={() => saveIncomeCard(incomeActiveIndex)} disabled={ai.loading}>
+                {ai.loading ? "Saving..." : "+ Add Income"}
+              </button>
+            </div>
+          )}
+          <div style={{ display: "flex", justifyContent: "space-between", marginTop: "4px" }}>
+            <button style={ghostBtn} onClick={() => setStep(3)}>Back</button>
+            <button style={primaryBtn} onClick={async () => {
+              const card = incomeCards[incomeActiveIndex];
+              if (!card.saved && card.incomeName) { const ok = await saveIncomeCard(incomeActiveIndex); if (!ok) return; }
+              setStep(5);
+            }}>Continue</button>
+          </div>
+        </div>
+      ));
+    }
 
     return shell(4, "Add your income", "Add each income source. You can always add more from the dashboard.", (
       <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
