@@ -35,6 +35,18 @@ body {
   margin: 0;
 }
 
+/* Dashboard mobile layout — injected here so Safari/iOS applies it reliably */
+@media (max-width: 768px) {
+  .sidebar { display: none !important; }
+  .mobile-bottom-nav { display: block !important; }
+  .main { margin-left: 0 !important; }
+  .content-area { padding: 16px 16px 90px !important; }
+  .topbar { padding: 0 16px !important; height: 64px !important; }
+  .stat-row { grid-template-columns: 1fr !important; gap: 8px !important; }
+  .dashboard-grid { grid-template-columns: 1fr !important; }
+  .content-grid { grid-template-columns: 1fr !important; }
+}
+
 #root {
   width: 100%;
   min-height: 100vh;
