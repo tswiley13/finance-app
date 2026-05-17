@@ -83,8 +83,8 @@ function JoinHousehold() {
 
   if (joined) {
     return (
-      <div style={{ minHeight: "100vh", background: "#13111F", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "'Inter', sans-serif" }}>
-        <div style={{ width: "420px", padding: "48px", background: "#161B22", borderRadius: "16px", border: "1px solid #30363D", textAlign: "center" }}>
+      <div style={{ minHeight: "100vh", background: "#13111F", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "'Inter', sans-serif", padding: "20px" }}>
+        <div style={{ width: "100%", maxWidth: "420px", padding: "48px 32px", background: "#161B22", borderRadius: "16px", border: "1px solid #30363D", textAlign: "center" }}>
           <div style={{ width: "56px", height: "56px", borderRadius: "50%", background: "linear-gradient(135deg, #6C63FF, #948cf2)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 24px", fontSize: "24px" }}>
             ✉️
           </div>

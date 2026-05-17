@@ -884,6 +884,11 @@ function Onboarding({ onComplete }) {
   function shell(stepNum, title, subtitle, content, maxWidth = "540px") {
     return (
       <div style={{ minHeight: "100vh", background: "#13111F", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", fontFamily: "'Inter', sans-serif", padding: "40px 20px" }}>
+        <style>{`
+          @media (max-width: 640px) {
+            .onboarding-shell-card { padding: 24px 16px !important; border-radius: 12px !important; }
+          }
+        `}</style>
         <div style={{ marginBottom: "28px", textAlign: "center" }}>
           <div style={{ fontSize: "28px", fontWeight: "900", letterSpacing: "0.12em", color: "#F0F6FC", textTransform: "uppercase" }}>Stryde</div>
         </div>
@@ -900,7 +905,7 @@ function Onboarding({ onComplete }) {
             </button>
           )}
         </div>
-        <div style={{ width: "100%", maxWidth, background: "#1A1826", borderRadius: "16px", border: "1px solid rgba(255,255,255,0.06)", padding: "40px" }}>
+        <div className="onboarding-shell-card" style={{ width: "100%", maxWidth, background: "#1A1826", borderRadius: "16px", border: "1px solid rgba(255,255,255,0.06)", padding: "40px" }}>
           <div style={{ marginBottom: "28px" }}>
             <div style={{ fontSize: "10px", color: "#6C63FF", letterSpacing: "0.15em", textTransform: "uppercase", fontWeight: "600", marginBottom: "8px" }}>Step {stepNum} of 5</div>
             <div style={{ fontSize: "22px", fontWeight: "700", color: "#F0F6FC", marginBottom: "6px" }}>{title}</div>
@@ -1001,9 +1006,9 @@ function Onboarding({ onComplete }) {
 
   if (step === 3) {
     const n = carouselCards.length;
-    const CARD_W = 320;
+    const CARD_W = Math.min(320, window.innerWidth - 108);
     const GAP = 20;
-    const CONTAINER_W = 520;
+    const CONTAINER_W = Math.min(520, window.innerWidth - 88);
     const slideX = CONTAINER_W / 2 - (activeIndex * (CARD_W + GAP) + CARD_W / 2);
 
     const cardInput = { ...inputStyle, fontSize: "13px", padding: "8px 12px" };
@@ -1191,9 +1196,9 @@ function Onboarding({ onComplete }) {
 
   if (step === 4) {
     const n = incomeCards.length;
-    const CARD_W = 320;
+    const CARD_W = Math.min(320, window.innerWidth - 108);
     const GAP = 20;
-    const CONTAINER_W = 520;
+    const CONTAINER_W = Math.min(520, window.innerWidth - 88);
     const slideX = CONTAINER_W / 2 - (incomeActiveIndex * (CARD_W + GAP) + CARD_W / 2);
 
     const cardInput = { ...inputStyle, fontSize: "13px", padding: "8px 12px" };
@@ -1449,9 +1454,10 @@ function Onboarding({ onComplete }) {
   }
 
   if (step === 5) {
+    const isMobile = window.innerWidth <= 640;
     return shell(5, "Add your bills", "Add your recurring monthly bills. Stryde will use these to calculate your pay period budget.", (
       <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
+        <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: "12px" }}>
           <div style={{ gridColumn: "1 / -1" }}>
             <label style={labelStyle}>Bill Name</label>
             <input style={inputStyle} type="text" placeholder="e.g. Mortgage" value={billName} onChange={(e) => setBillName(e.target.value)} autoFocus />
