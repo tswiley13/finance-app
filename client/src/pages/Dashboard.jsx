@@ -4994,7 +4994,7 @@ function Dashboard() {
       <aside className="sidebar">
         <div className="sidebar-logo">
           <div className="logo-text">Stryde</div>
-          <div className="logo-tag">Stop guessing. Start knowing.</div>
+          <div className="logo-tag">Stop hoping. Start knowing.</div>
         </div>
         <nav className="nav">
           <div className="nav-label">Main</div>

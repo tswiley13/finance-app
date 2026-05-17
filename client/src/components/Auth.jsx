@@ -154,7 +154,7 @@ function AuthPage({ defaultSignUp = false }) {
                 marginBottom: "24px",
               }}
             >
-              Stop guessing.
+              Stop hoping.
               <br />
               <span style={{ color: "#6C63FF" }}>Start knowing.</span>
             </div>

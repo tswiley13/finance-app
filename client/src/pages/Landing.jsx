@@ -41,7 +41,7 @@ function Landing() {
           Now in Beta
         </div>
         <h1>
-          Stop guessing.<br />
+          Stop hoping.<br />
           <span style={{ color: "#6C63FF" }}>Start knowing.</span>
         </h1>
         <p>
@@ -240,7 +240,7 @@ function Landing() {
       {/* CTA */}
       <section className="landing-cta-section" style={{ borderTop: "1px solid rgba(255,255,255,0.04)" }}>
         <h2>
-          Ready to stop guessing?
+          Ready to stop hoping?
         </h2>
         <p style={{ fontSize: "18px", color: "#8B8FA8", marginBottom: "40px" }}>
           Join households already planning ahead with Stryde.
