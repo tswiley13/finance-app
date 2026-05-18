@@ -1834,7 +1834,11 @@ function Onboarding({ onComplete }) {
               <select style={selectStyle} value={paymentMethod} onChange={(e) => setPaymentMethod(e.target.value)}>
                 <option value="" disabled>Payment method</option>
                 <option value="auto">Auto</option>
+                <option value="transfer">Transfer</option>
                 <option value="zelle">Zelle</option>
+                <option value="cashapp">Cash App</option>
+                <option value="applepay">Apple Pay</option>
+                <option value="venmo">Venmo</option>
                 <option value="check">Check</option>
                 <option value="manual">Manual</option>
               </select>

@@ -4088,6 +4088,9 @@ function Dashboard() {
                   <option value="auto">Auto</option>
                   <option value="transfer">Transfer</option>
                   <option value="zelle">Zelle</option>
+                  <option value="cashapp">Cash App</option>
+                  <option value="applepay">Apple Pay</option>
+                  <option value="venmo">Venmo</option>
                   <option value="check">Check</option>
                   <option value="manual">Manual</option>
                 </select>
@@ -4392,6 +4395,9 @@ function Dashboard() {
                             <option value="auto">Auto</option>
                             <option value="transfer">Transfer</option>
                             <option value="zelle">Zelle</option>
+                            <option value="cashapp">Cash App</option>
+                            <option value="applepay">Apple Pay</option>
+                            <option value="venmo">Venmo</option>
                             <option value="check">Check</option>
                             <option value="manual">Manual</option>
                           </select>
