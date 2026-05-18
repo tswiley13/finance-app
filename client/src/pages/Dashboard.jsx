@@ -4464,18 +4464,21 @@ function Dashboard() {
                             fontWeight: "600",
                           }}
                         >
-                          Left Over
+                          {item.isCurrentPeriod ? "Available Funds" : "Left Over"}
                         </div>
                         <div
                           style={{
                             fontFamily: "'DM Mono', monospace",
                             fontSize: "22px",
                             fontWeight: "500",
-                            color: item.leftOver < 0 ? "#F87171" : "#4ADE80",
+                            color: item.isCurrentPeriod
+                              ? "#6C63FF"
+                              : item.leftOver < 0 ? "#F87171" : "#4ADE80",
                           }}
                         >
-                          {item.leftOver < 0 ? "-" : ""}$
-                          {fmt(Math.abs(item.leftOver))}
+                          {item.isCurrentPeriod
+                            ? "$" + fmt(accounts.filter((a) => a.is_primary && !a.is_accumulating).reduce((sum, a) => sum + (a.current_balance || 0), 0))
+                            : (item.leftOver < 0 ? "-" : "") + "$" + fmt(Math.abs(item.leftOver))}
                         </div>
                       </div>
                       <div style={{ color: "#8B8FA8", fontSize: "12px" }}>
@@ -4492,7 +4495,7 @@ function Dashboard() {
                       <div
                         style={{
                           display: "grid",
-                          gridTemplateColumns: item.isCurrentPeriod ? "1fr 1fr 1fr" : "1fr 1fr",
+                          gridTemplateColumns: "1fr 1fr 1fr",
                           gap: "8px",
                           marginBottom: item.bills.length > 0 || item.contributions?.length > 0 ? "12px" : "0",
                         }}
@@ -4505,21 +4508,14 @@ function Dashboard() {
                             ${fmt(item.income)}
                           </div>
                         </div>
-                        {item.isCurrentPeriod && (() => {
-                          const primaryBalance = accounts
-                            .filter((a) => a.is_primary && !a.is_accumulating)
-                            .reduce((sum, a) => sum + (a.current_balance || 0), 0);
-                          return (
-                            <div style={{ background: "rgba(108,99,255,0.08)", border: "1px solid rgba(108,99,255,0.15)", borderRadius: "8px", padding: "10px 12px" }}>
-                              <div style={{ fontSize: "9px", color: "#6C63FF", letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: "4px", fontWeight: "600" }}>
-                                Available Funds
-                              </div>
-                              <div style={{ fontFamily: "'DM Mono', monospace", fontSize: "16px", color: "#6C63FF" }}>
-                                ${fmt(primaryBalance)}
-                              </div>
-                            </div>
-                          );
-                        })()}
+                        <div style={{ background: "rgba(255,255,255,0.03)", borderRadius: "8px", padding: "10px 12px" }}>
+                          <div style={{ fontSize: "9px", color: "#8B8FA8", letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: "4px", fontWeight: "600" }}>
+                            Bills
+                          </div>
+                          <div style={{ fontFamily: "'DM Mono', monospace", fontSize: "16px", color: item.billsTotal > 0 ? "#F87171" : "#8B8FA8" }}>
+                            ${fmt(item.billsTotal)}
+                          </div>
+                        </div>
                         <div style={{ background: "rgba(255,255,255,0.03)", borderRadius: "8px", padding: "10px 12px" }}>
                           <div style={{ fontSize: "9px", color: "#8B8FA8", letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: "4px", fontWeight: "600" }}>
                             Left Over
