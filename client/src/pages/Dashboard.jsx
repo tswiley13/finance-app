@@ -1460,7 +1460,7 @@ function Dashboard() {
               <div className="stat-amount negative">${fmt(totalBills)}</div>
             </div>
             <div className="stat-card">
-              <div className="stat-label">Projected End Balance</div>
+              <div className="stat-label">Available This Month</div>
               <div className={`stat-amount ${projectedEnd < 0 ? "negative" : "neutral"}`}>${fmt(projectedEnd)}</div>
             </div>
           </div>
