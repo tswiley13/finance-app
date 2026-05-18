@@ -737,18 +737,6 @@ function Dashboard() {
 
       const isCurrentPeriod = periodStart <= today && periodEnd >= today;
 
-      // Left Over = income - ALL bills whose due date falls in this period,
-      // regardless of paid status. Marking a bill paid never changes Left Over.
-      const leftOverBillsTotal = bills
-        .filter((bill) => {
-          const dueDateThisMonth = new Date(periodStart.getFullYear(), periodStart.getMonth(), bill.due_day, 23, 59, 59);
-          const dueDateNextMonth = new Date(periodStart.getFullYear(), periodStart.getMonth() + 1, bill.due_day, 23, 59, 59);
-          return (
-            (dueDateThisMonth >= periodStart && dueDateThisMonth <= periodEnd) ||
-            (dueDateNextMonth >= periodStart && dueDateNextMonth <= periodEnd)
-          );
-        })
-        .reduce((sum, b) => sum + (b.amount || 0), 0);
 
       // Show Set Aside in all periods where saving is still relevant (due date hasn't passed at period start)
       const contributions = allContributions.filter((c) => periodStart < c.dueDate);
@@ -760,7 +748,7 @@ function Dashboard() {
         incomeItems: periodIncomeItems,
         bills: periodBills,
         billsTotal: periodBillsTotal,
-        leftOver: periodIncome - leftOverBillsTotal,
+        leftOver: periodIncome - periodBillsTotal,
         contributions,
       };
     });
