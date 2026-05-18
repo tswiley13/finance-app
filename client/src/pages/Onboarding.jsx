@@ -57,14 +57,14 @@ function Onboarding({ onComplete }) {
   const [billName, setBillName] = useState("");
   const [billAmount, setBillAmount] = useState("");
   const [dueDay, setDueDay] = useState("");
-  const [paymentMethod, setPaymentMethod] = useState("auto");
+  const [paymentMethod, setPaymentMethod] = useState("");
   const [billCategory, setBillCategory] = useState("");
   const [billOwner, setBillOwner] = useState("joint");
   const [billAccountId, setBillAccountId] = useState("");
   const [isVariable, setIsVariable] = useState(false);
   const [isBillAccumulating, setIsBillAccumulating] = useState(false);
   const [billTransferToAccountId, setBillTransferToAccountId] = useState("");
-  const [billFrequency, setBillFrequency] = useState("monthly");
+  const [billFrequency, setBillFrequency] = useState("");
   const [billDueDay2, setBillDueDay2] = useState("");
   const [editingBill, setEditingBill] = useState(null);
   const [billError, setBillError] = useState(null);
@@ -652,8 +652,8 @@ function Onboarding({ onComplete }) {
       account_id: billAccountId || null,
       transfer_to_account_id: isBillAccumulating ? (billTransferToAccountId || null) : null,
       is_variable: isVariable,
-      frequency: billFrequency,
-      due_day_2: billFrequency === "semi-monthly" && billDueDay2 ? parseInt(billDueDay2) : null,
+      frequency: billFrequency || "monthly",
+      due_day_2: (billFrequency || "monthly") === "semi-monthly" && billDueDay2 ? parseInt(billDueDay2) : null,
       is_active: true,
       is_paid: false,
     };
@@ -670,14 +670,14 @@ function Onboarding({ onComplete }) {
     setBillName("");
     setBillAmount("");
     setDueDay("");
-    setPaymentMethod("auto");
+    setPaymentMethod("");
     setBillCategory("");
     setBillOwner("joint");
     setBillAccountId("");
     setIsVariable(false);
     setIsBillAccumulating(false);
     setBillTransferToAccountId("");
-    setBillFrequency("monthly");
+    setBillFrequency("");
     setBillDueDay2("");
     return true;
   }
@@ -733,14 +733,14 @@ function Onboarding({ onComplete }) {
     setBillName("");
     setBillAmount("");
     setDueDay("");
-    setPaymentMethod("auto");
+    setPaymentMethod("");
     setBillCategory("");
     setBillOwner("joint");
     setBillAccountId("");
     setIsVariable(false);
     setIsBillAccumulating(false);
     setBillTransferToAccountId("");
-    setBillFrequency("monthly");
+    setBillFrequency("");
     setBillDueDay2("");
   }
 
@@ -1795,6 +1795,7 @@ function Onboarding({ onComplete }) {
           <div>
             <label style={labelStyle}>Frequency</label>
             <select style={selectStyle} value={billFrequency} onChange={(e) => { setBillFrequency(e.target.value); if (e.target.value !== "semi-monthly") setBillDueDay2(""); }}>
+              <option value="" disabled>Frequency</option>
               <option value="monthly">Monthly</option>
               <option value="semi-monthly">Semi-monthly (2 due dates)</option>
               <option value="biweekly">Biweekly</option>
@@ -1803,7 +1804,7 @@ function Onboarding({ onComplete }) {
             </select>
           </div>
           <div>
-            <label style={labelStyle}>{billFrequency === "semi-monthly" ? "1st Due Day" : "Due Day of Month"}</label>
+            <label style={labelStyle}>{(billFrequency || "monthly") === "semi-monthly" ? "1st Due Day" : "Due Day of Month"}</label>
             <input style={inputStyle} type="number" placeholder="e.g. 1" min="1" max="31" value={dueDay} onChange={(e) => setDueDay(e.target.value)} />
           </div>
           {billFrequency === "semi-monthly" && (
@@ -1831,6 +1832,7 @@ function Onboarding({ onComplete }) {
             <div>
               <label style={labelStyle}>Payment Method</label>
               <select style={selectStyle} value={paymentMethod} onChange={(e) => setPaymentMethod(e.target.value)}>
+                <option value="" disabled>Payment method</option>
                 <option value="auto">Auto</option>
                 <option value="zelle">Zelle</option>
                 <option value="check">Check</option>
