@@ -4490,7 +4490,7 @@ function Dashboard() {
                       <div
                         style={{
                           display: "grid",
-                          gridTemplateColumns: "1fr 1fr",
+                          gridTemplateColumns: item.isCurrentPeriod ? "1fr 1fr 1fr" : "1fr 1fr",
                           gap: "8px",
                           marginBottom: item.bills.length > 0 ? "12px" : "0",
                         }}
@@ -4524,6 +4524,21 @@ function Dashboard() {
                             ${fmt(item.income)}
                           </div>
                         </div>
+                        {item.isCurrentPeriod && (() => {
+                          const primaryBalance = accounts
+                            .filter((a) => a.is_primary && !a.is_accumulating)
+                            .reduce((sum, a) => sum + (a.current_balance || 0), 0);
+                          return (
+                            <div style={{ background: "rgba(108,99,255,0.08)", border: "1px solid rgba(108,99,255,0.15)", borderRadius: "8px", padding: "10px 12px" }}>
+                              <div style={{ fontSize: "9px", color: "#6C63FF", letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: "4px", fontWeight: "600" }}>
+                                In Account
+                              </div>
+                              <div style={{ fontFamily: "'DM Mono', monospace", fontSize: "16px", color: "#6C63FF" }}>
+                                ${fmt(primaryBalance)}
+                              </div>
+                            </div>
+                          );
+                        })()}
                         <div
                           style={{
                             background: "rgba(255,255,255,0.03)",
