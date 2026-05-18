@@ -168,7 +168,7 @@ function Dashboard() {
   const [transferToAccountId, setTransferToAccountId] = useState("");
   const [isBillAccumulating, setIsBillAccumulating] = useState(false);
   const [isVariable, setIsVariable] = useState(false);
-  const [billFrequency, setBillFrequency] = useState("monthly");
+  const [billFrequency, setBillFrequency] = useState("");
   const [billDueDay2, setBillDueDay2] = useState("");
   const [showBillForm, setShowBillForm] = useState(false);
   const [editingIncome, setEditingIncome] = useState(null);
@@ -422,8 +422,8 @@ function Dashboard() {
         account_id: billAccountId || null,
         transfer_to_account_id: isBillAccumulating ? (transferToAccountId || null) : null,
         is_variable: isVariable,
-        frequency: billFrequency,
-        due_day_2: billFrequency === "semi-monthly" && billDueDay2 ? parseInt(billDueDay2) : null,
+        frequency: billFrequency || "monthly",
+        due_day_2: (billFrequency || "monthly") === "semi-monthly" && billDueDay2 ? parseInt(billDueDay2) : null,
         is_active: true,
         is_paid: false,
       })
@@ -475,8 +475,8 @@ function Dashboard() {
         account_id: billAccountId || null,
         transfer_to_account_id: isBillAccumulating ? (transferToAccountId || null) : null,
         is_variable: isVariable,
-        frequency: billFrequency,
-        due_day_2: billFrequency === "semi-monthly" && billDueDay2 ? parseInt(billDueDay2) : null,
+        frequency: billFrequency || "monthly",
+        due_day_2: (billFrequency || "monthly") === "semi-monthly" && billDueDay2 ? parseInt(billDueDay2) : null,
       })
       .eq("id", editingBill.id);
 
@@ -4056,6 +4056,7 @@ function Dashboard() {
                   onChange={(e) => { setBillFrequency(e.target.value); if (e.target.value !== "semi-monthly") setBillDueDay2(""); }}
                   style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", color: "#F2F0EB", padding: "8px 12px", borderRadius: "6px", fontSize: "13px", fontFamily: "'Inter', sans-serif" }}
                 >
+                  <option value="" disabled>Frequency</option>
                   <option value="monthly">Monthly</option>
                   <option value="semi-monthly">Semi-monthly (2 due dates)</option>
                   <option value="biweekly">Biweekly</option>
@@ -4064,7 +4065,7 @@ function Dashboard() {
                 </select>
                 <input
                   type="number"
-                  placeholder={billFrequency === "semi-monthly" ? "1st due day" : "Due day of month"}
+                  placeholder={(billFrequency || "monthly") === "semi-monthly" ? "1st due day" : "Due day of month"}
                   value={dueDay}
                   onChange={(e) => setDueDay(e.target.value)}
                   style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", color: "#F2F0EB", padding: "8px 12px", borderRadius: "6px", fontSize: "13px", fontFamily: "'Inter', sans-serif" }}
@@ -4342,6 +4343,7 @@ function Dashboard() {
                             onChange={(e) => { setBillFrequency(e.target.value); if (e.target.value !== "semi-monthly") setBillDueDay2(""); }}
                             style={{ background: "#2D2B45", border: "1px solid rgba(255,255,255,0.1)", color: "#F0F6FC", padding: "8px 12px", borderRadius: "6px", fontSize: "13px", fontFamily: "'Inter', sans-serif" }}
                           >
+                            <option value="" disabled>Frequency</option>
                             <option value="monthly">Monthly</option>
                             <option value="semi-monthly">Semi-monthly (2 due dates)</option>
                             <option value="biweekly">Biweekly</option>
@@ -4350,7 +4352,7 @@ function Dashboard() {
                           </select>
                           <input
                             type="number"
-                            placeholder={billFrequency === "semi-monthly" ? "1st due day" : "Due day of month"}
+                            placeholder={(billFrequency || "monthly") === "semi-monthly" ? "1st due day" : "Due day of month"}
                             value={dueDay}
                             onChange={(e) => setDueDay(e.target.value)}
                             style={{
