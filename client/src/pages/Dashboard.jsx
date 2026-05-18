@@ -4325,6 +4325,9 @@ function Dashboard() {
   function renderDashboard() {
     return (
       <div className="content-area">
+          <div style={{ fontSize: "11px", fontWeight: "700", color: "#6E7681", letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: "10px" }}>
+            This Month
+          </div>
           <div className="stat-row">
             {(() => {
               const primaryBalance = accounts.filter((a) => a.is_primary && !a.is_accumulating).reduce((sum, a) => sum + (a.current_balance || 0), 0);
@@ -4367,6 +4370,9 @@ function Dashboard() {
             })()}
           </div>
 
+          <div style={{ fontSize: "11px", fontWeight: "700", color: "#6E7681", letterSpacing: "0.1em", textTransform: "uppercase", margin: "24px 0 10px" }}>
+            Pay Periods
+          </div>
           <div className="dashboard-grid">
             <div className="dashboard-left">
               {getPayPeriodBreakdown().map((item, i) => (
