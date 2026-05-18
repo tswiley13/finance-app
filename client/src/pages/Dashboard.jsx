@@ -236,6 +236,7 @@ function Dashboard() {
   const [userEmail, setUserEmail] = useState("");
   const [expandedPeriods, setExpandedPeriods] = useState(new Set([0]));
   const [minimumBuffer, setMinimumBuffer] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
 
   function navigate(page) {
     localStorage.setItem("activeNav", page);
@@ -407,17 +408,17 @@ function Dashboard() {
   }
 
   async function addBill() {
-    if (
-      !billName ||
-      !billAmount ||
-      !dueDay ||
-      !billCategory ||
-      !billAccountId
-    ) {
+    if (isSaving) return;
+    if (!billName || !billAmount || !dueDay || !billCategory || !billAccountId) {
       alert("Please fill in all required bill fields.");
       return;
     }
+    if ((billFrequency || "monthly") === "semi-monthly" && !billDueDay2) {
+      alert("Semi-monthly bills require a second due day.");
+      return;
+    }
 
+    setIsSaving(true);
     const householdData = household;
 
     const { data: savedBill, error } = await supabase
@@ -460,9 +461,11 @@ function Dashboard() {
     setBillFrequency("monthly");
     setBillDueDay2("");
     setShowBillForm(false);
+    setIsSaving(false);
   }
 
   async function updateBill() {
+    if (isSaving) return;
     if (
       !billName ||
       !billAmount ||
@@ -473,7 +476,12 @@ function Dashboard() {
       alert("Please fill in all required bill fields.");
       return;
     }
+    if ((billFrequency || "monthly") === "semi-monthly" && !billDueDay2) {
+      alert("Semi-monthly bills require a second due day.");
+      return;
+    }
 
+    setIsSaving(true);
     const { error } = await supabase
       .from("bills")
       .update({
@@ -530,6 +538,7 @@ function Dashboard() {
     setIsVariable(false);
     setBillFrequency("monthly");
     setBillDueDay2("");
+    setIsSaving(false);
   }
 
   async function deleteBill(billId) {
@@ -789,11 +798,13 @@ function Dashboard() {
   }
 
   async function addIncome() {
+    if (isSaving) return;
     if (!incomeName || !fixedAmount || !nextPayDate) {
       alert("Please fill in all required income fields.");
       return;
     }
 
+    setIsSaving(true);
     const householdData = household;
 
     const { data: savedIncome, error } = await supabase
@@ -826,9 +837,11 @@ function Dashboard() {
     setNextPayDate("");
     setDepositAccountId("");
     setShowIncomeForm(false);
+    setIsSaving(false);
   }
 
   async function updateIncome() {
+    if (isSaving) return;
     if (!incomeName || !fixedAmount) {
       alert("Please fill in all required income fields.");
       return;
@@ -877,6 +890,7 @@ function Dashboard() {
     setFixedAmount("");
     setNextPayDate("");
     setDepositAccountId("");
+    setIsSaving(false);
   }
 
   async function deleteIncome(incomeId) {
@@ -889,6 +903,7 @@ function Dashboard() {
   }
 
   async function updateAccount() {
+    if (isSaving) return;
     if (!accountName || !bankName || !lastFour) {
       alert("Please fill in all required account fields.");
       return;
@@ -897,6 +912,7 @@ function Dashboard() {
       alert("Saving accounts require a savings target and due day of month.");
       return;
     }
+    setIsSaving(true);
 
     const { error } = await supabase
       .from("accounts")
@@ -939,6 +955,7 @@ function Dashboard() {
               due_day: isAccumulating && accDueDay ? parseInt(accDueDay) : null,
               reset_type: resetType,
               reset_day: parseInt(resetDay) || null,
+              minimum_buffer: minimumBuffer ? parseFloat(minimumBuffer) : 0,
             }
           : a,
       ),
@@ -958,6 +975,7 @@ function Dashboard() {
     setResetType("manual");
     setResetDay("");
     setMinimumBuffer("");
+    setIsSaving(false);
   }
 
   async function deleteAccount(accountId) {
@@ -1097,11 +1115,13 @@ function Dashboard() {
   }
 
   async function addDebt() {
+    if (isSaving) return;
     if (!debtName || !debtBalance || !debtMinPayment) {
       alert("Please fill in all required debt fields.");
       return;
     }
 
+    setIsSaving(true);
     const householdData = household;
 
     const { data: savedDebt, error } = await supabase
@@ -1136,9 +1156,11 @@ function Dashboard() {
     setDebtMinPayment("");
     setDebtPayoffOrder("");
     setShowDebtForm(false);
+    setIsSaving(false);
   }
 
   async function updateDebt() {
+    if (isSaving) return;
     if (!debtName || !debtBalance || !debtMinPayment) {
       alert("Please fill in all required debt fields.");
       return;
@@ -1191,6 +1213,7 @@ function Dashboard() {
     setDebtInterestRate("");
     setDebtMinPayment("");
     setDebtPayoffOrder("");
+    setIsSaving(false);
   }
 
   async function deleteDebt(debtId) {
@@ -1610,6 +1633,8 @@ function Dashboard() {
                                   <button onClick={() => { markBillPaid(pendingPaidBill, pendingPaidAmount); setPendingPaidBill(null); }} style={{ background: "rgba(74,222,128,0.15)", border: "1px solid rgba(74,222,128,0.4)", color: "#4ADE80", padding: "3px 8px", borderRadius: "5px", cursor: "pointer", fontSize: "11px", fontFamily: "'Inter', sans-serif", fontWeight: "600" }}>✓</button>
                                   <button onClick={() => setPendingPaidBill(null)} style={{ background: "rgba(248,113,113,0.1)", border: "1px solid rgba(248,113,113,0.3)", color: "#F87171", padding: "3px 8px", borderRadius: "5px", cursor: "pointer", fontSize: "11px", fontFamily: "'Inter', sans-serif" }}>✕</button>
                                 </div>
+                              ) : bill.is_paid ? (
+                                <button onClick={() => markBillUnpaid(bill)} style={{ background: "none", border: "1px solid rgba(248,113,113,0.4)", color: "#F87171", padding: "3px 10px", borderRadius: "5px", cursor: "pointer", fontSize: "11px", fontFamily: "'Inter', sans-serif" }}>Unpaid</button>
                               ) : (
                                 <button onClick={() => { setPendingPaidBill(bill); setPendingPaidAmount(String(bill.amount)); }} style={{ background: "rgba(74,222,128,0.1)", border: "1px solid rgba(74,222,128,0.3)", color: "#4ADE80", padding: "3px 10px", borderRadius: "5px", cursor: "pointer", fontSize: "11px", fontFamily: "'Inter', sans-serif", fontWeight: "500" }}>Paid</button>
                               )}
@@ -1757,7 +1782,7 @@ function Dashboard() {
                 <input type="number" placeholder="Interest rate (e.g. 24.99)" value={debtInterestRate} onChange={(e) => setDebtInterestRate(e.target.value)} style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", color: "#F2F0EB", padding: "8px 12px", borderRadius: "6px", fontSize: "13px", fontFamily: "'Inter', sans-serif" }} />
               </div>
               <div style={{ display: "flex", gap: "8px", marginTop: "12px" }}>
-                <button onClick={addDebt} style={{ background: "#6C63FF", border: "none", color: "#F0F6FC", padding: "8px 16px", borderRadius: "6px", cursor: "pointer", fontSize: "13px", fontWeight: "600", fontFamily: "'Inter', sans-serif" }}>Add Debt</button>
+                <button onClick={addDebt} disabled={isSaving} style={{ background: isSaving ? "#4a4470" : "#6C63FF", border: "none", color: "#F0F6FC", padding: "8px 16px", borderRadius: "6px", cursor: isSaving ? "not-allowed" : "pointer", fontSize: "13px", fontWeight: "600", fontFamily: "'Inter', sans-serif" }}>{isSaving ? "Saving..." : "Add Debt"}</button>
                 <button onClick={() => setShowDebtForm(false)} style={{ background: "none", border: "1px solid rgba(255,255,255,0.1)", color: "#8B8FA8", padding: "8px 16px", borderRadius: "6px", cursor: "pointer", fontSize: "13px", fontFamily: "'Inter', sans-serif" }}>Cancel</button>
               </div>
             </div>
@@ -2080,19 +2105,20 @@ function Dashboard() {
                       >
                         <button
                           onClick={updateDebt}
+                          disabled={isSaving}
                           style={{
-                            background: "#6C63FF",
+                            background: isSaving ? "#4a4470" : "#6C63FF",
                             border: "none",
                             color: "#F0F6FC",
                             padding: "8px 16px",
                             borderRadius: "6px",
-                            cursor: "pointer",
+                            cursor: isSaving ? "not-allowed" : "pointer",
                             fontSize: "13px",
                             fontWeight: "600",
                             fontFamily: "'Inter', sans-serif",
                           }}
                         >
-                          Save Changes
+                          {isSaving ? "Saving..." : "Save Changes"}
                         </button>
                         <button
                           onClick={() => setEditingDebt(null)}
@@ -3514,19 +3540,20 @@ function Dashboard() {
                       >
                         <button
                           onClick={updateAccount}
+                          disabled={isSaving}
                           style={{
-                            background: "#6C63FF",
+                            background: isSaving ? "#4a4470" : "#6C63FF",
                             border: "none",
                             color: "#F0F6FC",
                             padding: "8px 16px",
                             borderRadius: "6px",
-                            cursor: "pointer",
+                            cursor: isSaving ? "not-allowed" : "pointer",
                             fontSize: "13px",
                             fontWeight: "600",
                             fontFamily: "'Inter', sans-serif",
                           }}
                         >
-                          Save Changes
+                          {isSaving ? "Saving..." : "Save Changes"}
                         </button>
                         <button
                           onClick={() => setEditingAccount(null)}
@@ -3668,9 +3695,10 @@ function Dashboard() {
               <div style={{ display: "flex", gap: "8px", marginTop: "12px" }}>
                 <button
                   onClick={addIncome}
-                  style={{ background: "#6C63FF", border: "none", color: "#F0F6FC", padding: "8px 16px", borderRadius: "6px", cursor: "pointer", fontSize: "13px", fontWeight: "600", fontFamily: "'Inter', sans-serif" }}
+                  disabled={isSaving}
+                  style={{ background: isSaving ? "#4a4470" : "#6C63FF", border: "none", color: "#F0F6FC", padding: "8px 16px", borderRadius: "6px", cursor: isSaving ? "not-allowed" : "pointer", fontSize: "13px", fontWeight: "600", fontFamily: "'Inter', sans-serif" }}
                 >
-                  Add Income
+                  {isSaving ? "Saving..." : "Add Income"}
                 </button>
                 <button
                   onClick={() => setShowIncomeForm(false)}
@@ -3989,19 +4017,20 @@ function Dashboard() {
                         >
                           <button
                             onClick={updateIncome}
+                            disabled={isSaving}
                             style={{
-                              background: "#6C63FF",
+                              background: isSaving ? "#4a4470" : "#6C63FF",
                               border: "none",
                               color: "#F0F6FC",
                               padding: "8px 16px",
                               borderRadius: "6px",
-                              cursor: "pointer",
+                              cursor: isSaving ? "not-allowed" : "pointer",
                               fontSize: "13px",
                               fontWeight: "600",
                               fontFamily: "'Inter', sans-serif",
                             }}
                           >
-                            Save Changes
+                            {isSaving ? "Saving..." : "Save Changes"}
                           </button>
                           <button
                             onClick={() => setEditingIncome(null)}
@@ -4182,9 +4211,10 @@ function Dashboard() {
               <div style={{ display: "flex", gap: "8px", marginTop: "12px" }}>
                 <button
                   onClick={addBill}
-                  style={{ background: "#6C63FF", border: "none", color: "#F0F6FC", padding: "8px 16px", borderRadius: "6px", cursor: "pointer", fontSize: "13px", fontWeight: "600", fontFamily: "'Inter', sans-serif" }}
+                  disabled={isSaving}
+                  style={{ background: isSaving ? "#4a4470" : "#6C63FF", border: "none", color: "#F0F6FC", padding: "8px 16px", borderRadius: "6px", cursor: isSaving ? "not-allowed" : "pointer", fontSize: "13px", fontWeight: "600", fontFamily: "'Inter', sans-serif" }}
                 >
-                  Add Bill
+                  {isSaving ? "Saving..." : "Add Bill"}
                 </button>
                 <button
                   onClick={() => setShowBillForm(false)}
@@ -4532,19 +4562,20 @@ function Dashboard() {
                         >
                           <button
                             onClick={updateBill}
+                            disabled={isSaving}
                             style={{
-                              background: "#6C63FF",
+                              background: isSaving ? "#4a4470" : "#6C63FF",
                               border: "none",
                               color: "#F0F6FC",
                               padding: "8px 16px",
                               borderRadius: "6px",
-                              cursor: "pointer",
+                              cursor: isSaving ? "not-allowed" : "pointer",
                               fontSize: "13px",
                               fontWeight: "600",
                               fontFamily: "'Inter', sans-serif",
                             }}
                           >
-                            Save Changes
+                            {isSaving ? "Saving..." : "Save Changes"}
                           </button>
                           <button
                             onClick={() => setEditingBill(null)}

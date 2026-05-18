@@ -36,22 +36,6 @@ create table pay_periods (
 );
 
 
--- INCOME
-create table income (
-  id uuid default gen_random_uuid() primary key,
-  household_id uuid references households(id) on delete cascade,
-  name text not null,
-  owner text not null,
-  type text not null,
-  frequency text not null,           -- 'weekly' | 'biweekly' | 'monthly'
-  fixed_amount numeric(10,2),
-  next_pay_date date,
-  deposit_account_id uuid references accounts(id) on delete set null,
-  is_active boolean default true,
-  created_at timestamp default now()
-);
-
-
 -- ACCOUNTS
 create table accounts (
   id uuid default gen_random_uuid() primary key,
@@ -69,6 +53,22 @@ create table accounts (
   reset_type text default 'manual',  -- 'manual' | 'monthly'
   reset_day integer,
   minimum_buffer numeric(10,2) default 0,
+  created_at timestamp default now()
+);
+
+
+-- INCOME (defined after accounts so deposit_account_id foreign key resolves)
+create table income (
+  id uuid default gen_random_uuid() primary key,
+  household_id uuid references households(id) on delete cascade,
+  name text not null,
+  owner text not null,
+  type text not null,
+  frequency text not null,           -- 'weekly' | 'biweekly' | 'monthly'
+  fixed_amount numeric(10,2),
+  next_pay_date date,
+  deposit_account_id uuid references accounts(id) on delete set null,
+  is_active boolean default true,
   created_at timestamp default now()
 );
 
