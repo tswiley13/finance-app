@@ -1485,73 +1485,78 @@ function Dashboard() {
             </div>
           </div>
 
-          <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-            {rows.map((item, i) => (
-              <div key={i} className="panel" style={{ borderLeft: item.isCurrent ? "3px solid #6C63FF" : "3px solid transparent" }}>
-                {/* Card header */}
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "16px" }}>
-                  <div>
-                    <div style={{ fontSize: "14px", fontWeight: "600", color: "#F0F6FC", display: "flex", alignItems: "center", gap: "8px" }}>
-                      {fmtDate(item.period.start_date)} — {fmtDate(item.period.end_date)}
-                      {item.isCurrent && (
-                        <span style={{ fontSize: "9px", background: "#6C63FF", color: "#fff", padding: "2px 8px", borderRadius: "4px", letterSpacing: "0.08em", textTransform: "uppercase", fontWeight: "700" }}>Current</span>
-                      )}
+          <div className="dashboard-grid">
+            <div className="dashboard-left">
+              <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+                {rows.map((item, i) => (
+                  <div key={i} className="panel" style={{ borderLeft: item.isCurrent ? "3px solid #6C63FF" : "3px solid transparent" }}>
+                    {/* Card header */}
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "16px" }}>
+                      <div>
+                        <div style={{ fontSize: "14px", fontWeight: "600", color: "#F0F6FC", display: "flex", alignItems: "center", gap: "8px" }}>
+                          {fmtDate(item.period.start_date)} — {fmtDate(item.period.end_date)}
+                          {item.isCurrent && (
+                            <span style={{ fontSize: "9px", background: "#6C63FF", color: "#fff", padding: "2px 8px", borderRadius: "4px", letterSpacing: "0.08em", textTransform: "uppercase", fontWeight: "700" }}>Current</span>
+                          )}
+                        </div>
+                        {item.incomeItems.length > 0 && (
+                          <div style={{ fontSize: "11px", color: "#8B8FA8", marginTop: "3px" }}>
+                            {item.incomeItems.map((inc, j) => (
+                              <span key={j}>
+                                {inc.name}{inc.actualPayDate ? ` (${fmtDate(inc.actualPayDate)})` : ""}
+                                {j < item.incomeItems.length - 1 ? " · " : ""}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                      <div style={{ textAlign: "right" }}>
+                        <div style={{ fontSize: "9px", color: "#8B8FA8", letterSpacing: "0.1em", textTransform: "uppercase", fontWeight: "600", marginBottom: "3px" }}>End Balance</div>
+                        <div style={{ fontFamily: "'DM Mono', monospace", fontSize: "22px", fontWeight: "500", color: item.endBalance < 0 ? "#F87171" : "#4ADE80" }}>
+                          {item.endBalance < 0 ? "-" : ""}${fmt(Math.abs(item.endBalance))}
+                        </div>
+                      </div>
                     </div>
-                    {item.incomeItems.length > 0 && (
-                      <div style={{ fontSize: "11px", color: "#8B8FA8", marginTop: "3px" }}>
-                        {item.incomeItems.map((inc, j) => (
-                          <span key={j}>
-                            {inc.name}{inc.actualPayDate ? ` (${fmtDate(inc.actualPayDate)})` : ""}
-                            {j < item.incomeItems.length - 1 ? " · " : ""}
-                          </span>
+
+                    {/* 3 tiles: Start | Income | Bills */}
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "8px" }}>
+                      <div style={{ background: "rgba(255,255,255,0.03)", borderRadius: "8px", padding: "10px 12px" }}>
+                        <div style={{ fontSize: "9px", color: "#8B8FA8", letterSpacing: "0.1em", textTransform: "uppercase", fontWeight: "600", marginBottom: "4px" }}>Start</div>
+                        <div style={{ fontFamily: "'DM Mono', monospace", fontSize: "14px", color: "#8B8FA8" }}>${fmt(item.startBalance)}</div>
+                      </div>
+                      <div style={{ background: "rgba(255,255,255,0.03)", borderRadius: "8px", padding: "10px 12px" }}>
+                        <div style={{ fontSize: "9px", color: "#8B8FA8", letterSpacing: "0.1em", textTransform: "uppercase", fontWeight: "600", marginBottom: "4px" }}>
+                          {item.isCurrent ? "Pending Income" : "Income"}
+                        </div>
+                        <div style={{ fontFamily: "'DM Mono', monospace", fontSize: "14px", color: "#4ADE80" }}>+${fmt(item.pendingIncome)}</div>
+                      </div>
+                      <div style={{ background: "rgba(255,255,255,0.03)", borderRadius: "8px", padding: "10px 12px" }}>
+                        <div style={{ fontSize: "9px", color: "#8B8FA8", letterSpacing: "0.1em", textTransform: "uppercase", fontWeight: "600", marginBottom: "4px" }}>
+                          Bills{item.isCurrent ? " (for ref)" : ""}
+                        </div>
+                        <div style={{ fontFamily: "'DM Mono', monospace", fontSize: "14px", color: item.billsTotal > 0 ? "#F87171" : "#8B8FA8" }}>
+                          {item.billsTotal > 0 ? `$${fmt(item.billsTotal)}` : "—"}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Bill list */}
+                    {item.bills.length > 0 && (
+                      <div style={{ marginTop: "12px", borderTop: "1px solid rgba(255,255,255,0.05)", paddingTop: "10px", display: "flex", flexDirection: "column", gap: "4px" }}>
+                        {item.bills.map((bill, j) => (
+                          <div key={j} style={{ display: "inline-flex", alignItems: "center", gap: "6px", fontSize: "12px", color: "#8B8FA8" }}>
+                            <span>{bill.name}</span>
+                            <span style={{ color: "rgba(255,255,255,0.15)" }}>·</span>
+                            <span style={{ fontFamily: "'DM Mono', monospace" }}>${fmt(bill.amount)}</span>
+                          </div>
                         ))}
                       </div>
                     )}
                   </div>
-                  <div style={{ textAlign: "right" }}>
-                    <div style={{ fontSize: "9px", color: "#8B8FA8", letterSpacing: "0.1em", textTransform: "uppercase", fontWeight: "600", marginBottom: "3px" }}>End Balance</div>
-                    <div style={{ fontFamily: "'DM Mono', monospace", fontSize: "22px", fontWeight: "500", color: item.endBalance < 0 ? "#F87171" : "#4ADE80" }}>
-                      {item.endBalance < 0 ? "-" : ""}${fmt(Math.abs(item.endBalance))}
-                    </div>
-                  </div>
-                </div>
-
-                {/* 3 tiles: Start | Income | Bills */}
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "8px" }}>
-                  <div style={{ background: "rgba(255,255,255,0.03)", borderRadius: "8px", padding: "10px 12px" }}>
-                    <div style={{ fontSize: "9px", color: "#8B8FA8", letterSpacing: "0.1em", textTransform: "uppercase", fontWeight: "600", marginBottom: "4px" }}>Start</div>
-                    <div style={{ fontFamily: "'DM Mono', monospace", fontSize: "14px", color: "#8B8FA8" }}>${fmt(item.startBalance)}</div>
-                  </div>
-                  <div style={{ background: "rgba(255,255,255,0.03)", borderRadius: "8px", padding: "10px 12px" }}>
-                    <div style={{ fontSize: "9px", color: "#8B8FA8", letterSpacing: "0.1em", textTransform: "uppercase", fontWeight: "600", marginBottom: "4px" }}>
-                      {item.isCurrent ? "Pending Income" : "Income"}
-                    </div>
-                    <div style={{ fontFamily: "'DM Mono', monospace", fontSize: "14px", color: "#4ADE80" }}>+${fmt(item.pendingIncome)}</div>
-                  </div>
-                  <div style={{ background: "rgba(255,255,255,0.03)", borderRadius: "8px", padding: "10px 12px" }}>
-                    <div style={{ fontSize: "9px", color: "#8B8FA8", letterSpacing: "0.1em", textTransform: "uppercase", fontWeight: "600", marginBottom: "4px" }}>
-                      Bills{item.isCurrent ? " (for ref)" : ""}
-                    </div>
-                    <div style={{ fontFamily: "'DM Mono', monospace", fontSize: "14px", color: item.billsTotal > 0 ? "#F87171" : "#8B8FA8" }}>
-                      {item.billsTotal > 0 ? `$${fmt(item.billsTotal)}` : "—"}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Bill list */}
-                {item.bills.length > 0 && (
-                  <div style={{ marginTop: "12px", borderTop: "1px solid rgba(255,255,255,0.05)", paddingTop: "10px", display: "flex", flexDirection: "column", gap: "4px" }}>
-                    {item.bills.map((bill, j) => (
-                      <div key={j} style={{ display: "inline-flex", alignItems: "center", gap: "6px", fontSize: "12px", color: "#8B8FA8" }}>
-                        <span>{bill.name}</span>
-                        <span style={{ color: "rgba(255,255,255,0.15)" }}>·</span>
-                        <span style={{ fontFamily: "'DM Mono', monospace" }}>${fmt(bill.amount)}</span>
-                      </div>
-                    ))}
-                  </div>
-                )}
+                ))}
               </div>
-            ))}
+            </div>
+            {renderSidePanel()}
           </div>
         </div>
       );
@@ -4461,6 +4466,300 @@ function Dashboard() {
     return renderDashboard();
   }
 
+  function renderSidePanel() {
+    return (
+      <div className="dashboard-right">
+              <div className="panel">
+                <div className="panel-header">
+                  <div className="panel-title">Accounts</div>
+                  <div className="panel-count">{accounts.length} total</div>
+                </div>
+                {accounts.length === 0 ? (
+                  <div className="empty-state">No accounts added yet</div>
+                ) : (
+                  accounts.map((acct, i) => (
+                    <div className="row-item" key={i}>
+                      <div>
+                        <div className="row-name">
+                          {acct.name}
+                          {acct.is_primary && (
+                            <span className="tag">Primary</span>
+                          )}
+                          {acct.is_accumulating && (
+                            <span className="tag">Saving</span>
+                          )}
+                        </div>
+                        <div className="row-sub">
+                          {acct.bank_name} ···{acct.last_four}
+                        </div>
+                        {acct.is_accumulating &&
+                          acct.accumulation_target > 0 && (
+                            <div className="accumulating-bar">
+                              <div
+                                className="accumulating-fill"
+                                style={{
+                                  width: `${Math.min(100, ((acct.accumulation_current || 0) / acct.accumulation_target) * 100)}%`,
+                                }}
+                              />
+                            </div>
+                          )}
+                      </div>
+                      {quickEditAccountId === acct.id ? (
+                        <input
+                          type="number"
+                          value={quickEditBalance}
+                          onChange={(e) => setQuickEditBalance(e.target.value)}
+                          onBlur={() =>
+                            updateAccountBalance(acct.id, quickEditBalance)
+                          }
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") updateAccountBalance(acct.id, quickEditBalance);
+                            if (e.key === "Escape") { setQuickEditAccountId(null); setQuickEditBalance(""); }
+                          }}
+                          autoFocus
+                                  onFocus={(e) => e.target.select()}
+                          style={{
+                            background: "#2D2B45",
+                            border: "1px solid #6C63FF",
+                            color: "#F0F6FC",
+                            padding: "4px 8px",
+                            borderRadius: "6px",
+                            fontSize: "14px",
+                            fontFamily: "'DM Mono', monospace",
+                            width: "90px",
+                            textAlign: "right",
+                          }}
+                        />
+                      ) : (
+                        <div
+                          className="row-amount"
+                          onClick={() => {
+                            setQuickEditAccountId(acct.id);
+                            setQuickEditBalance(acct.current_balance ?? "");
+                          }}
+                          style={{ cursor: "pointer" }}
+                          title="Click to edit"
+                        >
+                          ${fmt(acct.current_balance)}
+                        </div>
+                      )}
+                    </div>
+                  ))
+                )}
+              </div>
+              <div className="panel">
+                <div className="panel-header">
+                  <div className="panel-title">Where the Money Goes</div>
+                  <div className="panel-count">This pay period</div>
+                </div>
+                {(() => {
+                  const currentBreakdown = getPayPeriodBreakdown().find(
+                    (item) => item.isCurrentPeriod,
+                  );
+
+                  // Split bills into regular bills and explicit account transfers
+                  const periodBills = currentBreakdown?.bills || [];
+
+                  // Regular bills: current period only, not transfer bills, not assigned to accumulating accounts
+                  const regularBills = periodBills.filter((b) => {
+                    if (b.transfer_to_account_id) return false;
+                    const acct = accounts.find((a) => a.id === b.account_id);
+                    return !acct?.is_accumulating;
+                  });
+
+                  // Non-accumulating transfer bills: show full amount for current period
+                  const periodTransferBills = periodBills.filter((b) => {
+                    if (!b.transfer_to_account_id) return false;
+                    const dest = accounts.find((a) => a.id === b.transfer_to_account_id);
+                    return !dest?.is_accumulating;
+                  });
+
+                  // Accumulating accounts with a due_day drive their own contribution rows
+                  const accumulatingAccounts = accounts.filter(
+                    (a) => a.is_accumulating && a.due_day && a.accumulation_target
+                  );
+
+                  // Group regular bills by source account
+                  const grouped = {};
+                  regularBills.forEach((bill) => {
+                    const acct = accounts.find((a) => a.id === bill.account_id);
+                    const key = acct ? acct.id : "unassigned";
+                    if (!grouped[key]) {
+                      grouped[key] = {
+                        acctName: acct ? acct.name : "Unassigned",
+                        total: 0,
+                        bills: [],
+                        balance: acct?.current_balance || 0,
+                        buffer: acct?.minimum_buffer || 0,
+                      };
+                    }
+                    grouped[key].total += bill.amount || 0;
+                    grouped[key].bills.push(bill);
+                  });
+
+                  const renderTransferRow = (rowKey, label, suggestedAmount, subtitle) => {
+                    const transferred = transfers[rowKey] || 0;
+                    const remaining = Math.max(0, suggestedAmount - transferred);
+                    const done = transferred >= suggestedAmount;
+
+                    return (
+                      <div key={rowKey} style={{ borderBottom: "1px solid rgba(255,255,255,0.04)", padding: "10px 0" }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                          <div>
+                            <div className="row-name" style={{ color: done ? "#4ADE80" : "#F0F6FC" }}>
+                              {done ? "✓ " : ""}{label}
+                            </div>
+                            {subtitle && <div className="row-sub">{subtitle}</div>}
+                            {transferred > 0 && !done && (
+                              <div style={{ fontSize: "10px", color: "#6C63FF", marginTop: "2px" }}>
+                                ${fmt(transferred)} transferred · ${fmt(remaining)} remaining
+                              </div>
+                            )}
+                          </div>
+                          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                            {!done && (
+                              <div style={{ textAlign: "right" }}>
+                                <div className="row-amount" style={{ color: remaining < suggestedAmount ? "#6C63FF" : "#F0F6FC" }}>
+                                  ${fmt(remaining)}
+                                </div>
+                                <div style={{ fontSize: "10px", color: "#8B8FA8" }}>this paycheck</div>
+                              </div>
+                            )}
+                            {!done && transferringId === rowKey ? (
+                              <>
+                                <input
+                                  type="number"
+                                  value={transferAmount}
+                                  onChange={(e) => setTransferAmount(e.target.value)}
+                                  onKeyDown={(e) => {
+                                    if (e.key === "Enter") confirmTransfer(rowKey, transferAmount);
+                                    if (e.key === "Escape") { setTransferringId(null); setTransferAmount(""); }
+                                  }}
+                                  autoFocus
+                                  onFocus={(e) => e.target.select()}
+                                  style={{ background: "#2D2B45", border: "1px solid #6C63FF", color: "#F0F6FC", padding: "4px 8px", borderRadius: "6px", fontSize: "13px", fontFamily: "'DM Mono', monospace", width: "90px", textAlign: "right" }}
+                                />
+                                <button
+                                  onClick={() => confirmTransfer(rowKey, transferAmount)}
+                                  style={{ background: "#6C63FF", border: "none", color: "#0F1218", padding: "4px 10px", borderRadius: "6px", cursor: "pointer", fontSize: "11px", fontFamily: "'Inter', sans-serif", fontWeight: "600" }}
+                                >
+                                  Confirm
+                                </button>
+                                <button
+                                  onClick={() => { setTransferringId(null); setTransferAmount(""); }}
+                                  style={{ background: "none", border: "1px solid rgba(255,255,255,0.1)", color: "#8B8FA8", padding: "4px 10px", borderRadius: "6px", cursor: "pointer", fontSize: "11px", fontFamily: "'Inter', sans-serif" }}
+                                >
+                                  Cancel
+                                </button>
+                              </>
+                            ) : !done ? (
+                              <button
+                                onClick={() => { setTransferringId(rowKey); setTransferAmount(remaining.toFixed(2)); }}
+                                style={{ background: "rgba(0,212,170,0.1)", border: "1px solid rgba(0,212,170,0.4)", color: "#00D4AA", padding: "4px 10px", borderRadius: "6px", cursor: "pointer", fontSize: "11px", fontFamily: "'Inter', sans-serif", fontWeight: "500" }}
+                              >
+                                Transfer
+                              </button>
+                            ) : null}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  };
+
+                  const billRows = Object.entries(grouped).flatMap(([key, data]) => {
+                    const transferNeeded = Math.max(0, data.total + data.buffer);
+                    if (transferNeeded === 0) return [];
+                    const subtitle = data.buffer > 0 ? `Includes $${fmt(data.buffer)} buffer` : null;
+                    return [renderTransferRow(key, `Transfer to ${data.acctName}`, transferNeeded, subtitle)];
+                  });
+
+                  const today = new Date();
+                  const currentPeriodIndex = payPeriods.findIndex((p) => {
+                    const start = new Date(p.start_date + "T00:00:00");
+                    const end = new Date(p.end_date + "T23:59:59");
+                    return today >= start && today <= end;
+                  });
+
+                  const periodsUntilDue = (bill) => {
+                    let dueDate = new Date(today.getFullYear(), today.getMonth(), bill.due_day);
+                    if (dueDate < today) dueDate = new Date(today.getFullYear(), today.getMonth() + 1, bill.due_day);
+                    if (currentPeriodIndex === -1) return 1;
+                    let count = 0;
+                    for (let i = currentPeriodIndex; i < payPeriods.length; i++) {
+                      count++;
+                      if (dueDate <= new Date(payPeriods[i].end_date + "T23:59:59")) break;
+                    }
+                    return Math.max(1, count);
+                  };
+
+                  // Non-accumulating transfer bills: show full amount for current period
+                  const periodTransferRows = periodTransferBills.map((bill) => {
+                    const destAcct = accounts.find((a) => a.id === bill.transfer_to_account_id);
+                    const destName = destAcct ? destAcct.name : "Unknown";
+                    return renderTransferRow(`transfer-${bill.id}`, destName, bill.amount, null);
+                  });
+
+                  // Account-driven: accumulating accounts with due_day + accumulation_target
+                  const coveredAcctIds = new Set(accumulatingAccounts.map((a) => a.id));
+                  const accumulatingRows = accumulatingAccounts.flatMap((acct) => {
+                    const target = acct.accumulation_target;
+                    const saved = Math.min(acct.current_balance || 0, target);
+                    const stillNeeded = Math.max(0, target - saved);
+                    if (stillNeeded === 0) return [];
+                    const periods = periodsUntilDue({ due_day: acct.due_day });
+                    const amountThisPeriod = stillNeeded / periods;
+                    const subtitle = `$${fmt(saved)} of $${fmt(target)} saved`;
+                    return [renderTransferRow(`acct-${acct.id}`, acct.name, amountThisPeriod, subtitle)];
+                  });
+
+                  // Bill-driven: bills that transfer to an accumulating account (e.g. Rent → Mortgage savings)
+                  const billDrivenRows = bills
+                    .filter((b) => {
+                      if (!b.transfer_to_account_id) return false;
+                      const dest = accounts.find((a) => a.id === b.transfer_to_account_id);
+                      if (!dest?.is_accumulating) return false;
+                      return !coveredAcctIds.has(dest.id);
+                    })
+                    .flatMap((bill) => {
+                      const dest = accounts.find((a) => a.id === bill.transfer_to_account_id);
+                      const target = bill.amount;
+                      const saved = Math.min(dest.current_balance || 0, target);
+                      const stillNeeded = Math.max(0, target - saved);
+                      if (stillNeeded === 0) return [];
+                      const periods = periodsUntilDue(bill);
+                      const amountThisPeriod = stillNeeded / periods;
+                      const subtitle = `$${fmt(saved)} of $${fmt(target)} saved`;
+                      return [renderTransferRow(`bill-acct-${bill.id}`, dest.name, amountThisPeriod, subtitle)];
+                    });
+
+                  const allTransferRows = [...periodTransferRows, ...accumulatingRows, ...billDrivenRows];
+
+                  if (billRows.length === 0 && allTransferRows.length === 0) {
+                    return <div className="empty-state">No allocations this period</div>;
+                  }
+
+                  return (
+                    <>
+                      {billRows.length > 0 && (
+                        <>
+                          <div style={{ fontSize: "10px", color: "#8B8FA8", letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: "8px" }}>Bills</div>
+                          {billRows}
+                        </>
+                      )}
+                      {allTransferRows.length > 0 && (
+                        <>
+                          <div style={{ fontSize: "10px", color: "#8B8FA8", letterSpacing: "0.08em", textTransform: "uppercase", margin: billRows.length > 0 ? "16px 0 8px" : "0 0 8px" }}>Transfers</div>
+                          {allTransferRows}
+                        </>
+                      )}
+                    </>
+                  );
+                })()}
+              </div>
+            </div>
+    );
+  }
+
   function renderDashboard() {
     return (
       <div className="content-area">
@@ -4790,295 +5089,7 @@ function Dashboard() {
               ))}
             </div>
 
-            <div className="dashboard-right">
-              <div className="panel">
-                <div className="panel-header">
-                  <div className="panel-title">Accounts</div>
-                  <div className="panel-count">{accounts.length} total</div>
-                </div>
-                {accounts.length === 0 ? (
-                  <div className="empty-state">No accounts added yet</div>
-                ) : (
-                  accounts.map((acct, i) => (
-                    <div className="row-item" key={i}>
-                      <div>
-                        <div className="row-name">
-                          {acct.name}
-                          {acct.is_primary && (
-                            <span className="tag">Primary</span>
-                          )}
-                          {acct.is_accumulating && (
-                            <span className="tag">Saving</span>
-                          )}
-                        </div>
-                        <div className="row-sub">
-                          {acct.bank_name} ···{acct.last_four}
-                        </div>
-                        {acct.is_accumulating &&
-                          acct.accumulation_target > 0 && (
-                            <div className="accumulating-bar">
-                              <div
-                                className="accumulating-fill"
-                                style={{
-                                  width: `${Math.min(100, ((acct.accumulation_current || 0) / acct.accumulation_target) * 100)}%`,
-                                }}
-                              />
-                            </div>
-                          )}
-                      </div>
-                      {quickEditAccountId === acct.id ? (
-                        <input
-                          type="number"
-                          value={quickEditBalance}
-                          onChange={(e) => setQuickEditBalance(e.target.value)}
-                          onBlur={() =>
-                            updateAccountBalance(acct.id, quickEditBalance)
-                          }
-                          onKeyDown={(e) => {
-                            if (e.key === "Enter") updateAccountBalance(acct.id, quickEditBalance);
-                            if (e.key === "Escape") { setQuickEditAccountId(null); setQuickEditBalance(""); }
-                          }}
-                          autoFocus
-                                  onFocus={(e) => e.target.select()}
-                          style={{
-                            background: "#2D2B45",
-                            border: "1px solid #6C63FF",
-                            color: "#F0F6FC",
-                            padding: "4px 8px",
-                            borderRadius: "6px",
-                            fontSize: "14px",
-                            fontFamily: "'DM Mono', monospace",
-                            width: "90px",
-                            textAlign: "right",
-                          }}
-                        />
-                      ) : (
-                        <div
-                          className="row-amount"
-                          onClick={() => {
-                            setQuickEditAccountId(acct.id);
-                            setQuickEditBalance(acct.current_balance ?? "");
-                          }}
-                          style={{ cursor: "pointer" }}
-                          title="Click to edit"
-                        >
-                          ${fmt(acct.current_balance)}
-                        </div>
-                      )}
-                    </div>
-                  ))
-                )}
-              </div>
-              <div className="panel">
-                <div className="panel-header">
-                  <div className="panel-title">Where the Money Goes</div>
-                  <div className="panel-count">This pay period</div>
-                </div>
-                {(() => {
-                  const currentBreakdown = getPayPeriodBreakdown().find(
-                    (item) => item.isCurrentPeriod,
-                  );
-
-                  // Split bills into regular bills and explicit account transfers
-                  const periodBills = currentBreakdown?.bills || [];
-
-                  // Regular bills: current period only, not transfer bills, not assigned to accumulating accounts
-                  const regularBills = periodBills.filter((b) => {
-                    if (b.transfer_to_account_id) return false;
-                    const acct = accounts.find((a) => a.id === b.account_id);
-                    return !acct?.is_accumulating;
-                  });
-
-                  // Non-accumulating transfer bills: show full amount for current period
-                  const periodTransferBills = periodBills.filter((b) => {
-                    if (!b.transfer_to_account_id) return false;
-                    const dest = accounts.find((a) => a.id === b.transfer_to_account_id);
-                    return !dest?.is_accumulating;
-                  });
-
-                  // Accumulating accounts with a due_day drive their own contribution rows
-                  const accumulatingAccounts = accounts.filter(
-                    (a) => a.is_accumulating && a.due_day && a.accumulation_target
-                  );
-
-                  // Group regular bills by source account
-                  const grouped = {};
-                  regularBills.forEach((bill) => {
-                    const acct = accounts.find((a) => a.id === bill.account_id);
-                    const key = acct ? acct.id : "unassigned";
-                    if (!grouped[key]) {
-                      grouped[key] = {
-                        acctName: acct ? acct.name : "Unassigned",
-                        total: 0,
-                        bills: [],
-                        balance: acct?.current_balance || 0,
-                        buffer: acct?.minimum_buffer || 0,
-                      };
-                    }
-                    grouped[key].total += bill.amount || 0;
-                    grouped[key].bills.push(bill);
-                  });
-
-                  const renderTransferRow = (rowKey, label, suggestedAmount, subtitle) => {
-                    const transferred = transfers[rowKey] || 0;
-                    const remaining = Math.max(0, suggestedAmount - transferred);
-                    const done = transferred >= suggestedAmount;
-
-                    return (
-                      <div key={rowKey} style={{ borderBottom: "1px solid rgba(255,255,255,0.04)", padding: "10px 0" }}>
-                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                          <div>
-                            <div className="row-name" style={{ color: done ? "#4ADE80" : "#F0F6FC" }}>
-                              {done ? "✓ " : ""}{label}
-                            </div>
-                            {subtitle && <div className="row-sub">{subtitle}</div>}
-                            {transferred > 0 && !done && (
-                              <div style={{ fontSize: "10px", color: "#6C63FF", marginTop: "2px" }}>
-                                ${fmt(transferred)} transferred · ${fmt(remaining)} remaining
-                              </div>
-                            )}
-                          </div>
-                          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                            {!done && (
-                              <div style={{ textAlign: "right" }}>
-                                <div className="row-amount" style={{ color: remaining < suggestedAmount ? "#6C63FF" : "#F0F6FC" }}>
-                                  ${fmt(remaining)}
-                                </div>
-                                <div style={{ fontSize: "10px", color: "#8B8FA8" }}>this paycheck</div>
-                              </div>
-                            )}
-                            {!done && transferringId === rowKey ? (
-                              <>
-                                <input
-                                  type="number"
-                                  value={transferAmount}
-                                  onChange={(e) => setTransferAmount(e.target.value)}
-                                  onKeyDown={(e) => {
-                                    if (e.key === "Enter") confirmTransfer(rowKey, transferAmount);
-                                    if (e.key === "Escape") { setTransferringId(null); setTransferAmount(""); }
-                                  }}
-                                  autoFocus
-                                  onFocus={(e) => e.target.select()}
-                                  style={{ background: "#2D2B45", border: "1px solid #6C63FF", color: "#F0F6FC", padding: "4px 8px", borderRadius: "6px", fontSize: "13px", fontFamily: "'DM Mono', monospace", width: "90px", textAlign: "right" }}
-                                />
-                                <button
-                                  onClick={() => confirmTransfer(rowKey, transferAmount)}
-                                  style={{ background: "#6C63FF", border: "none", color: "#0F1218", padding: "4px 10px", borderRadius: "6px", cursor: "pointer", fontSize: "11px", fontFamily: "'Inter', sans-serif", fontWeight: "600" }}
-                                >
-                                  Confirm
-                                </button>
-                                <button
-                                  onClick={() => { setTransferringId(null); setTransferAmount(""); }}
-                                  style={{ background: "none", border: "1px solid rgba(255,255,255,0.1)", color: "#8B8FA8", padding: "4px 10px", borderRadius: "6px", cursor: "pointer", fontSize: "11px", fontFamily: "'Inter', sans-serif" }}
-                                >
-                                  Cancel
-                                </button>
-                              </>
-                            ) : !done ? (
-                              <button
-                                onClick={() => { setTransferringId(rowKey); setTransferAmount(remaining.toFixed(2)); }}
-                                style={{ background: "rgba(0,212,170,0.1)", border: "1px solid rgba(0,212,170,0.4)", color: "#00D4AA", padding: "4px 10px", borderRadius: "6px", cursor: "pointer", fontSize: "11px", fontFamily: "'Inter', sans-serif", fontWeight: "500" }}
-                              >
-                                Transfer
-                              </button>
-                            ) : null}
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  };
-
-                  const billRows = Object.entries(grouped).flatMap(([key, data]) => {
-                    const transferNeeded = Math.max(0, data.total + data.buffer);
-                    if (transferNeeded === 0) return [];
-                    const subtitle = data.buffer > 0 ? `Includes $${fmt(data.buffer)} buffer` : null;
-                    return [renderTransferRow(key, `Transfer to ${data.acctName}`, transferNeeded, subtitle)];
-                  });
-
-                  const today = new Date();
-                  const currentPeriodIndex = payPeriods.findIndex((p) => {
-                    const start = new Date(p.start_date + "T00:00:00");
-                    const end = new Date(p.end_date + "T23:59:59");
-                    return today >= start && today <= end;
-                  });
-
-                  const periodsUntilDue = (bill) => {
-                    let dueDate = new Date(today.getFullYear(), today.getMonth(), bill.due_day);
-                    if (dueDate < today) dueDate = new Date(today.getFullYear(), today.getMonth() + 1, bill.due_day);
-                    if (currentPeriodIndex === -1) return 1;
-                    let count = 0;
-                    for (let i = currentPeriodIndex; i < payPeriods.length; i++) {
-                      count++;
-                      if (dueDate <= new Date(payPeriods[i].end_date + "T23:59:59")) break;
-                    }
-                    return Math.max(1, count);
-                  };
-
-                  // Non-accumulating transfer bills: show full amount for current period
-                  const periodTransferRows = periodTransferBills.map((bill) => {
-                    const destAcct = accounts.find((a) => a.id === bill.transfer_to_account_id);
-                    const destName = destAcct ? destAcct.name : "Unknown";
-                    return renderTransferRow(`transfer-${bill.id}`, destName, bill.amount, null);
-                  });
-
-                  // Account-driven: accumulating accounts with due_day + accumulation_target
-                  const coveredAcctIds = new Set(accumulatingAccounts.map((a) => a.id));
-                  const accumulatingRows = accumulatingAccounts.flatMap((acct) => {
-                    const target = acct.accumulation_target;
-                    const saved = Math.min(acct.current_balance || 0, target);
-                    const stillNeeded = Math.max(0, target - saved);
-                    if (stillNeeded === 0) return [];
-                    const periods = periodsUntilDue({ due_day: acct.due_day });
-                    const amountThisPeriod = stillNeeded / periods;
-                    const subtitle = `$${fmt(saved)} of $${fmt(target)} saved`;
-                    return [renderTransferRow(`acct-${acct.id}`, acct.name, amountThisPeriod, subtitle)];
-                  });
-
-                  // Bill-driven: bills that transfer to an accumulating account (e.g. Rent → Mortgage savings)
-                  const billDrivenRows = bills
-                    .filter((b) => {
-                      if (!b.transfer_to_account_id) return false;
-                      const dest = accounts.find((a) => a.id === b.transfer_to_account_id);
-                      if (!dest?.is_accumulating) return false;
-                      return !coveredAcctIds.has(dest.id);
-                    })
-                    .flatMap((bill) => {
-                      const dest = accounts.find((a) => a.id === bill.transfer_to_account_id);
-                      const target = bill.amount;
-                      const saved = Math.min(dest.current_balance || 0, target);
-                      const stillNeeded = Math.max(0, target - saved);
-                      if (stillNeeded === 0) return [];
-                      const periods = periodsUntilDue(bill);
-                      const amountThisPeriod = stillNeeded / periods;
-                      const subtitle = `$${fmt(saved)} of $${fmt(target)} saved`;
-                      return [renderTransferRow(`bill-acct-${bill.id}`, dest.name, amountThisPeriod, subtitle)];
-                    });
-
-                  const allTransferRows = [...periodTransferRows, ...accumulatingRows, ...billDrivenRows];
-
-                  if (billRows.length === 0 && allTransferRows.length === 0) {
-                    return <div className="empty-state">No allocations this period</div>;
-                  }
-
-                  return (
-                    <>
-                      {billRows.length > 0 && (
-                        <>
-                          <div style={{ fontSize: "10px", color: "#8B8FA8", letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: "8px" }}>Bills</div>
-                          {billRows}
-                        </>
-                      )}
-                      {allTransferRows.length > 0 && (
-                        <>
-                          <div style={{ fontSize: "10px", color: "#8B8FA8", letterSpacing: "0.08em", textTransform: "uppercase", margin: billRows.length > 0 ? "16px 0 8px" : "0 0 8px" }}>Transfers</div>
-                          {allTransferRows}
-                        </>
-                      )}
-                    </>
-                  );
-                })()}
-              </div>
-            </div>
+            {renderSidePanel()}
           </div>
         </div>
     );
