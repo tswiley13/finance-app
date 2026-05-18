@@ -1,5 +1,6 @@
 {
-  "rewrites": [
-    { "source": "/((?!assets|icons|favicon|pwa|apple-touch|maskable).*)", "destination": "/index.html" }
+  "routes": [
+    { "handle": "filesystem" },
+    { "src": "/(.*)", "dest": "/index.html" }
   ]
 }
