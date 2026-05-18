@@ -1407,7 +1407,7 @@ function Dashboard() {
   const currentPeriod = getCurrentPayPeriod();
 
   function renderContent() {
-    if (activeNav === "projection") {
+    if (activeNav === "dashboard") {
       const primaryBalance = accounts
         .filter((a) => a.is_primary && !a.is_accumulating)
         .reduce((sum, a) => sum + (a.current_balance || 0), 0);
@@ -4468,7 +4468,7 @@ function Dashboard() {
       );
     }
 
-    return renderDashboard();
+    return null;
   }
 
   function renderSidePanel() {
@@ -5143,7 +5143,6 @@ function Dashboard() {
               icon: <Calendar size={16} />,
             },
             { key: "debts", label: "Debts", icon: <TrendingDown size={16} /> },
-            { key: "projection", label: "Projection", icon: <TrendingUp size={16} /> },
           ].map((item) => (
             <button
               key={item.key}
@@ -5266,7 +5265,6 @@ function Dashboard() {
           {[
             { key: "payperiods", label: "Pay Periods", icon: <Calendar size={16} /> },
             { key: "debts", label: "Debts", icon: <TrendingDown size={16} /> },
-            { key: "projection", label: "Projection", icon: <TrendingUp size={16} /> },
           ].map((item) => (
             <button key={item.key} className={`nav-item ${activeNav === item.key ? "active" : ""}`} onClick={() => { navigate(item.key); setMobileMenuOpen(false); }}>
               {item.icon}{item.label}
