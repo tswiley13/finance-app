@@ -1694,7 +1694,37 @@ function Dashboard() {
             </div>
           </div>
 
-          {/* Add / Edit Form */}
+          {/* Add Debt Form */}
+          {showDebtForm && (
+            <div className="panel" style={{ marginBottom: "16px" }}>
+              <div className="panel-header">
+                <div className="panel-title">New Debt</div>
+              </div>
+              <div className="form-grid">
+                <input placeholder="Debt name" value={debtName} onChange={(e) => setDebtName(e.target.value)} style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", color: "#F2F0EB", padding: "8px 12px", borderRadius: "6px", fontSize: "13px", fontFamily: "'Inter', sans-serif" }} />
+                <select value={debtCategory} onChange={(e) => setDebtCategory(e.target.value)} style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", color: "#F2F0EB", padding: "8px 12px", borderRadius: "6px", fontSize: "13px", fontFamily: "'Inter', sans-serif" }}>
+                  <option value="Credit Card">Credit Card</option>
+                  <option value="Auto Loan">Auto Loan</option>
+                  <option value="Student Loan">Student Loan</option>
+                  <option value="Personal Loan">Personal Loan</option>
+                  <option value="Medical">Medical</option>
+                  <option value="Mortgage">Mortgage</option>
+                  <option value="Other">Other</option>
+                </select>
+                <select value={debtOwner} onChange={(e) => setDebtOwner(e.target.value)} style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", color: "#F2F0EB", padding: "8px 12px", borderRadius: "6px", fontSize: "13px", fontFamily: "'Inter', sans-serif" }}>
+                  <option value="joint">Joint</option>
+                  {members.map((m, i) => <option key={i} value={m.name}>{m.name}</option>)}
+                </select>
+                <input type="number" placeholder="Current balance" value={debtBalance} onChange={(e) => setDebtBalance(e.target.value)} style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", color: "#F2F0EB", padding: "8px 12px", borderRadius: "6px", fontSize: "13px", fontFamily: "'Inter', sans-serif" }} />
+                <input type="number" placeholder="Minimum payment" value={debtMinPayment} onChange={(e) => setDebtMinPayment(e.target.value)} style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", color: "#F2F0EB", padding: "8px 12px", borderRadius: "6px", fontSize: "13px", fontFamily: "'Inter', sans-serif" }} />
+                <input type="number" placeholder="Interest rate (e.g. 24.99)" value={debtInterestRate} onChange={(e) => setDebtInterestRate(e.target.value)} style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", color: "#F2F0EB", padding: "8px 12px", borderRadius: "6px", fontSize: "13px", fontFamily: "'Inter', sans-serif" }} />
+              </div>
+              <div style={{ display: "flex", gap: "8px", marginTop: "12px" }}>
+                <button onClick={addDebt} style={{ background: "#6C63FF", border: "none", color: "#F0F6FC", padding: "8px 16px", borderRadius: "6px", cursor: "pointer", fontSize: "13px", fontWeight: "600", fontFamily: "'Inter', sans-serif" }}>Add Debt</button>
+                <button onClick={() => setShowDebtForm(false)} style={{ background: "none", border: "1px solid rgba(255,255,255,0.1)", color: "#8B8FA8", padding: "8px 16px", borderRadius: "6px", cursor: "pointer", fontSize: "13px", fontFamily: "'Inter', sans-serif" }}>Cancel</button>
+              </div>
+            </div>
+          )}
 
           {/* Active Debts */}
           <div className="panel" style={{ marginBottom: "16px" }}>
@@ -1902,13 +1932,7 @@ function Dashboard() {
                         margin: "8px 0 4px",
                       }}
                     >
-                      <div
-                        style={{
-                          display: "grid",
-                          gridTemplateColumns: "1fr 1fr",
-                          gap: "12px",
-                        }}
-                      >
+                      <div className="form-grid">
                         <input
                           placeholder="Debt name"
                           value={debtName}
@@ -2869,13 +2893,7 @@ function Dashboard() {
               <div className="panel-header">
                 <div className="panel-title">New Account</div>
               </div>
-              <div
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: "1fr 1fr",
-                  gap: "12px",
-                }}
-              >
+              <div className="form-grid">
                 <input
                   placeholder="Account name"
                   value={accountName}
@@ -3278,13 +3296,7 @@ function Dashboard() {
                         margin: "8px 0 4px",
                       }}
                     >
-                      <div
-                        style={{
-                          display: "grid",
-                          gridTemplateColumns: "1fr 1fr",
-                          gap: "12px",
-                        }}
-                      >
+                      <div className="form-grid">
                         <input
                           placeholder="Account name"
                           value={accountName}
@@ -3552,7 +3564,7 @@ function Dashboard() {
               <div className="panel-header">
                 <div className="panel-title">New Income</div>
               </div>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
+              <div className="form-grid">
                 <input
                   placeholder="Income name"
                   value={incomeName}
@@ -3791,13 +3803,7 @@ function Dashboard() {
                           margin: "8px 0 4px",
                         }}
                       >
-                        <div
-                          style={{
-                            display: "grid",
-                            gridTemplateColumns: "1fr 1fr",
-                            gap: "12px",
-                          }}
-                        >
+                        <div className="form-grid">
                           <input
                             placeholder="Income name"
                             value={incomeName}
