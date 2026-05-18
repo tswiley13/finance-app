@@ -161,7 +161,7 @@ function Dashboard() {
   const [billName, setBillName] = useState("");
   const [billAmount, setBillAmount] = useState("");
   const [dueDay, setDueDay] = useState("");
-  const [paymentMethod, setPaymentMethod] = useState("auto");
+  const [paymentMethod, setPaymentMethod] = useState("");
   const [billCategory, setBillCategory] = useState("");
   const [billOwner, setBillOwner] = useState("joint");
   const [billAccountId, setBillAccountId] = useState("");
@@ -439,7 +439,7 @@ function Dashboard() {
     setBillName("");
     setBillAmount("");
     setDueDay("");
-    setPaymentMethod("auto");
+    setPaymentMethod("");
     setBillCategory("");
     setBillOwner("joint");
     setBillAccountId("");
@@ -510,7 +510,7 @@ function Dashboard() {
     setBillName("");
     setBillAmount("");
     setDueDay("");
-    setPaymentMethod("auto");
+    setPaymentMethod("");
     setBillCategory("");
     setBillOwner("joint");
     setBillAccountId("");
@@ -4010,7 +4010,7 @@ function Dashboard() {
                 setBillName("");
                 setBillAmount("");
                 setDueDay("");
-                setPaymentMethod("auto");
+                setPaymentMethod("");
                 setBillCategory("");
                 setBillOwner("joint");
                 setBillAccountId("");
@@ -4084,6 +4084,7 @@ function Dashboard() {
                   onChange={(e) => setPaymentMethod(e.target.value)}
                   style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", color: "#F2F0EB", padding: "8px 12px", borderRadius: "6px", fontSize: "13px", fontFamily: "'Inter', sans-serif" }}
                 >
+                  <option value="" disabled>Payment method</option>
                   <option value="auto">Auto</option>
                   <option value="transfer">Transfer</option>
                   <option value="zelle">Zelle</option>
@@ -4387,6 +4388,7 @@ function Dashboard() {
                               fontFamily: "'Inter', sans-serif",
                             }}
                           >
+                            <option value="" disabled>Payment method</option>
                             <option value="auto">Auto</option>
                             <option value="transfer">Transfer</option>
                             <option value="zelle">Zelle</option>
