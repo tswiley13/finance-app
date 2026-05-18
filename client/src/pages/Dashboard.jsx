@@ -4512,7 +4512,7 @@ function Dashboard() {
                           return (
                             <div style={{ background: "rgba(108,99,255,0.08)", border: "1px solid rgba(108,99,255,0.15)", borderRadius: "8px", padding: "10px 12px" }}>
                               <div style={{ fontSize: "9px", color: "#6C63FF", letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: "4px", fontWeight: "600" }}>
-                                In Account
+                                Available Funds
                               </div>
                               <div style={{ fontFamily: "'DM Mono', monospace", fontSize: "16px", color: "#6C63FF" }}>
                                 ${fmt(primaryBalance)}
