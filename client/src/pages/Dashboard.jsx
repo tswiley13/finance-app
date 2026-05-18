@@ -1542,12 +1542,17 @@ function Dashboard() {
 
                     {/* Bill list */}
                     {item.bills.length > 0 && (
-                      <div style={{ marginTop: "12px", borderTop: "1px solid rgba(255,255,255,0.05)", paddingTop: "10px", display: "flex", flexDirection: "column", gap: "4px" }}>
+                      <div style={{ marginTop: "12px", borderTop: "1px solid rgba(255,255,255,0.05)", paddingTop: "12px" }}>
                         {item.bills.map((bill, j) => (
-                          <div key={j} style={{ display: "inline-flex", alignItems: "center", gap: "6px", fontSize: "12px", color: "#8B8FA8" }}>
-                            <span>{bill.name}</span>
-                            <span style={{ color: "rgba(255,255,255,0.15)" }}>·</span>
-                            <span style={{ fontFamily: "'DM Mono', monospace" }}>${fmt(bill.amount)}</span>
+                          <div key={j} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "7px 0", borderBottom: j < item.bills.length - 1 ? "1px solid rgba(255,255,255,0.04)" : "none" }}>
+                            <div>
+                              <div style={{ fontSize: "13px", color: "#F0F6FC", fontWeight: "500" }}>{bill.name}</div>
+                              <div style={{ fontSize: "11px", color: "#8B8FA8", marginTop: "2px" }}>Due the {bill.due_day}{getSuffix(bill.due_day)}</div>
+                            </div>
+                            <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                              <span style={{ fontFamily: "'DM Mono', monospace", fontSize: "13px", color: "#8B8FA8" }}>${fmt(bill.amount)}</span>
+                              <button onClick={() => markBillPaid(bill)} style={{ background: "rgba(74,222,128,0.1)", border: "1px solid rgba(74,222,128,0.3)", color: "#4ADE80", padding: "3px 10px", borderRadius: "5px", cursor: "pointer", fontSize: "11px", fontFamily: "'Inter', sans-serif", fontWeight: "500" }}>Paid</button>
+                            </div>
                           </div>
                         ))}
                       </div>
