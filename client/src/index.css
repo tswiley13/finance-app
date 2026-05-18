@@ -47,6 +47,7 @@ body {
   .stat-row { grid-template-columns: repeat(3, 1fr) !important; gap: 8px !important; }
   .dashboard-grid { grid-template-columns: 1fr !important; }
   .content-grid { grid-template-columns: 1fr 1fr !important; }
+  .form-grid { grid-template-columns: 1fr !important; }
   .panel { padding: 14px !important; }
 
   .desktop-only { display: none !important; }

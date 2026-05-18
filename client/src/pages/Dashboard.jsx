@@ -101,9 +101,6 @@ const css = `
     .stat-row-4 { grid-template-columns: repeat(2, 1fr) !important; gap: 8px !important; }
     .stat-amount { font-size: 20px !important; }
   }
-  @media (max-width: 640px) {
-    .form-grid { grid-template-columns: 1fr !important; }
-  }
 
   .desktop-only { display: flex; }
   .mobile-only { display: none; }
