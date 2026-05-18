@@ -948,7 +948,7 @@ function Dashboard() {
     setAccDueDay("");
     setResetType("manual");
     setResetDay("");
-    setMinimumBuffer(acct.minimum_buffer || "");
+    setMinimumBuffer("");
   }
 
   async function deleteAccount(accountId) {
@@ -4046,6 +4046,10 @@ function Dashboard() {
                 setBillOwner("joint");
                 setBillAccountId("");
                 setIsVariable(false);
+                setBillFrequency("");
+                setBillDueDay2("");
+                setIsBillAccumulating(false);
+                setTransferToAccountId("");
               }}
               style={{
                 background: "#6C63FF",
