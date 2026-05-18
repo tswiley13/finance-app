@@ -2796,7 +2796,7 @@ function Dashboard() {
                     Primary
                   </label>
                   <div style={{ fontSize: "11px", color: "#8B8FA8", marginTop: "2px", gridColumn: "1 / -1" }}>
-                    Check this for your main spending account — where your paycheck lands. Used to calculate available funds.
+                    Any accounts marked Primary are combined to calculate your available funds.
                   </div>
                   <label
                     style={{
@@ -3225,7 +3225,7 @@ function Dashboard() {
                             Primary
                           </label>
                           <div style={{ fontSize: "11px", color: "#8B8FA8", marginTop: "2px", gridColumn: "1 / -1" }}>
-                            Check this for your main spending account — where your paycheck lands. Used to calculate available funds.
+                            Any accounts marked Primary are combined to calculate your available funds.
                           </div>
                           <label
                             style={{
