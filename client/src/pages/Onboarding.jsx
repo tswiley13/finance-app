@@ -1145,6 +1145,9 @@ function Onboarding({ onComplete }) {
                 <input type="checkbox" checked={ac.isPrimary} onChange={(e) => updateCard(activeIndex, { isPrimary: e.target.checked })} />
                 <span style={{ fontSize: "12px", color: "#8B8FA8" }}>Primary account</span>
               </label>
+              <div style={{ fontSize: "11px", color: "#6E7681", marginTop: "-4px" }}>
+                Check this for your main spending account — where your paycheck deposits. Used to calculate available funds.
+              </div>
               <label style={{ display: "flex", alignItems: "center", gap: "8px", cursor: "pointer" }}>
                 <input type="checkbox" checked={ac.isAccumulating} onChange={(e) => updateCard(activeIndex, { isAccumulating: e.target.checked })} />
                 <span style={{ fontSize: "12px", color: "#8B8FA8" }}>Accumulating (saving toward a goal)</span>
@@ -1285,6 +1288,9 @@ function Onboarding({ onComplete }) {
                       <input type="checkbox" checked={card.isPrimary} onChange={(e) => updateCard(index, { isPrimary: e.target.checked })} />
                       <span style={{ fontSize: "12px", color: "#8B8FA8" }}>Primary account</span>
                     </label>
+                    <div style={{ fontSize: "11px", color: "#6E7681", marginTop: "-4px" }}>
+                      Check this for your main spending account — where your paycheck deposits. Used to calculate available funds.
+                    </div>
                     <label style={{ display: "flex", alignItems: "center", gap: "8px", cursor: "pointer" }}>
                       <input type="checkbox" checked={card.isAccumulating} onChange={(e) => updateCard(index, { isAccumulating: e.target.checked })} />
                       <span style={{ fontSize: "12px", color: "#8B8FA8" }}>Accumulating</span>

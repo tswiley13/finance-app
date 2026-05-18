@@ -2795,11 +2795,9 @@ function Dashboard() {
                     />
                     Primary
                   </label>
-                  {isPrimary && (
-                    <div style={{ fontSize: "11px", color: "#8B8FA8", marginTop: "2px", gridColumn: "1 / -1" }}>
-                      Multiple primary accounts are combined for Available Funds.
-                    </div>
-                  )}
+                  <div style={{ fontSize: "11px", color: "#8B8FA8", marginTop: "2px", gridColumn: "1 / -1" }}>
+                    Check this for your main spending account — where your paycheck lands. Used to calculate available funds.
+                  </div>
                   <label
                     style={{
                       color: "rgba(255,255,255,0.6)",
@@ -3226,11 +3224,9 @@ function Dashboard() {
                             />
                             Primary
                           </label>
-                          {isPrimary && (
-                            <div style={{ fontSize: "11px", color: "#8B8FA8", marginTop: "2px", gridColumn: "1 / -1" }}>
-                              Multiple primary accounts are combined for Available Funds.
-                            </div>
-                          )}
+                          <div style={{ fontSize: "11px", color: "#8B8FA8", marginTop: "2px", gridColumn: "1 / -1" }}>
+                            Check this for your main spending account — where your paycheck lands. Used to calculate available funds.
+                          </div>
                           <label
                             style={{
                               color: "#8B8FA8",
