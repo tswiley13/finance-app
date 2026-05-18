@@ -1627,7 +1627,7 @@ function Dashboard() {
                             </div>
                             <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
                               <span style={{ fontFamily: "'DM Mono', monospace", fontSize: "13px", color: "#8B8FA8" }}>${fmt(bill.amount)}</span>
-                              {pendingPaidBill?.id === bill.id && pendingPaidBill?._periodKey === i ? (
+                              {pendingPaidBill?._key === `${bill.id}-${item.period.start_date}` ? (
                                 <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
                                   <input type="number" value={pendingPaidAmount} onChange={(e) => setPendingPaidAmount(e.target.value)} autoFocus placeholder="Amt Paid" style={{ width: "80px", background: "#13111F", border: "1px solid rgba(108,99,255,0.4)", borderRadius: "5px", color: "#F0F6FC", padding: "3px 6px", fontSize: "11px", fontFamily: "'DM Mono', monospace", outline: "none" }} />
                                   <button onClick={() => { markBillPaid(pendingPaidBill, pendingPaidAmount); setPendingPaidBill(null); }} style={{ background: "rgba(74,222,128,0.15)", border: "1px solid rgba(74,222,128,0.4)", color: "#4ADE80", padding: "3px 8px", borderRadius: "5px", cursor: "pointer", fontSize: "11px", fontFamily: "'Inter', sans-serif", fontWeight: "600" }}>✓</button>
@@ -1636,7 +1636,7 @@ function Dashboard() {
                               ) : bill.is_paid ? (
                                 <button onClick={() => markBillUnpaid(bill)} style={{ background: "none", border: "1px solid rgba(248,113,113,0.4)", color: "#F87171", padding: "3px 10px", borderRadius: "5px", cursor: "pointer", fontSize: "11px", fontFamily: "'Inter', sans-serif" }}>Unpaid</button>
                               ) : (
-                                <button onClick={() => { setPendingPaidBill({ ...bill, _periodKey: i }); setPendingPaidAmount(String(bill.amount)); }} style={{ background: "rgba(74,222,128,0.1)", border: "1px solid rgba(74,222,128,0.3)", color: "#4ADE80", padding: "3px 10px", borderRadius: "5px", cursor: "pointer", fontSize: "11px", fontFamily: "'Inter', sans-serif", fontWeight: "500" }}>Paid</button>
+                                <button onClick={() => { setPendingPaidBill({ ...bill, _key: `${bill.id}-${item.period.start_date}` }); setPendingPaidAmount(String(bill.amount)); }} style={{ background: "rgba(74,222,128,0.1)", border: "1px solid rgba(74,222,128,0.3)", color: "#4ADE80", padding: "3px 10px", borderRadius: "5px", cursor: "pointer", fontSize: "11px", fontFamily: "'Inter', sans-serif", fontWeight: "500" }}>Paid</button>
                               )}
                             </div>
                           </div>
@@ -4322,7 +4322,7 @@ function Dashboard() {
                           >
                             Unpaid
                           </button>
-                        ) : pendingPaidBill?.id === bill.id && pendingPaidBill?._periodKey === "bills" ? (
+                        ) : pendingPaidBill?._key === `${bill.id}-bills` ? (
                           <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
                             <input type="number" value={pendingPaidAmount} onChange={(e) => setPendingPaidAmount(e.target.value)} autoFocus placeholder="Amt Paid" style={{ width: "80px", background: "#13111F", border: "1px solid rgba(108,99,255,0.4)", borderRadius: "5px", color: "#F0F6FC", padding: "3px 6px", fontSize: "11px", fontFamily: "'DM Mono', monospace", outline: "none" }} />
                             <button onClick={() => { markBillPaid(pendingPaidBill, pendingPaidAmount); setPendingPaidBill(null); }} style={{ background: "rgba(74,222,128,0.15)", border: "1px solid rgba(74,222,128,0.4)", color: "#4ADE80", padding: "3px 8px", borderRadius: "5px", cursor: "pointer", fontSize: "11px", fontFamily: "'Inter', sans-serif", fontWeight: "600" }}>✓</button>
@@ -4330,7 +4330,7 @@ function Dashboard() {
                           </div>
                         ) : (
                           <button
-                            onClick={() => { setPendingPaidBill({ ...bill, _periodKey: "bills" }); setPendingPaidAmount(String(bill.amount)); }}
+                            onClick={() => { setPendingPaidBill({ ...bill, _key: `${bill.id}-bills` }); setPendingPaidAmount(String(bill.amount)); }}
                             style={{
                               background: "none",
                               border: "1px solid rgba(74,222,128,0.4)",
@@ -5224,7 +5224,7 @@ function Dashboard() {
                                 >
                                   ${fmt(bill.amount)}
                                 </span>
-                                {pendingPaidBill?.id === bill.id && pendingPaidBill?._periodKey === i ? (
+                                {pendingPaidBill?._key === `${bill.id}-${item.period.start_date}` ? (
                                   <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
                                     <input type="number" value={pendingPaidAmount} onChange={(e) => setPendingPaidAmount(e.target.value)} autoFocus placeholder="Amt Paid" style={{ width: "80px", background: "#13111F", border: "1px solid rgba(108,99,255,0.4)", borderRadius: "5px", color: "#F0F6FC", padding: "3px 6px", fontSize: "11px", fontFamily: "'DM Mono', monospace", outline: "none" }} />
                                     <button onClick={() => { markBillPaid(pendingPaidBill, pendingPaidAmount); setPendingPaidBill(null); }} style={{ background: "rgba(74,222,128,0.15)", border: "1px solid rgba(74,222,128,0.4)", color: "#4ADE80", padding: "3px 8px", borderRadius: "5px", cursor: "pointer", fontSize: "11px", fontFamily: "'Inter', sans-serif", fontWeight: "600" }}>✓</button>
@@ -5232,7 +5232,7 @@ function Dashboard() {
                                   </div>
                                 ) : (
                                   <button
-                                    onClick={() => { setPendingPaidBill({ ...bill, _periodKey: i }); setPendingPaidAmount(String(bill.amount)); }}
+                                    onClick={() => { setPendingPaidBill({ ...bill, _key: `${bill.id}-${item.period.start_date}` }); setPendingPaidAmount(String(bill.amount)); }}
                                     style={{
                                       background: "rgba(74,222,128,0.1)",
                                       border: "1px solid rgba(74,222,128,0.3)",
