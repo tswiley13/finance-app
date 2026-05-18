@@ -64,6 +64,8 @@ function Onboarding({ onComplete }) {
   const [isVariable, setIsVariable] = useState(false);
   const [isBillAccumulating, setIsBillAccumulating] = useState(false);
   const [billTransferToAccountId, setBillTransferToAccountId] = useState("");
+  const [billFrequency, setBillFrequency] = useState("monthly");
+  const [billDueDay2, setBillDueDay2] = useState("");
   const [editingBill, setEditingBill] = useState(null);
   const [billError, setBillError] = useState(null);
   const [debtList, setDebtList] = useState([]);
@@ -650,6 +652,8 @@ function Onboarding({ onComplete }) {
       account_id: billAccountId || null,
       transfer_to_account_id: isBillAccumulating ? (billTransferToAccountId || null) : null,
       is_variable: isVariable,
+      frequency: billFrequency,
+      due_day_2: billFrequency === "semi-monthly" && billDueDay2 ? parseInt(billDueDay2) : null,
       is_active: true,
       is_paid: false,
     };
@@ -673,6 +677,8 @@ function Onboarding({ onComplete }) {
     setIsVariable(false);
     setIsBillAccumulating(false);
     setBillTransferToAccountId("");
+    setBillFrequency("monthly");
+    setBillDueDay2("");
     return true;
   }
 
@@ -696,6 +702,8 @@ function Onboarding({ onComplete }) {
         account_id: billAccountId || null,
         transfer_to_account_id: isBillAccumulating ? (billTransferToAccountId || null) : null,
         is_variable: isVariable,
+        frequency: billFrequency,
+        due_day_2: billFrequency === "semi-monthly" && billDueDay2 ? parseInt(billDueDay2) : null,
       })
       .eq("id", editingBill.id);
 
@@ -714,6 +722,8 @@ function Onboarding({ onComplete }) {
               owner: billOwner,
               account_id: billAccountId,
               is_variable: isVariable,
+              frequency: billFrequency,
+              due_day_2: billFrequency === "semi-monthly" && billDueDay2 ? parseInt(billDueDay2) : null,
             }
           : b,
       ),
@@ -730,6 +740,8 @@ function Onboarding({ onComplete }) {
     setIsVariable(false);
     setIsBillAccumulating(false);
     setBillTransferToAccountId("");
+    setBillFrequency("monthly");
+    setBillDueDay2("");
   }
 
   function resetDebtForm() {
@@ -1781,9 +1793,25 @@ function Onboarding({ onComplete }) {
             <input style={inputStyle} type="number" placeholder="0.00" value={billAmount} onChange={(e) => setBillAmount(e.target.value)} />
           </div>
           <div>
-            <label style={labelStyle}>Due Day of Month</label>
+            <label style={labelStyle}>Frequency</label>
+            <select style={selectStyle} value={billFrequency} onChange={(e) => { setBillFrequency(e.target.value); if (e.target.value !== "semi-monthly") setBillDueDay2(""); }}>
+              <option value="monthly">Monthly</option>
+              <option value="semi-monthly">Semi-monthly (2 due dates)</option>
+              <option value="biweekly">Biweekly</option>
+              <option value="quarterly">Quarterly</option>
+              <option value="annually">Annually</option>
+            </select>
+          </div>
+          <div>
+            <label style={labelStyle}>{billFrequency === "semi-monthly" ? "1st Due Day" : "Due Day of Month"}</label>
             <input style={inputStyle} type="number" placeholder="e.g. 1" min="1" max="31" value={dueDay} onChange={(e) => setDueDay(e.target.value)} />
           </div>
+          {billFrequency === "semi-monthly" && (
+            <div>
+              <label style={labelStyle}>2nd Due Day</label>
+              <input style={inputStyle} type="number" placeholder="e.g. 15" min="1" max="31" value={billDueDay2} onChange={(e) => setBillDueDay2(e.target.value)} />
+            </div>
+          )}
           <div>
             <label style={labelStyle}>Category</label>
             <select style={selectStyle} value={billCategory} onChange={(e) => setBillCategory(e.target.value)}>
@@ -1861,7 +1889,7 @@ function Onboarding({ onComplete }) {
                   <div style={{ fontSize: "14px", color: "#F0F6FC", fontWeight: "500" }}>{bill.name}</div>
                   <div style={{ fontSize: "11px", color: "#8B8FA8", marginTop: "2px" }}>${bill.amount} · Due the {bill.due_day}{bill.due_day === 1 ? "st" : bill.due_day === 2 ? "nd" : bill.due_day === 3 ? "rd" : "th"} · {bill.category}</div>
                 </div>
-                <button style={ghostBtn} onClick={() => { setEditingBill(bill); setBillName(bill.name); setBillAmount(bill.amount); setDueDay(bill.due_day); setPaymentMethod(bill.payment_method); setBillCategory(bill.category); setBillOwner(bill.owner); setBillAccountId(bill.account_id || ""); setIsVariable(bill.is_variable); setIsBillAccumulating(!!bill.transfer_to_account_id); setBillTransferToAccountId(bill.transfer_to_account_id || ""); }}>Edit</button>
+                <button style={ghostBtn} onClick={() => { setEditingBill(bill); setBillName(bill.name); setBillAmount(bill.amount); setDueDay(bill.due_day); setPaymentMethod(bill.payment_method); setBillCategory(bill.category); setBillOwner(bill.owner); setBillAccountId(bill.account_id || ""); setIsVariable(bill.is_variable); setIsBillAccumulating(!!bill.transfer_to_account_id); setBillTransferToAccountId(bill.transfer_to_account_id || ""); setBillFrequency(bill.frequency || "monthly"); setBillDueDay2(bill.due_day_2 || ""); }}>Edit</button>
               </div>
             ))}
           </div>
