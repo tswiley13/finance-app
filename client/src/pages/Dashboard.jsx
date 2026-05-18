@@ -1500,7 +1500,10 @@ function Dashboard() {
                     {item.incomeItems.length > 0 && (
                       <div style={{ fontSize: "11px", color: "#8B8FA8", marginTop: "3px" }}>
                         {item.incomeItems.map((inc, j) => (
-                          <span key={j}>{inc.name}{j < item.incomeItems.length - 1 ? " · " : ""}</span>
+                          <span key={j}>
+                            {inc.name}{inc.actualPayDate ? ` (${fmtDate(inc.actualPayDate)})` : ""}
+                            {j < item.incomeItems.length - 1 ? " · " : ""}
+                          </span>
                         ))}
                       </div>
                     )}
@@ -1526,9 +1529,11 @@ function Dashboard() {
                     <div style={{ fontFamily: "'DM Mono', monospace", fontSize: "14px", color: "#4ADE80" }}>+${fmt(item.pendingIncome)}</div>
                   </div>
                   <div style={{ background: "rgba(255,255,255,0.03)", borderRadius: "8px", padding: "10px 12px" }}>
-                    <div style={{ fontSize: "9px", color: "#8B8FA8", letterSpacing: "0.1em", textTransform: "uppercase", fontWeight: "600", marginBottom: "4px" }}>Bills</div>
-                    <div style={{ fontFamily: "'DM Mono', monospace", fontSize: "14px", color: item.billsDeducted > 0 ? "#F87171" : "#8B8FA8" }}>
-                      {item.isCurrent ? "—" : `-$${fmt(item.billsDeducted)}`}
+                    <div style={{ fontSize: "9px", color: "#8B8FA8", letterSpacing: "0.1em", textTransform: "uppercase", fontWeight: "600", marginBottom: "4px" }}>
+                      Bills{item.isCurrent ? " (for ref)" : ""}
+                    </div>
+                    <div style={{ fontFamily: "'DM Mono', monospace", fontSize: "14px", color: item.billsTotal > 0 ? "#F87171" : "#8B8FA8" }}>
+                      {item.billsTotal > 0 ? `$${fmt(item.billsTotal)}` : "—"}
                     </div>
                   </div>
                 </div>
@@ -1537,9 +1542,10 @@ function Dashboard() {
                 {item.bills.length > 0 && (
                   <div style={{ marginTop: "12px", borderTop: "1px solid rgba(255,255,255,0.05)", paddingTop: "10px", display: "flex", flexDirection: "column", gap: "4px" }}>
                     {item.bills.map((bill, j) => (
-                      <div key={j} style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "12px", color: "#8B8FA8" }}>
-                        <span style={{ flex: 1 }}>{bill.name}</span>
-                        <span style={{ fontFamily: "'DM Mono', monospace", flexShrink: 0 }}>${fmt(bill.amount)}</span>
+                      <div key={j} style={{ display: "inline-flex", alignItems: "center", gap: "6px", fontSize: "12px", color: "#8B8FA8" }}>
+                        <span>{bill.name}</span>
+                        <span style={{ color: "rgba(255,255,255,0.15)" }}>·</span>
+                        <span style={{ fontFamily: "'DM Mono', monospace" }}>${fmt(bill.amount)}</span>
                       </div>
                     ))}
                   </div>
