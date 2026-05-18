@@ -94,6 +94,17 @@ const css = `
 
   .content-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
 
+  .stat-row-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 28px; }
+  .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+  @media (max-width: 1024px) {
+    .stat-row-4 { grid-template-columns: repeat(2, 1fr) !important; gap: 8px !important; }
+    .stat-amount { font-size: 20px !important; }
+  }
+  @media (max-width: 640px) {
+    .form-grid { grid-template-columns: 1fr !important; }
+  }
+
   .desktop-only { display: flex; }
   .mobile-only { display: none; }
 
@@ -1466,7 +1477,7 @@ function Dashboard() {
           <h2 style={{ fontFamily: "'Syne', sans-serif", fontSize: "24px", marginBottom: "20px" }}>Monthly Projection</h2>
 
           {/* Monthly summary */}
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "12px", marginBottom: "28px" }}>
+          <div className="stat-row-4">
             <div className="stat-card">
               <div className="stat-label">Available Now</div>
               <div className="stat-amount">${fmt(primaryBalance)}</div>
@@ -4010,7 +4021,7 @@ function Dashboard() {
               <div className="panel-header">
                 <div className="panel-title">New Bill</div>
               </div>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
+              <div className="form-grid">
                 <input
                   placeholder="Bill name"
                   value={billName}
@@ -4254,13 +4265,7 @@ function Dashboard() {
                           margin: "8px 0 4px",
                         }}
                       >
-                        <div
-                          style={{
-                            display: "grid",
-                            gridTemplateColumns: "1fr 1fr",
-                            gap: "12px",
-                          }}
-                        >
+                        <div className="form-grid">
                           <input
                             placeholder="Bill name"
                             value={billName}
