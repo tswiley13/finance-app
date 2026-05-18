@@ -4226,6 +4226,27 @@ function Dashboard() {
             </div>
           )}
 
+          {(() => {
+            const monthlyBillsTotal = bills
+              .filter(b => b.is_active !== false)
+              .filter(b => { const f = b.frequency || "monthly"; return f === "monthly" || f === "semi-monthly"; })
+              .reduce((sum, b) => sum + (b.amount || 0) * ((b.frequency === "semi-monthly") ? 2 : 1), 0);
+            return (
+              <div style={{ display: "flex", gap: "12px", marginBottom: "16px", flexWrap: "wrap" }}>
+                <div className="panel" style={{ flex: "1", minWidth: "160px", margin: 0 }}>
+                  <div style={{ fontSize: "11px", color: "#8B8FA8", fontFamily: "'Inter', sans-serif", marginBottom: "4px", textTransform: "uppercase", letterSpacing: "0.06em" }}>Monthly Bills</div>
+                  <div style={{ fontSize: "22px", fontFamily: "'DM Mono', monospace", color: "#F0F6FC", fontWeight: "600" }}>${fmt(monthlyBillsTotal)}</div>
+                  <div style={{ fontSize: "11px", color: "#8B8FA8", fontFamily: "'Inter', sans-serif", marginTop: "4px" }}>monthly + semi-monthly only</div>
+                </div>
+                <div className="panel" style={{ flex: "1", minWidth: "160px", margin: 0 }}>
+                  <div style={{ fontSize: "11px", color: "#8B8FA8", fontFamily: "'Inter', sans-serif", marginBottom: "4px", textTransform: "uppercase", letterSpacing: "0.06em" }}>Total Bills</div>
+                  <div style={{ fontSize: "22px", fontFamily: "'DM Mono', monospace", color: "#F0F6FC", fontWeight: "600" }}>{bills.filter(b => b.is_active !== false).length}</div>
+                  <div style={{ fontSize: "11px", color: "#8B8FA8", fontFamily: "'Inter', sans-serif", marginTop: "4px" }}>active bills tracked</div>
+                </div>
+              </div>
+            );
+          })()}
+
           <div className="panel">
             <div className="panel-header">
               <div className="panel-title">All Bills</div>
@@ -4262,123 +4283,94 @@ function Dashboard() {
                           {!isBillDue(bill) && " · PAID"}
                         </div>
                       </div>
-                      <div
-                        style={{
-                          display: "flex",
-                          alignItems: "center",
-                          gap: "8px",
-                        }}
-                      >
-                        {quickEditBillId === bill.id ? (
-                          <input
-                            type="number"
-                            value={quickEditBillAmount}
-                            onChange={(e) =>
-                              setQuickEditBillAmount(e.target.value)
-                            }
-                            onBlur={() =>
-                              updateBillAmount(bill.id, quickEditBillAmount)
-                            }
-                            autoFocus
-                                  onFocus={(e) => e.target.select()}
-                            style={{
-                              background: "#2D2B45",
-                              border: "1px solid #6C63FF",
-                              color: "#F0F6FC",
-                              padding: "4px 8px",
-                              borderRadius: "6px",
-                              fontSize: "14px",
-                              fontFamily: "'DM Mono', monospace",
-                              width: "100px",
-                              textAlign: "right",
-                            }}
-                          />
-                        ) : (
-                          <div
-                            className="row-amount"
+                      <div style={{ display: "flex", alignItems: "center", gap: "0" }}>
+                        {/* Amount column — 100px fixed */}
+                        <div style={{ width: "100px", textAlign: "right", flexShrink: 0 }}>
+                          {quickEditBillId === bill.id ? (
+                            <input
+                              type="number"
+                              value={quickEditBillAmount}
+                              onChange={(e) => setQuickEditBillAmount(e.target.value)}
+                              onBlur={() => updateBillAmount(bill.id, quickEditBillAmount)}
+                              autoFocus
+                              onFocus={(e) => e.target.select()}
+                              style={{
+                                background: "#2D2B45",
+                                border: "1px solid #6C63FF",
+                                color: "#F0F6FC",
+                                padding: "4px 8px",
+                                borderRadius: "6px",
+                                fontSize: "14px",
+                                fontFamily: "'DM Mono', monospace",
+                                width: "100px",
+                                textAlign: "right",
+                              }}
+                            />
+                          ) : (
+                            <div
+                              className="row-amount"
+                              onClick={() => { setQuickEditBillId(bill.id); setQuickEditBillAmount(bill.amount ?? ""); }}
+                              style={{ cursor: "pointer" }}
+                              title="Click to edit"
+                            >
+                              ${fmt(bill.amount)}
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Action column — 180px fixed */}
+                        <div style={{ width: "180px", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, paddingLeft: "12px" }}>
+                          {!isBillDue(bill) ? (
+                            <button
+                              onClick={() => markBillUnpaid(bill)}
+                              style={{ background: "none", border: "1px solid rgba(248,113,113,0.4)", color: "#F87171", padding: "4px 10px", borderRadius: "6px", cursor: "pointer", fontSize: "11px", fontFamily: "'Inter', sans-serif", whiteSpace: "nowrap" }}
+                            >
+                              Unpaid
+                            </button>
+                          ) : pendingPaidBill?._key === `${bill.id}-bills` ? (
+                            <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
+                              <input type="text" inputMode="decimal" value={pendingPaidAmount} onChange={(e) => setPendingPaidAmount(e.target.value)} autoFocus placeholder="Amt Paid" style={{ width: "80px", background: "#13111F", border: "1px solid rgba(108,99,255,0.4)", borderRadius: "5px", color: "#F0F6FC", padding: "3px 6px", fontSize: "11px", fontFamily: "'DM Mono', monospace", outline: "none" }} />
+                              <button onClick={() => { markBillPaid(pendingPaidBill, pendingPaidAmount); setPendingPaidBill(null); }} style={{ background: "rgba(74,222,128,0.15)", border: "1px solid rgba(74,222,128,0.4)", color: "#4ADE80", padding: "3px 8px", borderRadius: "5px", cursor: "pointer", fontSize: "11px", fontFamily: "'Inter', sans-serif", fontWeight: "600" }}>✓</button>
+                              <button onClick={() => setPendingPaidBill(null)} style={{ background: "rgba(248,113,113,0.1)", border: "1px solid rgba(248,113,113,0.3)", color: "#F87171", padding: "3px 8px", borderRadius: "5px", cursor: "pointer", fontSize: "11px", fontFamily: "'Inter', sans-serif" }}>✕</button>
+                            </div>
+                          ) : (
+                            <button
+                              onClick={() => { setPendingPaidBill({ ...bill, _key: `${bill.id}-bills` }); setPendingPaidAmount(""); }}
+                              style={{ background: "none", border: "1px solid rgba(74,222,128,0.4)", color: "#4ADE80", padding: "4px 10px", borderRadius: "6px", cursor: "pointer", fontSize: "11px", fontFamily: "'Inter', sans-serif", whiteSpace: "nowrap" }}
+                            >
+                              Paid
+                            </button>
+                          )}
+                        </div>
+
+                        {/* Edit column — 60px fixed */}
+                        <div style={{ width: "60px", display: "flex", justifyContent: "flex-end", flexShrink: 0 }}>
+                          <button
                             onClick={() => {
-                              setQuickEditBillId(bill.id);
-                              setQuickEditBillAmount(bill.amount ?? "");
+                              if (editingBill?.id === bill.id) {
+                                setEditingBill(null);
+                              } else {
+                                setEditingBill(bill);
+                                setShowBillForm(false);
+                                setBillName(bill.name);
+                                setBillAmount(bill.amount);
+                                setDueDay(bill.due_day);
+                                setPaymentMethod(bill.payment_method);
+                                setBillCategory(bill.category);
+                                setBillOwner(bill.owner);
+                                setBillAccountId(bill.account_id || "");
+                                setTransferToAccountId(bill.transfer_to_account_id || "");
+                                setIsBillAccumulating(!!bill.transfer_to_account_id);
+                                setIsVariable(bill.is_variable);
+                                setBillFrequency(bill.frequency || "monthly");
+                                setBillDueDay2(bill.due_day_2 || "");
+                              }
                             }}
-                            style={{ cursor: "pointer" }}
-                            title="Click to edit"
+                            style={{ background: "none", border: "1px solid rgba(255,255,255,0.15)", color: "#8B8FA8", padding: "4px 10px", borderRadius: "6px", cursor: "pointer", fontSize: "11px", fontFamily: "'Inter', sans-serif", whiteSpace: "nowrap" }}
                           >
-                            ${fmt(bill.amount)}
-                          </div>
-                        )}
-                        {!isBillDue(bill) ? (
-                          <button
-                            onClick={() => markBillUnpaid(bill)}
-                            style={{
-                              background: "none",
-                              border: "1px solid rgba(248,113,113,0.4)",
-                              color: "#F87171",
-                              padding: "4px 10px",
-                              borderRadius: "6px",
-                              cursor: "pointer",
-                              fontSize: "11px",
-                              fontFamily: "'Inter', sans-serif",
-                            }}
-                          >
-                            Unpaid
+                            {editingBill?.id === bill.id ? "Cancel" : "Edit"}
                           </button>
-                        ) : pendingPaidBill?._key === `${bill.id}-bills` ? (
-                          <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
-                            <input type="text" inputMode="decimal" value={pendingPaidAmount} onChange={(e) => setPendingPaidAmount(e.target.value)} autoFocus placeholder="Amt Paid" style={{ width: "100px", background: "#13111F", border: "1px solid rgba(108,99,255,0.4)", borderRadius: "5px", color: "#F0F6FC", padding: "3px 6px", fontSize: "11px", fontFamily: "'DM Mono', monospace", outline: "none" }} />
-                            <button onClick={() => { markBillPaid(pendingPaidBill, pendingPaidAmount); setPendingPaidBill(null); }} style={{ background: "rgba(74,222,128,0.15)", border: "1px solid rgba(74,222,128,0.4)", color: "#4ADE80", padding: "3px 8px", borderRadius: "5px", cursor: "pointer", fontSize: "11px", fontFamily: "'Inter', sans-serif", fontWeight: "600" }}>✓</button>
-                            <button onClick={() => setPendingPaidBill(null)} style={{ background: "rgba(248,113,113,0.1)", border: "1px solid rgba(248,113,113,0.3)", color: "#F87171", padding: "3px 8px", borderRadius: "5px", cursor: "pointer", fontSize: "11px", fontFamily: "'Inter', sans-serif" }}>✕</button>
-                          </div>
-                        ) : (
-                          <button
-                            onClick={() => { setPendingPaidBill({ ...bill, _key: `${bill.id}-bills` }); setPendingPaidAmount(""); }}
-                            style={{
-                              background: "none",
-                              border: "1px solid rgba(74,222,128,0.4)",
-                              color: "#4ADE80",
-                              padding: "4px 10px",
-                              borderRadius: "6px",
-                              cursor: "pointer",
-                              fontSize: "11px",
-                              fontFamily: "'Inter', sans-serif",
-                            }}
-                          >
-                            Paid
-                          </button>
-                        )}
-                        <button
-                          onClick={() => {
-                            if (editingBill?.id === bill.id) {
-                              setEditingBill(null);
-                            } else {
-                              setEditingBill(bill);
-                              setShowBillForm(false);
-                              setBillName(bill.name);
-                              setBillAmount(bill.amount);
-                              setDueDay(bill.due_day);
-                              setPaymentMethod(bill.payment_method);
-                              setBillCategory(bill.category);
-                              setBillOwner(bill.owner);
-                              setBillAccountId(bill.account_id || "");
-                              setTransferToAccountId(bill.transfer_to_account_id || "");
-                              setIsBillAccumulating(!!bill.transfer_to_account_id);
-                              setIsVariable(bill.is_variable);
-                              setBillFrequency(bill.frequency || "monthly");
-                              setBillDueDay2(bill.due_day_2 || "");
-                            }
-                          }}
-                          style={{
-                            background: "none",
-                            border: "1px solid rgba(255,255,255,0.15)",
-                            color: "#8B8FA8",
-                            padding: "4px 10px",
-                            borderRadius: "6px",
-                            cursor: "pointer",
-                            fontSize: "11px",
-                            fontFamily: "'Inter', sans-serif",
-                          }}
-                        >
-                          {editingBill?.id === bill.id ? "Cancel" : "Edit"}
-                        </button>
+                        </div>
                       </div>
                     </div>
 
