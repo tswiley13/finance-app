@@ -394,6 +394,19 @@ function Dashboard() {
       return today >= nextDue;
     }
 
+    // Pay Day: due again when a new pay period has started since payment
+    if ((bill.frequency || "monthly") === "payday") {
+      const todayStr = today.toISOString().split("T")[0];
+      const currentPeriod = payPeriods.find(p => todayStr >= p.start_date && todayStr <= p.end_date);
+      if (currentPeriod) {
+        const periodStart = new Date(currentPeriod.start_date + "T00:00:00");
+        return paidDate < periodStart;
+      }
+      const nextDue = new Date(paidDate);
+      nextDue.setDate(nextDue.getDate() + 14);
+      return today >= nextDue;
+    }
+
     const paidMonth = paidDate.getMonth();
     const paidYear = paidDate.getFullYear();
     const currentMonth = today.getMonth();
@@ -409,7 +422,8 @@ function Dashboard() {
 
   async function addBill() {
     if (isSaving) return;
-    if (!billName || !billAmount || !dueDay || !billCategory || !billAccountId) {
+    const isPayday = (billFrequency || "monthly") === "payday";
+    if (!billName || !billAmount || (!isPayday && !dueDay) || !billCategory || !billAccountId) {
       alert("Please fill in all required bill fields.");
       return;
     }
@@ -427,7 +441,7 @@ function Dashboard() {
         household_id: householdData.id,
         name: billName,
         amount: parseFloat(billAmount),
-        due_day: parseInt(dueDay),
+        due_day: isPayday ? 0 : parseInt(dueDay),
         payment_method: paymentMethod,
         category: billCategory,
         owner: billOwner,
@@ -466,13 +480,8 @@ function Dashboard() {
 
   async function updateBill() {
     if (isSaving) return;
-    if (
-      !billName ||
-      !billAmount ||
-      !dueDay ||
-      !billCategory ||
-      !billAccountId
-    ) {
+    const isPaydayEdit = (billFrequency || "monthly") === "payday";
+    if (!billName || !billAmount || (!isPaydayEdit && !dueDay) || !billCategory || !billAccountId) {
       alert("Please fill in all required bill fields.");
       return;
     }
@@ -487,7 +496,7 @@ function Dashboard() {
       .update({
         name: billName,
         amount: parseFloat(billAmount),
-        due_day: parseInt(dueDay),
+        due_day: isPaydayEdit ? 0 : parseInt(dueDay),
         payment_method: paymentMethod,
         category: billCategory,
         owner: billOwner,
@@ -511,7 +520,7 @@ function Dashboard() {
               ...b,
               name: billName,
               amount: parseFloat(billAmount),
-              due_day: parseInt(dueDay),
+              due_day: isPaydayEdit ? 0 : parseInt(dueDay),
               payment_method: paymentMethod,
               category: billCategory,
               owner: billOwner,
@@ -749,8 +758,8 @@ function Dashboard() {
 
         const freq = bill.frequency || "monthly";
 
-        // Biweekly: appears in every pay period
-        if (freq === "biweekly") return true;
+        // Biweekly / Pay Day: appears in every pay period
+        if (freq === "biweekly" || freq === "payday") return true;
 
         // Quarterly/annually: skip from projection (need reference month)
         if (freq === "quarterly" || freq === "annually") return false;
@@ -1520,7 +1529,7 @@ function Dashboard() {
           const pEnd = new Date(item.period.end_date + "T23:59:59");
           const calMonthBills = item.bills.filter((b) => {
             const freq = b.frequency || "monthly";
-            if (freq === "biweekly") return true;
+            if (freq === "biweekly" || freq === "payday") return true;
             if (freq === "quarterly" || freq === "annually") return false;
             if (freq === "semi-monthly") {
               const d1 = new Date(pStart.getFullYear(), pStart.getMonth(), b.due_day);
@@ -1622,7 +1631,7 @@ function Dashboard() {
                             <div>
                               <div style={{ fontSize: "13px", color: "#F0F6FC", fontWeight: "500" }}>{bill.name}</div>
                               <div style={{ fontSize: "11px", color: "#8B8FA8", marginTop: "2px" }}>
-                                {(bill.frequency || "monthly") === "biweekly" ? "Biweekly" : `Due the ${bill.due_day}${getSuffix(bill.due_day)}`}
+                                {(bill.frequency || "monthly") === "payday" ? "Every Pay Day" : (bill.frequency || "monthly") === "biweekly" ? "Biweekly" : `Due the ${bill.due_day}${getSuffix(bill.due_day)}`}
                               </div>
                             </div>
                             <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
@@ -4133,16 +4142,19 @@ function Dashboard() {
                   <option value="monthly">Monthly</option>
                   <option value="semi-monthly">Semi-monthly (2 due dates)</option>
                   <option value="biweekly">Biweekly</option>
+                  <option value="payday">Every Pay Day</option>
                   <option value="quarterly">Quarterly</option>
                   <option value="annually">Annually</option>
                 </select>
-                <input
-                  type="number"
-                  placeholder={(billFrequency || "monthly") === "semi-monthly" ? "1st due day" : "Due day of month"}
-                  value={dueDay}
-                  onChange={(e) => setDueDay(e.target.value)}
-                  style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", color: "#F2F0EB", padding: "8px 12px", borderRadius: "6px", fontSize: "13px", fontFamily: "'Inter', sans-serif" }}
-                />
+                {(billFrequency || "monthly") !== "payday" && (
+                  <input
+                    type="number"
+                    placeholder={(billFrequency || "monthly") === "semi-monthly" ? "1st due day" : "Due day of month"}
+                    value={dueDay}
+                    onChange={(e) => setDueDay(e.target.value)}
+                    style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", color: "#F2F0EB", padding: "8px 12px", borderRadius: "6px", fontSize: "13px", fontFamily: "'Inter', sans-serif" }}
+                  />
+                )}
                 {billFrequency === "semi-monthly" && (
                   <input
                     type="number"
@@ -4273,7 +4285,8 @@ function Dashboard() {
                           {bill.name}
                         </div>
                         <div className="row-sub">
-                          {bill.frequency === "biweekly" ? "Biweekly" :
+                          {bill.frequency === "payday" ? "Every Pay Day" :
+                           bill.frequency === "biweekly" ? "Biweekly" :
                            bill.frequency === "quarterly" ? "Quarterly" :
                            bill.frequency === "annually" ? "Annually" :
                            bill.frequency === "semi-monthly" && bill.due_day_2
@@ -4423,24 +4436,27 @@ function Dashboard() {
                             <option value="monthly">Monthly</option>
                             <option value="semi-monthly">Semi-monthly (2 due dates)</option>
                             <option value="biweekly">Biweekly</option>
+                            <option value="payday">Every Pay Day</option>
                             <option value="quarterly">Quarterly</option>
                             <option value="annually">Annually</option>
                           </select>
-                          <input
-                            type="number"
-                            placeholder={(billFrequency || "monthly") === "semi-monthly" ? "1st due day" : "Due day of month"}
-                            value={dueDay}
-                            onChange={(e) => setDueDay(e.target.value)}
-                            style={{
-                              background: "#2D2B45",
-                              border: "1px solid rgba(255,255,255,0.1)",
-                              color: "#F0F6FC",
-                              padding: "8px 12px",
-                              borderRadius: "6px",
-                              fontSize: "13px",
-                              fontFamily: "'Inter', sans-serif",
-                            }}
-                          />
+                          {(billFrequency || "monthly") !== "payday" && (
+                            <input
+                              type="number"
+                              placeholder={(billFrequency || "monthly") === "semi-monthly" ? "1st due day" : "Due day of month"}
+                              value={dueDay}
+                              onChange={(e) => setDueDay(e.target.value)}
+                              style={{
+                                background: "#2D2B45",
+                                border: "1px solid rgba(255,255,255,0.1)",
+                                color: "#F0F6FC",
+                                padding: "8px 12px",
+                                borderRadius: "6px",
+                                fontSize: "13px",
+                                fontFamily: "'Inter', sans-serif",
+                              }}
+                            />
+                          )}
                           {billFrequency === "semi-monthly" && (
                             <input
                               type="number"
@@ -5197,7 +5213,7 @@ function Dashboard() {
                                     marginTop: "2px",
                                   }}
                                 >
-                                  {(bill.frequency || "monthly") === "biweekly" ? "Biweekly" : `Due the ${bill.due_day}${getSuffix(bill.due_day)}`}
+                                  {(bill.frequency || "monthly") === "payday" ? "Every Pay Day" : (bill.frequency || "monthly") === "biweekly" ? "Biweekly" : `Due the ${bill.due_day}${getSuffix(bill.due_day)}`}
                                 </div>
                               </div>
                               <div

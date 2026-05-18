@@ -635,9 +635,10 @@ function Onboarding({ onComplete }) {
 
   async function addBill() {
     setBillError(null);
+    const isPayday = (billFrequency || "monthly") === "payday";
     if (!billName) { setBillError("Please enter a bill name."); return; }
     if (!billAmount) { setBillError("Please enter a bill amount."); return; }
-    if (!dueDay) { setBillError("Please enter a due day."); return; }
+    if (!isPayday && !dueDay) { setBillError("Please enter a due day."); return; }
     if (!billCategory) { setBillError("Please select a category."); return; }
     if (!billAccountId) { setBillError("Please select which account this bill comes from."); return; }
 
@@ -645,7 +646,7 @@ function Onboarding({ onComplete }) {
       household_id: householdId,
       name: billName,
       amount: parseFloat(billAmount),
-      due_day: parseInt(dueDay),
+      due_day: isPayday ? 0 : parseInt(dueDay),
       payment_method: paymentMethod,
       category: billCategory,
       owner: billOwner,
@@ -684,9 +685,10 @@ function Onboarding({ onComplete }) {
 
   async function updateBill() {
     setBillError(null);
+    const isPaydayEdit = (billFrequency || "monthly") === "payday";
     if (!billName) { setBillError("Please enter a bill name."); return; }
     if (!billAmount) { setBillError("Please enter a bill amount."); return; }
-    if (!dueDay) { setBillError("Please enter a due day."); return; }
+    if (!isPaydayEdit && !dueDay) { setBillError("Please enter a due day."); return; }
     if (!billCategory) { setBillError("Please select a category."); return; }
     if (!billAccountId) { setBillError("Please select which account this bill comes from."); return; }
 
@@ -695,7 +697,7 @@ function Onboarding({ onComplete }) {
       .update({
         name: billName,
         amount: parseFloat(billAmount),
-        due_day: parseInt(dueDay),
+        due_day: isPaydayEdit ? 0 : parseInt(dueDay),
         payment_method: paymentMethod,
         category: billCategory,
         owner: billOwner,
@@ -716,7 +718,7 @@ function Onboarding({ onComplete }) {
               ...b,
               name: billName,
               amount: parseFloat(billAmount),
-              due_day: parseInt(dueDay),
+              due_day: isPaydayEdit ? 0 : parseInt(dueDay),
               payment_method: paymentMethod,
               category: billCategory,
               owner: billOwner,
@@ -1799,14 +1801,17 @@ function Onboarding({ onComplete }) {
               <option value="monthly">Monthly</option>
               <option value="semi-monthly">Semi-monthly (2 due dates)</option>
               <option value="biweekly">Biweekly</option>
+              <option value="payday">Every Pay Day</option>
               <option value="quarterly">Quarterly</option>
               <option value="annually">Annually</option>
             </select>
           </div>
-          <div>
-            <label style={labelStyle}>{(billFrequency || "monthly") === "semi-monthly" ? "1st Due Day" : "Due Day of Month"}</label>
-            <input style={inputStyle} type="number" placeholder="e.g. 1" min="1" max="31" value={dueDay} onChange={(e) => setDueDay(e.target.value)} />
-          </div>
+          {(billFrequency || "monthly") !== "payday" && (
+            <div>
+              <label style={labelStyle}>{(billFrequency || "monthly") === "semi-monthly" ? "1st Due Day" : "Due Day of Month"}</label>
+              <input style={inputStyle} type="number" placeholder="e.g. 1" min="1" max="31" value={dueDay} onChange={(e) => setDueDay(e.target.value)} />
+            </div>
+          )}
           {billFrequency === "semi-monthly" && (
             <div>
               <label style={labelStyle}>2nd Due Day</label>
@@ -1893,7 +1898,7 @@ function Onboarding({ onComplete }) {
               <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 0", borderBottom: "1px solid rgba(255,255,255,0.04)" }}>
                 <div>
                   <div style={{ fontSize: "14px", color: "#F0F6FC", fontWeight: "500" }}>{bill.name}</div>
-                  <div style={{ fontSize: "11px", color: "#8B8FA8", marginTop: "2px" }}>${bill.amount} · Due the {bill.due_day}{bill.due_day === 1 ? "st" : bill.due_day === 2 ? "nd" : bill.due_day === 3 ? "rd" : "th"} · {bill.category}</div>
+                  <div style={{ fontSize: "11px", color: "#8B8FA8", marginTop: "2px" }}>${bill.amount} · {bill.frequency === "payday" ? "Every Pay Day" : bill.frequency === "biweekly" ? "Biweekly" : `Due the ${bill.due_day}${bill.due_day === 1 ? "st" : bill.due_day === 2 ? "nd" : bill.due_day === 3 ? "rd" : "th"}`} · {bill.category}</div>
                 </div>
                 <button style={ghostBtn} onClick={() => { setEditingBill(bill); setBillName(bill.name); setBillAmount(bill.amount); setDueDay(bill.due_day); setPaymentMethod(bill.payment_method); setBillCategory(bill.category); setBillOwner(bill.owner); setBillAccountId(bill.account_id || ""); setIsVariable(bill.is_variable); setIsBillAccumulating(!!bill.transfer_to_account_id); setBillTransferToAccountId(bill.transfer_to_account_id || ""); setBillFrequency(bill.frequency || "monthly"); setBillDueDay2(bill.due_day_2 || ""); }}>Edit</button>
               </div>
