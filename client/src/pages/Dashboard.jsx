@@ -4241,14 +4241,19 @@ function Dashboard() {
           {(() => {
             const monthlyBillsTotal = bills
               .filter(b => b.is_active !== false)
-              .filter(b => { const f = b.frequency || "monthly"; return f === "monthly" || f === "semi-monthly"; })
-              .reduce((sum, b) => sum + (b.amount || 0) * ((b.frequency === "semi-monthly") ? 2 : 1), 0);
+              .reduce((sum, b) => {
+                const f = b.frequency || "monthly";
+                if (f === "monthly") return sum + (b.amount || 0);
+                if (f === "semi-monthly") return sum + (b.amount || 0) * 2;
+                if (f === "biweekly" || f === "payday") return sum + (b.amount || 0) * 2;
+                return sum;
+              }, 0);
             return (
               <div style={{ display: "flex", gap: "12px", marginBottom: "16px", flexWrap: "wrap" }}>
                 <div className="panel" style={{ flex: "1", minWidth: "160px", margin: 0 }}>
                   <div style={{ fontSize: "11px", color: "#8B8FA8", fontFamily: "'Inter', sans-serif", marginBottom: "4px", textTransform: "uppercase", letterSpacing: "0.06em" }}>Monthly Bills</div>
                   <div style={{ fontSize: "22px", fontFamily: "'DM Mono', monospace", color: "#F0F6FC", fontWeight: "600" }}>${fmt(monthlyBillsTotal)}</div>
-                  <div style={{ fontSize: "11px", color: "#8B8FA8", fontFamily: "'Inter', sans-serif", marginTop: "4px" }}>monthly + semi-monthly only</div>
+                  <div style={{ fontSize: "11px", color: "#8B8FA8", fontFamily: "'Inter', sans-serif", marginTop: "4px" }}>est. total per month</div>
                 </div>
                 <div className="panel" style={{ flex: "1", minWidth: "160px", margin: 0 }}>
                   <div style={{ fontSize: "11px", color: "#8B8FA8", fontFamily: "'Inter', sans-serif", marginBottom: "4px", textTransform: "uppercase", letterSpacing: "0.06em" }}>Total Bills</div>
