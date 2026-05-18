@@ -382,7 +382,16 @@ function Dashboard() {
     if (!bill.is_paid) return true;
 
     const today = new Date();
+    today.setHours(0, 0, 0, 0);
     const paidDate = new Date(bill.paid_date);
+    paidDate.setHours(0, 0, 0, 0);
+
+    // Biweekly: due again 14 days after last payment
+    if ((bill.frequency || "monthly") === "biweekly") {
+      const nextDue = new Date(paidDate);
+      nextDue.setDate(nextDue.getDate() + 14);
+      return today >= nextDue;
+    }
 
     const paidMonth = paidDate.getMonth();
     const paidYear = paidDate.getFullYear();
