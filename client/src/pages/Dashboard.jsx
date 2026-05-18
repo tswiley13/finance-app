@@ -1629,7 +1629,7 @@ function Dashboard() {
                               <span style={{ fontFamily: "'DM Mono', monospace", fontSize: "13px", color: "#8B8FA8" }}>${fmt(bill.amount)}</span>
                               {pendingPaidBill?.id === bill.id ? (
                                 <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
-                                  <input type="number" value={pendingPaidAmount} onChange={(e) => setPendingPaidAmount(e.target.value)} autoFocus style={{ width: "70px", background: "#13111F", border: "1px solid rgba(108,99,255,0.4)", borderRadius: "5px", color: "#F0F6FC", padding: "3px 6px", fontSize: "11px", fontFamily: "'DM Mono', monospace", outline: "none" }} />
+                                  <input type="number" value={pendingPaidAmount} onChange={(e) => setPendingPaidAmount(e.target.value)} autoFocus placeholder="Amt Paid" style={{ width: "80px", background: "#13111F", border: "1px solid rgba(108,99,255,0.4)", borderRadius: "5px", color: "#F0F6FC", padding: "3px 6px", fontSize: "11px", fontFamily: "'DM Mono', monospace", outline: "none" }} />
                                   <button onClick={() => { markBillPaid(pendingPaidBill, pendingPaidAmount); setPendingPaidBill(null); }} style={{ background: "rgba(74,222,128,0.15)", border: "1px solid rgba(74,222,128,0.4)", color: "#4ADE80", padding: "3px 8px", borderRadius: "5px", cursor: "pointer", fontSize: "11px", fontFamily: "'Inter', sans-serif", fontWeight: "600" }}>✓</button>
                                   <button onClick={() => setPendingPaidBill(null)} style={{ background: "rgba(248,113,113,0.1)", border: "1px solid rgba(248,113,113,0.3)", color: "#F87171", padding: "3px 8px", borderRadius: "5px", cursor: "pointer", fontSize: "11px", fontFamily: "'Inter', sans-serif" }}>✕</button>
                                 </div>
@@ -4324,7 +4324,7 @@ function Dashboard() {
                           </button>
                         ) : pendingPaidBill?.id === bill.id ? (
                           <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
-                            <input type="number" value={pendingPaidAmount} onChange={(e) => setPendingPaidAmount(e.target.value)} autoFocus style={{ width: "70px", background: "#13111F", border: "1px solid rgba(108,99,255,0.4)", borderRadius: "5px", color: "#F0F6FC", padding: "3px 6px", fontSize: "11px", fontFamily: "'DM Mono', monospace", outline: "none" }} />
+                            <input type="number" value={pendingPaidAmount} onChange={(e) => setPendingPaidAmount(e.target.value)} autoFocus placeholder="Amt Paid" style={{ width: "80px", background: "#13111F", border: "1px solid rgba(108,99,255,0.4)", borderRadius: "5px", color: "#F0F6FC", padding: "3px 6px", fontSize: "11px", fontFamily: "'DM Mono', monospace", outline: "none" }} />
                             <button onClick={() => { markBillPaid(pendingPaidBill, pendingPaidAmount); setPendingPaidBill(null); }} style={{ background: "rgba(74,222,128,0.15)", border: "1px solid rgba(74,222,128,0.4)", color: "#4ADE80", padding: "3px 8px", borderRadius: "5px", cursor: "pointer", fontSize: "11px", fontFamily: "'Inter', sans-serif", fontWeight: "600" }}>✓</button>
                             <button onClick={() => setPendingPaidBill(null)} style={{ background: "rgba(248,113,113,0.1)", border: "1px solid rgba(248,113,113,0.3)", color: "#F87171", padding: "3px 8px", borderRadius: "5px", cursor: "pointer", fontSize: "11px", fontFamily: "'Inter', sans-serif" }}>✕</button>
                           </div>
@@ -5226,7 +5226,7 @@ function Dashboard() {
                                 </span>
                                 {pendingPaidBill?.id === bill.id ? (
                                   <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
-                                    <input type="number" value={pendingPaidAmount} onChange={(e) => setPendingPaidAmount(e.target.value)} autoFocus style={{ width: "70px", background: "#13111F", border: "1px solid rgba(108,99,255,0.4)", borderRadius: "5px", color: "#F0F6FC", padding: "3px 6px", fontSize: "11px", fontFamily: "'DM Mono', monospace", outline: "none" }} />
+                                    <input type="number" value={pendingPaidAmount} onChange={(e) => setPendingPaidAmount(e.target.value)} autoFocus placeholder="Amt Paid" style={{ width: "80px", background: "#13111F", border: "1px solid rgba(108,99,255,0.4)", borderRadius: "5px", color: "#F0F6FC", padding: "3px 6px", fontSize: "11px", fontFamily: "'DM Mono', monospace", outline: "none" }} />
                                     <button onClick={() => { markBillPaid(pendingPaidBill, pendingPaidAmount); setPendingPaidBill(null); }} style={{ background: "rgba(74,222,128,0.15)", border: "1px solid rgba(74,222,128,0.4)", color: "#4ADE80", padding: "3px 8px", borderRadius: "5px", cursor: "pointer", fontSize: "11px", fontFamily: "'Inter', sans-serif", fontWeight: "600" }}>✓</button>
                                     <button onClick={() => setPendingPaidBill(null)} style={{ background: "rgba(248,113,113,0.1)", border: "1px solid rgba(248,113,113,0.3)", color: "#F87171", padding: "3px 8px", borderRadius: "5px", cursor: "pointer", fontSize: "11px", fontFamily: "'Inter', sans-serif" }}>✕</button>
                                   </div>
