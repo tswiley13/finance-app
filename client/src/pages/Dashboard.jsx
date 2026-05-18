@@ -1425,8 +1425,8 @@ function Dashboard() {
         // Future periods: full income + all bills chain normally.
         const pendingIncome = isCurrent
           ? item.incomeItems
-              .filter((inc) => inc.date && new Date(inc.date) > today)
-              .reduce((sum, inc) => sum + (inc.amount || 0), 0)
+              .filter((inc) => inc.actualPayDate && new Date(inc.actualPayDate + "T12:00:00") > today)
+              .reduce((sum, inc) => sum + (inc.fixed_amount || 0), 0)
           : item.income;
 
         const billsDeducted = isCurrent ? 0 : item.billsTotal;
@@ -1444,11 +1444,11 @@ function Dashboard() {
       const monthIncome = breakdown
         .flatMap((item) => item.incomeItems)
         .filter((inc) => {
-          if (!inc.date) return false;
-          const d = new Date(inc.date);
+          if (!inc.actualPayDate) return false;
+          const d = new Date(inc.actualPayDate + "T12:00:00");
           return d.getMonth() === currentMonth && d.getFullYear() === currentYear && d > today;
         })
-        .reduce((sum, inc) => sum + (inc.amount || 0), 0);
+        .reduce((sum, inc) => sum + (inc.fixed_amount || 0), 0);
 
       // Unpaid bills whose due date falls in current calendar month
       const monthBills = bills
