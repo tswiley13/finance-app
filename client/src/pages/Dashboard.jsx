@@ -1471,12 +1471,17 @@ function Dashboard() {
         })
         .reduce((sum, inc) => sum + (inc.fixed_amount || 0), 0);
 
-      // Unpaid bills whose due date falls in current calendar month
+      // Unpaid bills whose next upcoming due date is still within the current calendar month.
+      // Bills due "the 1st" that have already passed this month will have a next occurrence
+      // in June, so they are correctly excluded from May's remaining total.
       const monthBills = bills
         .filter((b) => {
           if (!isBillDue(b)) return false;
-          const due = new Date(currentYear, currentMonth, b.due_day);
-          return due.getMonth() === currentMonth && due.getFullYear() === currentYear;
+          const dueThisMonth = new Date(currentYear, currentMonth, b.due_day);
+          const effectiveDue = dueThisMonth >= today
+            ? dueThisMonth
+            : new Date(currentYear, currentMonth + 1, b.due_day);
+          return effectiveDue.getMonth() === currentMonth && effectiveDue.getFullYear() === currentYear;
         })
         .reduce((sum, b) => sum + (b.amount || 0), 0);
 
