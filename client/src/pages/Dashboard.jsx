@@ -1415,36 +1415,60 @@ function Dashboard() {
       const breakdown = getPayPeriodBreakdown();
       const today = new Date();
 
-      // Build running projection: each period's ending balance feeds the next
       let runningBalance = primaryBalance;
-      const rows = breakdown.map((item, i) => {
+      const rows = breakdown.map((item) => {
         const isCurrent = item.isCurrentPeriod;
+        const startBalance = runningBalance;
 
-        // For current period: income may already be deposited, so we only add
-        // income that deposits AFTER today
+        // Current period: primary balance already reflects any transfers made.
+        // Only add income not yet deposited; don't subtract bills already handled.
+        // Future periods: full income + all bills chain normally.
         const pendingIncome = isCurrent
           ? item.incomeItems
               .filter((inc) => inc.date && new Date(inc.date) > today)
               .reduce((sum, inc) => sum + (inc.amount || 0), 0)
           : item.income;
 
-        const startBalance = runningBalance;
-        const endBalance = startBalance + pendingIncome - item.billsTotal;
+        const billsDeducted = isCurrent ? 0 : item.billsTotal;
+        const endBalance = startBalance + pendingIncome - billsDeducted;
         runningBalance = endBalance;
 
-        return { ...item, startBalance, pendingIncome, endBalance, isCurrent };
+        return { ...item, startBalance, pendingIncome, billsDeducted, endBalance, isCurrent };
       });
+
+      // Monthly summary — sum across all periods in this page
+      const totalIncome = rows.reduce((sum, r) => sum + r.pendingIncome, 0);
+      const totalBills = rows.reduce((sum, r) => sum + r.billsDeducted, 0);
+      const projectedEnd = rows.length > 0 ? rows[rows.length - 1].endBalance : primaryBalance;
 
       return (
         <div className="content-area">
-          <h2 style={{ fontFamily: "'Syne', sans-serif", fontSize: "24px", marginBottom: "6px" }}>Monthly Projection</h2>
-          <p style={{ fontSize: "13px", color: "#6E7681", marginBottom: "24px" }}>
-            Starting from your current balance of <span style={{ color: "#6C63FF", fontWeight: "600" }}>${fmt(primaryBalance)}</span>, here's where you land after each pay period's income and bills.
-          </p>
+          <h2 style={{ fontFamily: "'Syne', sans-serif", fontSize: "24px", marginBottom: "20px" }}>Monthly Projection</h2>
+
+          {/* Monthly summary */}
+          <div className="stat-row" style={{ marginBottom: "28px" }}>
+            <div className="stat-card">
+              <div className="stat-label">Available Now</div>
+              <div className="stat-amount">${fmt(primaryBalance)}</div>
+            </div>
+            <div className="stat-card">
+              <div className="stat-label">Income Coming In</div>
+              <div className="stat-amount">${fmt(totalIncome)}</div>
+            </div>
+            <div className="stat-card">
+              <div className="stat-label">Bills Remaining</div>
+              <div className="stat-amount negative">${fmt(totalBills)}</div>
+            </div>
+            <div className="stat-card">
+              <div className="stat-label">Projected End Balance</div>
+              <div className={`stat-amount ${projectedEnd < 0 ? "negative" : "neutral"}`}>${fmt(projectedEnd)}</div>
+            </div>
+          </div>
 
           <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
             {rows.map((item, i) => (
               <div key={i} className="panel" style={{ borderLeft: item.isCurrent ? "3px solid #6C63FF" : "3px solid transparent" }}>
+                {/* Card header */}
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "16px" }}>
                   <div>
                     <div style={{ fontSize: "14px", fontWeight: "600", color: "#F0F6FC", display: "flex", alignItems: "center", gap: "8px" }}>
@@ -1469,7 +1493,8 @@ function Dashboard() {
                   </div>
                 </div>
 
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: "8px" }}>
+                {/* 3 tiles: Start | Income | Bills */}
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "8px" }}>
                   <div style={{ background: "rgba(255,255,255,0.03)", borderRadius: "8px", padding: "10px 12px" }}>
                     <div style={{ fontSize: "9px", color: "#8B8FA8", letterSpacing: "0.1em", textTransform: "uppercase", fontWeight: "600", marginBottom: "4px" }}>Start</div>
                     <div style={{ fontFamily: "'DM Mono', monospace", fontSize: "14px", color: "#8B8FA8" }}>${fmt(item.startBalance)}</div>
@@ -1482,22 +1507,19 @@ function Dashboard() {
                   </div>
                   <div style={{ background: "rgba(255,255,255,0.03)", borderRadius: "8px", padding: "10px 12px" }}>
                     <div style={{ fontSize: "9px", color: "#8B8FA8", letterSpacing: "0.1em", textTransform: "uppercase", fontWeight: "600", marginBottom: "4px" }}>Bills</div>
-                    <div style={{ fontFamily: "'DM Mono', monospace", fontSize: "14px", color: item.billsTotal > 0 ? "#F87171" : "#8B8FA8" }}>-${fmt(item.billsTotal)}</div>
-                  </div>
-                  <div style={{ background: "rgba(108,99,255,0.08)", border: "1px solid rgba(108,99,255,0.2)", borderRadius: "8px", padding: "10px 12px" }}>
-                    <div style={{ fontSize: "9px", color: "#6C63FF", letterSpacing: "0.1em", textTransform: "uppercase", fontWeight: "600", marginBottom: "4px" }}>End</div>
-                    <div style={{ fontFamily: "'DM Mono', monospace", fontSize: "14px", color: item.endBalance < 0 ? "#F87171" : "#6C63FF" }}>
-                      {item.endBalance < 0 ? "-" : ""}${fmt(Math.abs(item.endBalance))}
+                    <div style={{ fontFamily: "'DM Mono', monospace", fontSize: "14px", color: item.billsDeducted > 0 ? "#F87171" : "#8B8FA8" }}>
+                      {item.isCurrent ? "—" : `-$${fmt(item.billsDeducted)}`}
                     </div>
                   </div>
                 </div>
 
+                {/* Bill list */}
                 {item.bills.length > 0 && (
-                  <div style={{ marginTop: "12px", borderTop: "1px solid rgba(255,255,255,0.05)", paddingTop: "10px" }}>
+                  <div style={{ marginTop: "12px", borderTop: "1px solid rgba(255,255,255,0.05)", paddingTop: "10px", display: "flex", flexDirection: "column", gap: "4px" }}>
                     {item.bills.map((bill, j) => (
-                      <div key={j} style={{ display: "flex", justifyContent: "space-between", fontSize: "12px", color: "#8B8FA8", padding: "3px 0" }}>
-                        <span>{bill.name}</span>
-                        <span style={{ fontFamily: "'DM Mono', monospace" }}>${fmt(bill.amount)}</span>
+                      <div key={j} style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "12px", color: "#8B8FA8" }}>
+                        <span style={{ flex: 1 }}>{bill.name}</span>
+                        <span style={{ fontFamily: "'DM Mono', monospace", flexShrink: 0 }}>${fmt(bill.amount)}</span>
                       </div>
                     ))}
                   </div>
