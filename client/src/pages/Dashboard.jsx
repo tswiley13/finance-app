@@ -10,6 +10,7 @@ import {
   Tag,
   Calendar,
   TrendingDown,
+  TrendingUp,
   Settings,
   LogOut,
   UserPlus,
@@ -1406,6 +1407,108 @@ function Dashboard() {
   const currentPeriod = getCurrentPayPeriod();
 
   function renderContent() {
+    if (activeNav === "projection") {
+      const primaryBalance = accounts
+        .filter((a) => a.is_primary && !a.is_accumulating)
+        .reduce((sum, a) => sum + (a.current_balance || 0), 0);
+
+      const breakdown = getPayPeriodBreakdown();
+      const today = new Date();
+
+      // Build running projection: each period's ending balance feeds the next
+      let runningBalance = primaryBalance;
+      const rows = breakdown.map((item, i) => {
+        const isCurrent = item.isCurrentPeriod;
+
+        // For current period: income may already be deposited, so we only add
+        // income that deposits AFTER today
+        const pendingIncome = isCurrent
+          ? item.incomeItems
+              .filter((inc) => inc.date && new Date(inc.date) > today)
+              .reduce((sum, inc) => sum + (inc.amount || 0), 0)
+          : item.income;
+
+        const startBalance = runningBalance;
+        const endBalance = startBalance + pendingIncome - item.billsTotal;
+        runningBalance = endBalance;
+
+        return { ...item, startBalance, pendingIncome, endBalance, isCurrent };
+      });
+
+      return (
+        <div className="content-area">
+          <h2 style={{ fontFamily: "'Syne', sans-serif", fontSize: "24px", marginBottom: "6px" }}>Monthly Projection</h2>
+          <p style={{ fontSize: "13px", color: "#6E7681", marginBottom: "24px" }}>
+            Starting from your current balance of <span style={{ color: "#6C63FF", fontWeight: "600" }}>${fmt(primaryBalance)}</span>, here's where you land after each pay period's income and bills.
+          </p>
+
+          <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+            {rows.map((item, i) => (
+              <div key={i} className="panel" style={{ borderLeft: item.isCurrent ? "3px solid #6C63FF" : "3px solid transparent" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "16px" }}>
+                  <div>
+                    <div style={{ fontSize: "14px", fontWeight: "600", color: "#F0F6FC", display: "flex", alignItems: "center", gap: "8px" }}>
+                      {fmtDate(item.period.start_date)} — {fmtDate(item.period.end_date)}
+                      {item.isCurrent && (
+                        <span style={{ fontSize: "9px", background: "#6C63FF", color: "#fff", padding: "2px 8px", borderRadius: "4px", letterSpacing: "0.08em", textTransform: "uppercase", fontWeight: "700" }}>Current</span>
+                      )}
+                    </div>
+                    {item.incomeItems.length > 0 && (
+                      <div style={{ fontSize: "11px", color: "#8B8FA8", marginTop: "3px" }}>
+                        {item.incomeItems.map((inc, j) => (
+                          <span key={j}>{inc.name}{j < item.incomeItems.length - 1 ? " · " : ""}</span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                  <div style={{ textAlign: "right" }}>
+                    <div style={{ fontSize: "9px", color: "#8B8FA8", letterSpacing: "0.1em", textTransform: "uppercase", fontWeight: "600", marginBottom: "3px" }}>End Balance</div>
+                    <div style={{ fontFamily: "'DM Mono', monospace", fontSize: "22px", fontWeight: "500", color: item.endBalance < 0 ? "#F87171" : "#4ADE80" }}>
+                      {item.endBalance < 0 ? "-" : ""}${fmt(Math.abs(item.endBalance))}
+                    </div>
+                  </div>
+                </div>
+
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: "8px" }}>
+                  <div style={{ background: "rgba(255,255,255,0.03)", borderRadius: "8px", padding: "10px 12px" }}>
+                    <div style={{ fontSize: "9px", color: "#8B8FA8", letterSpacing: "0.1em", textTransform: "uppercase", fontWeight: "600", marginBottom: "4px" }}>Start</div>
+                    <div style={{ fontFamily: "'DM Mono', monospace", fontSize: "14px", color: "#8B8FA8" }}>${fmt(item.startBalance)}</div>
+                  </div>
+                  <div style={{ background: "rgba(255,255,255,0.03)", borderRadius: "8px", padding: "10px 12px" }}>
+                    <div style={{ fontSize: "9px", color: "#8B8FA8", letterSpacing: "0.1em", textTransform: "uppercase", fontWeight: "600", marginBottom: "4px" }}>
+                      {item.isCurrent ? "Pending Income" : "Income"}
+                    </div>
+                    <div style={{ fontFamily: "'DM Mono', monospace", fontSize: "14px", color: "#4ADE80" }}>+${fmt(item.pendingIncome)}</div>
+                  </div>
+                  <div style={{ background: "rgba(255,255,255,0.03)", borderRadius: "8px", padding: "10px 12px" }}>
+                    <div style={{ fontSize: "9px", color: "#8B8FA8", letterSpacing: "0.1em", textTransform: "uppercase", fontWeight: "600", marginBottom: "4px" }}>Bills</div>
+                    <div style={{ fontFamily: "'DM Mono', monospace", fontSize: "14px", color: item.billsTotal > 0 ? "#F87171" : "#8B8FA8" }}>-${fmt(item.billsTotal)}</div>
+                  </div>
+                  <div style={{ background: "rgba(108,99,255,0.08)", border: "1px solid rgba(108,99,255,0.2)", borderRadius: "8px", padding: "10px 12px" }}>
+                    <div style={{ fontSize: "9px", color: "#6C63FF", letterSpacing: "0.1em", textTransform: "uppercase", fontWeight: "600", marginBottom: "4px" }}>End</div>
+                    <div style={{ fontFamily: "'DM Mono', monospace", fontSize: "14px", color: item.endBalance < 0 ? "#F87171" : "#6C63FF" }}>
+                      {item.endBalance < 0 ? "-" : ""}${fmt(Math.abs(item.endBalance))}
+                    </div>
+                  </div>
+                </div>
+
+                {item.bills.length > 0 && (
+                  <div style={{ marginTop: "12px", borderTop: "1px solid rgba(255,255,255,0.05)", paddingTop: "10px" }}>
+                    {item.bills.map((bill, j) => (
+                      <div key={j} style={{ display: "flex", justifyContent: "space-between", fontSize: "12px", color: "#8B8FA8", padding: "3px 0" }}>
+                        <span>{bill.name}</span>
+                        <span style={{ fontFamily: "'DM Mono', monospace" }}>${fmt(bill.amount)}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      );
+    }
+
     if (activeNav === "debts") {
       const activeDebts = debts
         .filter((d) => !d.is_paid_off)
@@ -4976,6 +5079,7 @@ function Dashboard() {
               icon: <Calendar size={16} />,
             },
             { key: "debts", label: "Debts", icon: <TrendingDown size={16} /> },
+            { key: "projection", label: "Projection", icon: <TrendingUp size={16} /> },
           ].map((item) => (
             <button
               key={item.key}
@@ -5098,6 +5202,7 @@ function Dashboard() {
           {[
             { key: "payperiods", label: "Pay Periods", icon: <Calendar size={16} /> },
             { key: "debts", label: "Debts", icon: <TrendingDown size={16} /> },
+            { key: "projection", label: "Projection", icon: <TrendingUp size={16} /> },
           ].map((item) => (
             <button key={item.key} className={`nav-item ${activeNav === item.key ? "active" : ""}`} onClick={() => { navigate(item.key); setMobileMenuOpen(false); }}>
               {item.icon}{item.label}
