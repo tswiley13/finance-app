@@ -1436,32 +1436,52 @@ function Dashboard() {
         return { ...item, startBalance, pendingIncome, billsDeducted, endBalance, isCurrent };
       });
 
-      // Monthly summary — sum across all periods in this page
-      const totalIncome = rows.reduce((sum, r) => sum + r.pendingIncome, 0);
-      const totalBills = rows.reduce((sum, r) => sum + r.billsDeducted, 0);
-      const projectedEnd = rows.length > 0 ? rows[rows.length - 1].endBalance : primaryBalance;
+      // Monthly summary — based on current calendar month only
+      const currentMonth = today.getMonth();
+      const currentYear = today.getFullYear();
+
+      // Income deposits falling in current calendar month, after today (not yet in balance)
+      const monthIncome = breakdown
+        .flatMap((item) => item.incomeItems)
+        .filter((inc) => {
+          if (!inc.date) return false;
+          const d = new Date(inc.date);
+          return d.getMonth() === currentMonth && d.getFullYear() === currentYear && d > today;
+        })
+        .reduce((sum, inc) => sum + (inc.amount || 0), 0);
+
+      // Unpaid bills whose due date falls in current calendar month
+      const monthBills = bills
+        .filter((b) => {
+          if (!isBillDue(b)) return false;
+          const due = new Date(currentYear, currentMonth, b.due_day);
+          return due.getMonth() === currentMonth && due.getFullYear() === currentYear;
+        })
+        .reduce((sum, b) => sum + (b.amount || 0), 0);
+
+      const availableThisMonth = primaryBalance + monthIncome - monthBills;
 
       return (
         <div className="content-area">
           <h2 style={{ fontFamily: "'Syne', sans-serif", fontSize: "24px", marginBottom: "20px" }}>Monthly Projection</h2>
 
           {/* Monthly summary */}
-          <div className="stat-row" style={{ marginBottom: "28px" }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "12px", marginBottom: "28px" }}>
             <div className="stat-card">
               <div className="stat-label">Available Now</div>
               <div className="stat-amount">${fmt(primaryBalance)}</div>
             </div>
             <div className="stat-card">
-              <div className="stat-label">Income Coming In</div>
-              <div className="stat-amount">${fmt(totalIncome)}</div>
+              <div className="stat-label">Income This Month</div>
+              <div className="stat-amount">${fmt(monthIncome)}</div>
             </div>
             <div className="stat-card">
               <div className="stat-label">Bills Remaining</div>
-              <div className="stat-amount negative">${fmt(totalBills)}</div>
+              <div className="stat-amount negative">${fmt(monthBills)}</div>
             </div>
             <div className="stat-card">
               <div className="stat-label">Available This Month</div>
-              <div className={`stat-amount ${projectedEnd < 0 ? "negative" : "neutral"}`}>${fmt(projectedEnd)}</div>
+              <div className={`stat-amount ${availableThisMonth < 0 ? "negative" : "neutral"}`}>${fmt(availableThisMonth)}</div>
             </div>
           </div>
 
