@@ -215,6 +215,8 @@ function Dashboard() {
   const [regenerating, setRegenerating] = useState(false);
   const [confirmRegenerate, setConfirmRegenerate] = useState(false);
   const [debts, setDebts] = useState([]);
+  const [pendingPaidBill, setPendingPaidBill] = useState(null);
+  const [pendingPaidAmount, setPendingPaidAmount] = useState("");
   const [showDebtForm, setShowDebtForm] = useState(false);
   const [editingDebt, setEditingDebt] = useState(null);
   const [debtName, setDebtName] = useState("");
@@ -530,15 +532,16 @@ function Dashboard() {
     setBills(bills.filter((b) => b.id !== billId));
   }
 
-  async function markBillPaid(bill) {
+  async function markBillPaid(bill, actualAmount) {
     const today = new Date().toISOString().split("T")[0];
+    const paidAmt = actualAmount !== undefined && actualAmount !== "" ? parseFloat(actualAmount) : bill.amount;
 
     const { error } = await supabase
       .from("bills")
       .update({
         is_paid: true,
         paid_date: today,
-        paid_amount: bill.amount,
+        paid_amount: paidAmt,
       })
       .eq("id", bill.id);
 
@@ -550,7 +553,7 @@ function Dashboard() {
     setBills(
       bills.map((b) =>
         b.id === bill.id
-          ? { ...b, is_paid: true, paid_date: today, paid_amount: bill.amount }
+          ? { ...b, is_paid: true, paid_date: today, paid_amount: paidAmt }
           : b,
       ),
     );
@@ -1450,7 +1453,7 @@ function Dashboard() {
               .reduce((sum, inc) => sum + (inc.fixed_amount || 0), 0)
           : item.income;
 
-        const billsDeducted = isCurrent ? 0 : item.billsTotal;
+        const billsDeducted = item.billsTotal;
         const endBalance = startBalance + pendingIncome - billsDeducted;
         runningBalance = endBalance;
 
@@ -1471,19 +1474,32 @@ function Dashboard() {
         })
         .reduce((sum, inc) => sum + (inc.fixed_amount || 0), 0);
 
-      // Unpaid bills whose next upcoming due date is still within the current calendar month.
-      // Bills due "the 1st" that have already passed this month will have a next occurrence
-      // in June, so they are correctly excluded from May's remaining total.
-      const monthBills = bills
-        .filter((b) => {
-          if (!isBillDue(b)) return false;
-          const dueThisMonth = new Date(currentYear, currentMonth, b.due_day);
-          const effectiveDue = dueThisMonth >= today
-            ? dueThisMonth
-            : new Date(currentYear, currentMonth + 1, b.due_day);
-          return effectiveDue.getMonth() === currentMonth && effectiveDue.getFullYear() === currentYear;
+      // Bills remaining: sum unpaid bills from each pay period that starts in the current
+      // calendar month. For monthly bills, only count if the due date in the period's own
+      // start-month falls within the period (this correctly excludes June 1 bills that live
+      // inside the May 21-Jun 3 period). Biweekly bills count once per period they appear in.
+      const monthBills = breakdown
+        .filter((item) => {
+          const pStart = new Date(item.period.start_date + "T00:00:00");
+          return pStart.getFullYear() === currentYear && pStart.getMonth() === currentMonth;
         })
-        .reduce((sum, b) => sum + (b.amount || 0), 0);
+        .reduce((sum, item) => {
+          const pStart = new Date(item.period.start_date + "T00:00:00");
+          const pEnd = new Date(item.period.end_date + "T23:59:59");
+          const calMonthBills = item.bills.filter((b) => {
+            const freq = b.frequency || "monthly";
+            if (freq === "biweekly") return true;
+            if (freq === "quarterly" || freq === "annually") return false;
+            if (freq === "semi-monthly") {
+              const d1 = new Date(pStart.getFullYear(), pStart.getMonth(), b.due_day);
+              const d2 = b.due_day_2 ? new Date(pStart.getFullYear(), pStart.getMonth(), b.due_day_2) : null;
+              return (d1 >= pStart && d1 <= pEnd) || (d2 && d2 >= pStart && d2 <= pEnd);
+            }
+            const dueThisMonth = new Date(pStart.getFullYear(), pStart.getMonth(), b.due_day);
+            return dueThisMonth >= pStart && dueThisMonth <= pEnd;
+          });
+          return sum + calMonthBills.reduce((s, b) => s + (b.amount || 0), 0);
+        }, 0);
 
       const availableThisMonth = primaryBalance + monthIncome - monthBills;
 
@@ -1558,7 +1574,7 @@ function Dashboard() {
                       </div>
                       <div style={{ background: "rgba(255,255,255,0.03)", borderRadius: "8px", padding: "10px 12px" }}>
                         <div style={{ fontSize: "9px", color: "#8B8FA8", letterSpacing: "0.1em", textTransform: "uppercase", fontWeight: "600", marginBottom: "4px" }}>
-                          Bills{item.isCurrent ? " (for ref)" : ""}
+                          Bills
                         </div>
                         <div style={{ fontFamily: "'DM Mono', monospace", fontSize: "14px", color: item.billsTotal > 0 ? "#F87171" : "#8B8FA8" }}>
                           {item.billsTotal > 0 ? `$${fmt(item.billsTotal)}` : "—"}
@@ -1573,11 +1589,21 @@ function Dashboard() {
                           <div key={j} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "7px 0", borderBottom: j < item.bills.length - 1 ? "1px solid rgba(255,255,255,0.04)" : "none" }}>
                             <div>
                               <div style={{ fontSize: "13px", color: "#F0F6FC", fontWeight: "500" }}>{bill.name}</div>
-                              <div style={{ fontSize: "11px", color: "#8B8FA8", marginTop: "2px" }}>Due the {bill.due_day}{getSuffix(bill.due_day)}</div>
+                              <div style={{ fontSize: "11px", color: "#8B8FA8", marginTop: "2px" }}>
+                                {(bill.frequency || "monthly") === "biweekly" ? "Biweekly" : `Due the ${bill.due_day}${getSuffix(bill.due_day)}`}
+                              </div>
                             </div>
                             <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
                               <span style={{ fontFamily: "'DM Mono', monospace", fontSize: "13px", color: "#8B8FA8" }}>${fmt(bill.amount)}</span>
-                              <button onClick={() => markBillPaid(bill)} style={{ background: "rgba(74,222,128,0.1)", border: "1px solid rgba(74,222,128,0.3)", color: "#4ADE80", padding: "3px 10px", borderRadius: "5px", cursor: "pointer", fontSize: "11px", fontFamily: "'Inter', sans-serif", fontWeight: "500" }}>Paid</button>
+                              {pendingPaidBill?.id === bill.id ? (
+                                <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
+                                  <input type="number" value={pendingPaidAmount} onChange={(e) => setPendingPaidAmount(e.target.value)} autoFocus style={{ width: "70px", background: "#13111F", border: "1px solid rgba(108,99,255,0.4)", borderRadius: "5px", color: "#F0F6FC", padding: "3px 6px", fontSize: "11px", fontFamily: "'DM Mono', monospace", outline: "none" }} />
+                                  <button onClick={() => { markBillPaid(pendingPaidBill, pendingPaidAmount); setPendingPaidBill(null); }} style={{ background: "rgba(74,222,128,0.15)", border: "1px solid rgba(74,222,128,0.4)", color: "#4ADE80", padding: "3px 8px", borderRadius: "5px", cursor: "pointer", fontSize: "11px", fontFamily: "'Inter', sans-serif", fontWeight: "600" }}>✓</button>
+                                  <button onClick={() => setPendingPaidBill(null)} style={{ background: "rgba(248,113,113,0.1)", border: "1px solid rgba(248,113,113,0.3)", color: "#F87171", padding: "3px 8px", borderRadius: "5px", cursor: "pointer", fontSize: "11px", fontFamily: "'Inter', sans-serif" }}>✕</button>
+                                </div>
+                              ) : (
+                                <button onClick={() => { setPendingPaidBill(bill); setPendingPaidAmount(String(bill.amount)); }} style={{ background: "rgba(74,222,128,0.1)", border: "1px solid rgba(74,222,128,0.3)", color: "#4ADE80", padding: "3px 10px", borderRadius: "5px", cursor: "pointer", fontSize: "11px", fontFamily: "'Inter', sans-serif", fontWeight: "500" }}>Paid</button>
+                              )}
                             </div>
                           </div>
                         ))}
@@ -4253,9 +4279,15 @@ function Dashboard() {
                           >
                             Unpaid
                           </button>
+                        ) : pendingPaidBill?.id === bill.id ? (
+                          <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
+                            <input type="number" value={pendingPaidAmount} onChange={(e) => setPendingPaidAmount(e.target.value)} autoFocus style={{ width: "70px", background: "#13111F", border: "1px solid rgba(108,99,255,0.4)", borderRadius: "5px", color: "#F0F6FC", padding: "3px 6px", fontSize: "11px", fontFamily: "'DM Mono', monospace", outline: "none" }} />
+                            <button onClick={() => { markBillPaid(pendingPaidBill, pendingPaidAmount); setPendingPaidBill(null); }} style={{ background: "rgba(74,222,128,0.15)", border: "1px solid rgba(74,222,128,0.4)", color: "#4ADE80", padding: "3px 8px", borderRadius: "5px", cursor: "pointer", fontSize: "11px", fontFamily: "'Inter', sans-serif", fontWeight: "600" }}>✓</button>
+                            <button onClick={() => setPendingPaidBill(null)} style={{ background: "rgba(248,113,113,0.1)", border: "1px solid rgba(248,113,113,0.3)", color: "#F87171", padding: "3px 8px", borderRadius: "5px", cursor: "pointer", fontSize: "11px", fontFamily: "'Inter', sans-serif" }}>✕</button>
+                          </div>
                         ) : (
                           <button
-                            onClick={() => markBillPaid(bill)}
+                            onClick={() => { setPendingPaidBill(bill); setPendingPaidAmount(String(bill.amount)); }}
                             style={{
                               background: "none",
                               border: "1px solid rgba(74,222,128,0.4)",
@@ -5129,8 +5161,7 @@ function Dashboard() {
                                     marginTop: "2px",
                                   }}
                                 >
-                                  Due the {bill.due_day}
-                                  {getSuffix(bill.due_day)}
+                                  {(bill.frequency || "monthly") === "biweekly" ? "Biweekly" : `Due the ${bill.due_day}${getSuffix(bill.due_day)}`}
                                 </div>
                               </div>
                               <div
@@ -5149,22 +5180,30 @@ function Dashboard() {
                                 >
                                   ${fmt(bill.amount)}
                                 </span>
-                                <button
-                                  onClick={() => markBillPaid(bill)}
-                                  style={{
-                                    background: "rgba(74,222,128,0.1)",
-                                    border: "1px solid rgba(74,222,128,0.3)",
-                                    color: "#4ADE80",
-                                    padding: "3px 10px",
-                                    borderRadius: "5px",
-                                    cursor: "pointer",
-                                    fontSize: "11px",
-                                    fontFamily: "'Inter', sans-serif",
-                                    fontWeight: "500",
-                                  }}
-                                >
-                                  Paid
-                                </button>
+                                {pendingPaidBill?.id === bill.id ? (
+                                  <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
+                                    <input type="number" value={pendingPaidAmount} onChange={(e) => setPendingPaidAmount(e.target.value)} autoFocus style={{ width: "70px", background: "#13111F", border: "1px solid rgba(108,99,255,0.4)", borderRadius: "5px", color: "#F0F6FC", padding: "3px 6px", fontSize: "11px", fontFamily: "'DM Mono', monospace", outline: "none" }} />
+                                    <button onClick={() => { markBillPaid(pendingPaidBill, pendingPaidAmount); setPendingPaidBill(null); }} style={{ background: "rgba(74,222,128,0.15)", border: "1px solid rgba(74,222,128,0.4)", color: "#4ADE80", padding: "3px 8px", borderRadius: "5px", cursor: "pointer", fontSize: "11px", fontFamily: "'Inter', sans-serif", fontWeight: "600" }}>✓</button>
+                                    <button onClick={() => setPendingPaidBill(null)} style={{ background: "rgba(248,113,113,0.1)", border: "1px solid rgba(248,113,113,0.3)", color: "#F87171", padding: "3px 8px", borderRadius: "5px", cursor: "pointer", fontSize: "11px", fontFamily: "'Inter', sans-serif" }}>✕</button>
+                                  </div>
+                                ) : (
+                                  <button
+                                    onClick={() => { setPendingPaidBill(bill); setPendingPaidAmount(String(bill.amount)); }}
+                                    style={{
+                                      background: "rgba(74,222,128,0.1)",
+                                      border: "1px solid rgba(74,222,128,0.3)",
+                                      color: "#4ADE80",
+                                      padding: "3px 10px",
+                                      borderRadius: "5px",
+                                      cursor: "pointer",
+                                      fontSize: "11px",
+                                      fontFamily: "'Inter', sans-serif",
+                                      fontWeight: "500",
+                                    }}
+                                  >
+                                    Paid
+                                  </button>
+                                )}
                               </div>
                             </div>
                           ))}
