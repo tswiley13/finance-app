@@ -4492,35 +4492,14 @@ function Dashboard() {
                           display: "grid",
                           gridTemplateColumns: item.isCurrentPeriod ? "1fr 1fr 1fr" : "1fr 1fr",
                           gap: "8px",
-                          marginBottom: item.bills.length > 0 ? "12px" : "0",
+                          marginBottom: item.bills.length > 0 || item.contributions?.length > 0 ? "12px" : "0",
                         }}
                       >
-                        <div
-                          style={{
-                            background: "rgba(255,255,255,0.03)",
-                            borderRadius: "8px",
-                            padding: "10px 12px",
-                          }}
-                        >
-                          <div
-                            style={{
-                              fontSize: "9px",
-                              color: "#8B8FA8",
-                              letterSpacing: "0.12em",
-                              textTransform: "uppercase",
-                              marginBottom: "4px",
-                              fontWeight: "600",
-                            }}
-                          >
+                        <div style={{ background: "rgba(255,255,255,0.03)", borderRadius: "8px", padding: "10px 12px" }}>
+                          <div style={{ fontSize: "9px", color: "#8B8FA8", letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: "4px", fontWeight: "600" }}>
                             Income
                           </div>
-                          <div
-                            style={{
-                              fontFamily: "'DM Mono', monospace",
-                              fontSize: "16px",
-                              color: "#4ADE80",
-                            }}
-                          >
+                          <div style={{ fontFamily: "'DM Mono', monospace", fontSize: "16px", color: "#4ADE80" }}>
                             ${fmt(item.income)}
                           </div>
                         </div>
@@ -4539,34 +4518,12 @@ function Dashboard() {
                             </div>
                           );
                         })()}
-                        <div
-                          style={{
-                            background: "rgba(255,255,255,0.03)",
-                            borderRadius: "8px",
-                            padding: "10px 12px",
-                          }}
-                        >
-                          <div
-                            style={{
-                              fontSize: "9px",
-                              color: "#8B8FA8",
-                              letterSpacing: "0.12em",
-                              textTransform: "uppercase",
-                              marginBottom: "4px",
-                              fontWeight: "600",
-                            }}
-                          >
-                            Bills Due
+                        <div style={{ background: "rgba(255,255,255,0.03)", borderRadius: "8px", padding: "10px 12px" }}>
+                          <div style={{ fontSize: "9px", color: "#8B8FA8", letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: "4px", fontWeight: "600" }}>
+                            Left Over
                           </div>
-                          <div
-                            style={{
-                              fontFamily: "'DM Mono', monospace",
-                              fontSize: "16px",
-                              color:
-                                item.billsTotal > 0 ? "#F87171" : "#8B8FA8",
-                            }}
-                          >
-                            ${fmt(item.billsTotal)}
+                          <div style={{ fontFamily: "'DM Mono', monospace", fontSize: "16px", color: item.leftOver < 0 ? "#F87171" : "#4ADE80" }}>
+                            {item.leftOver < 0 ? "-" : ""}${fmt(Math.abs(item.leftOver))}
                           </div>
                         </div>
                       </div>
