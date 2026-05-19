@@ -4440,7 +4440,12 @@ function Dashboard() {
               <div className="empty-state">No bills added yet</div>
             ) : (
               [...bills]
-                .sort((a, b) => a.name.localeCompare(b.name))
+                .sort((a, b) => {
+                  const aPaid = !isBillDue(a) ? 1 : 0;
+                  const bPaid = !isBillDue(b) ? 1 : 0;
+                  if (aPaid !== bPaid) return aPaid - bPaid;
+                  return a.name.localeCompare(b.name);
+                })
                 .map((bill, i) => (
                   <div key={i}>
                     <div className="row-item">
