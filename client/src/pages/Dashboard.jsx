@@ -3042,7 +3042,6 @@ function Dashboard() {
             >
               + Add Account
             </button>
-            <PlaidConnectButton userId={userId} onSuccess={() => alert("Bank connected! Balances will sync shortly.")} />
           </div>
 
           {showAccountForm && (
@@ -3670,6 +3669,10 @@ function Dashboard() {
                 </div>
               ))
             )}
+          </div>
+
+          <div style={{ display: "flex", justifyContent: "flex-end", marginTop: "12px" }}>
+            <PlaidConnectButton userId={userId} onSuccess={() => alert("Bank connected! Balances will sync shortly.")} />
           </div>
         </div>
       );
