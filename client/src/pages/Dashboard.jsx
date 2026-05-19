@@ -299,6 +299,8 @@ function Dashboard() {
   const [userEmail, setUserEmail] = useState("");
   const [userId, setUserId] = useState("");
   const [plaidConnected, setPlaidConnected] = useState(false);
+  const [plaidSyncing, setPlaidSyncing] = useState(false);
+  const [plaidLastSynced, setPlaidLastSynced] = useState(null);
   const [expandedPeriods, setExpandedPeriods] = useState(new Set([0]));
   const [minimumBuffer, setMinimumBuffer] = useState("");
   const [isSaving, setIsSaving] = useState(false);
@@ -342,6 +344,27 @@ function Dashboard() {
       }, 100);
     }
   }, [scrollToInvite, activeNav]);
+
+  async function syncPlaidBalances(householdId) {
+    setPlaidSyncing(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch(`${SUPABASE_FUNCTIONS_URL}/plaid-sync-balances`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${session.access_token}` },
+        body: JSON.stringify({ household_id: householdId }),
+      });
+      const data = await res.json();
+      if (data.synced > 0) {
+        const { data: refreshed } = await supabase.from("accounts").select("*").eq("household_id", householdId);
+        if (refreshed) setAccounts(refreshed);
+        setPlaidLastSynced(new Date());
+      }
+    } catch (err) {
+      console.error("Plaid sync error:", err);
+    }
+    setPlaidSyncing(false);
+  }
 
   useEffect(() => {
     async function loadData() {
@@ -432,9 +455,14 @@ function Dashboard() {
           .select("id")
           .eq("user_id", user.id)
           .limit(1);
-        setPlaidConnected(!!(plaidItems && plaidItems.length > 0));
+        const connected = !!(plaidItems && plaidItems.length > 0);
+        setPlaidConnected(connected);
 
         setLoading(false);
+
+        if (connected) {
+          syncPlaidBalances(householdData.id);
+        }
       } catch (err) {
         console.log("Load error:", err.message);
         setLoading(false);
@@ -3274,7 +3302,18 @@ function Dashboard() {
           <div className="panel">
             <div className="panel-header">
               <div className="panel-title">Your Accounts</div>
-              <div className="panel-count">{accounts.length} total</div>
+              <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+                {plaidConnected && (
+                  <button
+                    onClick={() => syncPlaidBalances(household?.id)}
+                    disabled={plaidSyncing}
+                    style={{ background: "none", border: "none", color: plaidSyncing ? "#5C6080" : "#6C63FF", cursor: plaidSyncing ? "default" : "pointer", fontSize: "12px", fontWeight: "600", fontFamily: "'Inter', sans-serif", padding: 0 }}
+                  >
+                    {plaidSyncing ? "Syncing..." : plaidLastSynced ? `Synced ${plaidLastSynced.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}` : "Sync Balances"}
+                  </button>
+                )}
+                <div className="panel-count">{accounts.length} total</div>
+              </div>
             </div>
             {accounts.length === 0 ? (
               <div className="empty-state">No accounts added yet</div>
