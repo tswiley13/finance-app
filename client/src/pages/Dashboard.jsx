@@ -3719,10 +3719,29 @@ function Dashboard() {
             </div>
           )}
 
+          {(() => {
+            const monthlyIncomeTotal = income
+              .filter(i => i.is_active !== false && i.fixed_amount)
+              .reduce((sum, i) => {
+                const amt = i.fixed_amount || 0;
+                if (i.frequency === "weekly") return sum + amt * (52 / 12);
+                if (i.frequency === "biweekly") return sum + amt * (26 / 12);
+                return sum + amt;
+              }, 0);
+            return (
+              <div style={{ marginBottom: "16px" }}>
+                <div className="panel" style={{ margin: 0 }}>
+                  <div style={{ fontSize: "11px", color: "#8B8FA8", fontFamily: "'Inter', sans-serif", marginBottom: "4px", textTransform: "uppercase", letterSpacing: "0.06em" }}>Total Monthly Income</div>
+                  <div style={{ fontSize: "22px", fontFamily: "'DM Mono', monospace", color: "#4ADE80", fontWeight: "600" }}>${fmt(monthlyIncomeTotal)}</div>
+                  <div style={{ fontSize: "11px", color: "#8B8FA8", fontFamily: "'Inter', sans-serif", marginTop: "4px" }}>est. per month across all sources</div>
+                </div>
+              </div>
+            );
+          })()}
+
           <div className="panel">
             <div className="panel-header">
               <div className="panel-title">Income Sources</div>
-              <div className="panel-count">{income.length} total</div>
             </div>
             {income.length === 0 ? (
               <div className="empty-state">No income sources added yet</div>
