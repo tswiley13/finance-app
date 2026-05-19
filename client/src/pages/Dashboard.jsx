@@ -4972,7 +4972,7 @@ function Dashboard() {
                               </div>
                             )}
                           </div>
-                          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
                             {!done && (
                               <div style={{ textAlign: "right" }}>
                                 <div className="row-amount" style={{ color: remaining < suggestedAmount ? "#6C63FF" : "#F0F6FC" }}>
