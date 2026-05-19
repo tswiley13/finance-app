@@ -153,9 +153,7 @@ function Dashboard() {
   const [accounts, setAccounts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchParams, setSearchParams] = useSearchParams();
-  const [activeNav, setActiveNav] = useState(
-    searchParams.get("tab") || localStorage.getItem("activeNav") || "dashboard",
-  );
+  const [activeNav, setActiveNav] = useState("dashboard");
   const [scrollToInvite, setScrollToInvite] = useState(false);
   const [editingBill, setEditingBill] = useState(null);
   const [billName, setBillName] = useState("");
@@ -239,7 +237,6 @@ function Dashboard() {
   const [isSaving, setIsSaving] = useState(false);
 
   function navigate(page) {
-    localStorage.setItem("activeNav", page);
     setActiveNav(page);
     setSearchParams({ tab: page }, { replace: false });
   }
