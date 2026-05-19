@@ -3343,7 +3343,7 @@ function Dashboard() {
                           <span className="tag">Primary</span>
                         )}
                         {acct.is_accumulating && (
-                          <span className="tag">Accumulating</span>
+                          <span className="tag">Saving</span>
                         )}
                       </div>
                       <div className="row-sub">
