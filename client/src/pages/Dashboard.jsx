@@ -151,18 +151,29 @@ const SUPABASE_FUNCTIONS_URL = "https://zxrmeucubrcbuhqxtjco.supabase.co/functio
 function PlaidConnectButton({ userId, onSuccess }) {
   const [linkToken, setLinkToken] = useState(null);
   const [fetching, setFetching] = useState(false);
+  const [plaidError, setPlaidError] = useState(null);
 
   async function fetchLinkToken() {
     setFetching(true);
-    const { data: { session } } = await supabase.auth.getSession();
-    const res = await fetch(`${SUPABASE_FUNCTIONS_URL}/plaid-create-link-token`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "Authorization": `Bearer ${session.access_token}` },
-      body: JSON.stringify({ user_id: userId }),
-    });
-    const data = await res.json();
-    if (data.link_token) setLinkToken(data.link_token);
-    else { console.error("Plaid link token error:", data); setFetching(false); }
+    setPlaidError(null);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch(`${SUPABASE_FUNCTIONS_URL}/plaid-create-link-token`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${session.access_token}` },
+        body: JSON.stringify({ user_id: userId }),
+      });
+      const data = await res.json();
+      if (data.link_token) {
+        setLinkToken(data.link_token);
+      } else {
+        setPlaidError(data.error_message || data.error || JSON.stringify(data));
+        setFetching(false);
+      }
+    } catch (err) {
+      setPlaidError(err.message);
+      setFetching(false);
+    }
   }
 
   const { open, ready } = usePlaidLink({
@@ -190,23 +201,30 @@ function PlaidConnectButton({ userId, onSuccess }) {
   }, [linkToken, ready, open]);
 
   return (
-    <button
-      onClick={fetchLinkToken}
-      disabled={fetching}
-      style={{
-        background: fetching ? "#2D2B45" : "none",
-        border: "1px solid rgba(108,99,255,0.5)",
-        color: "#6C63FF",
-        padding: "8px 16px",
-        borderRadius: "8px",
-        cursor: fetching ? "not-allowed" : "pointer",
-        fontSize: "13px",
-        fontWeight: "600",
-        fontFamily: "'Inter', sans-serif",
-      }}
-    >
-      {fetching ? "Connecting..." : "+ Connect Bank"}
-    </button>
+    <div>
+      <button
+        onClick={fetchLinkToken}
+        disabled={fetching}
+        style={{
+          background: fetching ? "#2D2B45" : "none",
+          border: "1px solid rgba(108,99,255,0.5)",
+          color: "#6C63FF",
+          padding: "8px 16px",
+          borderRadius: "8px",
+          cursor: fetching ? "not-allowed" : "pointer",
+          fontSize: "13px",
+          fontWeight: "600",
+          fontFamily: "'Inter', sans-serif",
+        }}
+      >
+        {fetching ? "Connecting..." : "+ Connect Bank"}
+      </button>
+      {plaidError && (
+        <div style={{ fontSize: "12px", color: "#F87171", marginTop: "8px", maxWidth: "260px", wordBreak: "break-word" }}>
+          {plaidError}
+        </div>
+      )}
+    </div>
   );
 }
 
