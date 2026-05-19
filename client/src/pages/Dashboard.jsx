@@ -1770,14 +1770,17 @@ function Dashboard() {
                               <span style={{ fontFamily: "'DM Mono', monospace", fontSize: "13px", color: isPartial ? "#FBBF24" : "#8B8FA8" }}>${fmt(isPartial ? remaining : bill.amount)}</span>
                               {pendingPaidBill?._key === `${bill.id}-${item.period.start_date}` ? (
                                 <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
-                                  <input type="text" inputMode="decimal" value={pendingPaidAmount} onChange={(e) => setPendingPaidAmount(e.target.value)} autoFocus placeholder="Amt Paid" style={{ width: "100px", background: "#13111F", border: "1px solid rgba(108,99,255,0.4)", borderRadius: "5px", color: "#F0F6FC", padding: "3px 6px", fontSize: "11px", fontFamily: "'DM Mono', monospace", outline: "none" }} />
+                                  <input type="text" inputMode="decimal" value={pendingPaidAmount} onChange={(e) => setPendingPaidAmount(e.target.value)} autoFocus placeholder="Amt paid" style={{ width: "90px", background: "#13111F", border: "1px solid rgba(108,99,255,0.4)", borderRadius: "5px", color: "#F0F6FC", padding: "3px 6px", fontSize: "11px", fontFamily: "'DM Mono', monospace", outline: "none" }} />
                                   <button onClick={() => { markBillPaid(pendingPaidBill, pendingPaidAmount); setPendingPaidBill(null); }} style={{ background: "rgba(74,222,128,0.15)", border: "1px solid rgba(74,222,128,0.4)", color: "#4ADE80", padding: "3px 8px", borderRadius: "5px", cursor: "pointer", fontSize: "11px", fontFamily: "'Inter', sans-serif", fontWeight: "600" }}>✓</button>
                                   <button onClick={() => setPendingPaidBill(null)} style={{ background: "rgba(248,113,113,0.1)", border: "1px solid rgba(248,113,113,0.3)", color: "#F87171", padding: "3px 8px", borderRadius: "5px", cursor: "pointer", fontSize: "11px", fontFamily: "'Inter', sans-serif" }}>✕</button>
                                 </div>
                               ) : bill.is_paid ? (
                                 <button onClick={() => markBillUnpaid(bill)} style={{ background: "none", border: "1px solid rgba(248,113,113,0.4)", color: "#F87171", padding: "3px 10px", borderRadius: "5px", cursor: "pointer", fontSize: "11px", fontFamily: "'Inter', sans-serif" }}>Unpaid</button>
                               ) : (
-                                <button onClick={() => { setPendingPaidBill({ ...bill, _key: `${bill.id}-${item.period.start_date}` }); setPendingPaidAmount(""); }} style={{ background: "rgba(74,222,128,0.1)", border: "1px solid rgba(74,222,128,0.3)", color: "#4ADE80", padding: "3px 10px", borderRadius: "5px", cursor: "pointer", fontSize: "11px", fontFamily: "'Inter', sans-serif", fontWeight: "500" }}>{isPartial ? "Pay More" : "Paid"}</button>
+                                <div style={{ display: "flex", gap: "4px" }}>
+                                  <button onClick={() => markBillPaid(bill, bill.amount)} style={{ background: "rgba(74,222,128,0.1)", border: "1px solid rgba(74,222,128,0.3)", color: "#4ADE80", padding: "3px 10px", borderRadius: "5px", cursor: "pointer", fontSize: "11px", fontFamily: "'Inter', sans-serif", fontWeight: "500" }}>Paid</button>
+                                  <button onClick={() => { setPendingPaidBill({ ...bill, _key: `${bill.id}-${item.period.start_date}` }); setPendingPaidAmount(""); }} style={{ background: "rgba(251,191,36,0.08)", border: "1px solid rgba(251,191,36,0.3)", color: "#FBBF24", padding: "3px 10px", borderRadius: "5px", cursor: "pointer", fontSize: "11px", fontFamily: "'Inter', sans-serif" }}>{isPartial ? "More" : "Partial"}</button>
+                                </div>
                               )}
                             </div>
                           </div>
@@ -4515,17 +4518,15 @@ function Dashboard() {
                             </button>
                           ) : pendingPaidBill?._key === `${bill.id}-bills` ? (
                             <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
-                              <input type="text" inputMode="decimal" value={pendingPaidAmount} onChange={(e) => setPendingPaidAmount(e.target.value)} autoFocus placeholder="Amt Paid" style={{ width: "80px", background: "#13111F", border: "1px solid rgba(108,99,255,0.4)", borderRadius: "5px", color: "#F0F6FC", padding: "3px 6px", fontSize: "11px", fontFamily: "'DM Mono', monospace", outline: "none" }} />
+                              <input type="text" inputMode="decimal" value={pendingPaidAmount} onChange={(e) => setPendingPaidAmount(e.target.value)} autoFocus placeholder="Amt paid" style={{ width: "80px", background: "#13111F", border: "1px solid rgba(108,99,255,0.4)", borderRadius: "5px", color: "#F0F6FC", padding: "3px 6px", fontSize: "11px", fontFamily: "'DM Mono', monospace", outline: "none" }} />
                               <button onClick={() => { markBillPaid(pendingPaidBill, pendingPaidAmount); setPendingPaidBill(null); }} style={{ background: "rgba(74,222,128,0.15)", border: "1px solid rgba(74,222,128,0.4)", color: "#4ADE80", padding: "3px 8px", borderRadius: "5px", cursor: "pointer", fontSize: "11px", fontFamily: "'Inter', sans-serif", fontWeight: "600" }}>✓</button>
                               <button onClick={() => setPendingPaidBill(null)} style={{ background: "rgba(248,113,113,0.1)", border: "1px solid rgba(248,113,113,0.3)", color: "#F87171", padding: "3px 8px", borderRadius: "5px", cursor: "pointer", fontSize: "11px", fontFamily: "'Inter', sans-serif" }}>✕</button>
                             </div>
                           ) : (
-                            <button
-                              onClick={() => { setPendingPaidBill({ ...bill, _key: `${bill.id}-bills` }); setPendingPaidAmount(""); }}
-                              style={{ background: "none", border: "1px solid rgba(74,222,128,0.4)", color: "#4ADE80", padding: "4px 10px", borderRadius: "6px", cursor: "pointer", fontSize: "11px", fontFamily: "'Inter', sans-serif", whiteSpace: "nowrap" }}
-                            >
-                              {bill.paid_amount > 0 ? "Pay More" : "Paid"}
-                            </button>
+                            <div style={{ display: "flex", gap: "4px" }}>
+                              <button onClick={() => markBillPaid(bill, bill.amount)} style={{ background: "none", border: "1px solid rgba(74,222,128,0.4)", color: "#4ADE80", padding: "4px 10px", borderRadius: "6px", cursor: "pointer", fontSize: "11px", fontFamily: "'Inter', sans-serif", whiteSpace: "nowrap" }}>Paid</button>
+                              <button onClick={() => { setPendingPaidBill({ ...bill, _key: `${bill.id}-bills` }); setPendingPaidAmount(""); }} style={{ background: "rgba(251,191,36,0.08)", border: "1px solid rgba(251,191,36,0.3)", color: "#FBBF24", padding: "4px 10px", borderRadius: "6px", cursor: "pointer", fontSize: "11px", fontFamily: "'Inter', sans-serif", whiteSpace: "nowrap" }}>{bill.paid_amount > 0 ? "More" : "Partial"}</button>
+                            </div>
                           )}
                         </div>
 
@@ -5392,17 +5393,15 @@ function Dashboard() {
                                 </span>
                                 {pendingPaidBill?._key === `${bill.id}-${item.period.start_date}` ? (
                                   <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
-                                    <input type="text" inputMode="decimal" value={pendingPaidAmount} onChange={(e) => setPendingPaidAmount(e.target.value)} autoFocus placeholder="Amt Paid" style={{ width: "100px", background: "#13111F", border: "1px solid rgba(108,99,255,0.4)", borderRadius: "5px", color: "#F0F6FC", padding: "3px 6px", fontSize: "11px", fontFamily: "'DM Mono', monospace", outline: "none" }} />
+                                    <input type="text" inputMode="decimal" value={pendingPaidAmount} onChange={(e) => setPendingPaidAmount(e.target.value)} autoFocus placeholder="Amt paid" style={{ width: "90px", background: "#13111F", border: "1px solid rgba(108,99,255,0.4)", borderRadius: "5px", color: "#F0F6FC", padding: "3px 6px", fontSize: "11px", fontFamily: "'DM Mono', monospace", outline: "none" }} />
                                     <button onClick={() => { markBillPaid(pendingPaidBill, pendingPaidAmount); setPendingPaidBill(null); }} style={{ background: "rgba(74,222,128,0.15)", border: "1px solid rgba(74,222,128,0.4)", color: "#4ADE80", padding: "3px 8px", borderRadius: "5px", cursor: "pointer", fontSize: "11px", fontFamily: "'Inter', sans-serif", fontWeight: "600" }}>✓</button>
                                     <button onClick={() => setPendingPaidBill(null)} style={{ background: "rgba(248,113,113,0.1)", border: "1px solid rgba(248,113,113,0.3)", color: "#F87171", padding: "3px 8px", borderRadius: "5px", cursor: "pointer", fontSize: "11px", fontFamily: "'Inter', sans-serif" }}>✕</button>
                                   </div>
                                 ) : (
-                                  <button
-                                    onClick={() => { setPendingPaidBill({ ...bill, _key: `${bill.id}-${item.period.start_date}` }); setPendingPaidAmount(""); }}
-                                    style={{ background: "rgba(74,222,128,0.1)", border: "1px solid rgba(74,222,128,0.3)", color: "#4ADE80", padding: "3px 10px", borderRadius: "5px", cursor: "pointer", fontSize: "11px", fontFamily: "'Inter', sans-serif", fontWeight: "500" }}
-                                  >
-                                    {!bill.is_paid && bill.paid_amount > 0 ? "Pay More" : "Paid"}
-                                  </button>
+                                  <div style={{ display: "flex", gap: "4px" }}>
+                                    <button onClick={() => markBillPaid(bill, bill.amount)} style={{ background: "rgba(74,222,128,0.1)", border: "1px solid rgba(74,222,128,0.3)", color: "#4ADE80", padding: "3px 10px", borderRadius: "5px", cursor: "pointer", fontSize: "11px", fontFamily: "'Inter', sans-serif", fontWeight: "500" }}>Paid</button>
+                                    <button onClick={() => { setPendingPaidBill({ ...bill, _key: `${bill.id}-${item.period.start_date}` }); setPendingPaidAmount(""); }} style={{ background: "rgba(251,191,36,0.08)", border: "1px solid rgba(251,191,36,0.3)", color: "#FBBF24", padding: "3px 10px", borderRadius: "5px", cursor: "pointer", fontSize: "11px", fontFamily: "'Inter', sans-serif" }}>{!bill.is_paid && bill.paid_amount > 0 ? "More" : "Partial"}</button>
+                                  </div>
                                 )}
                               </div>
                             </div>
