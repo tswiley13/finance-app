@@ -4476,9 +4476,9 @@ function Dashboard() {
                           }
                         </div>
                       </div>
-                      <div style={{ display: "flex", alignItems: "center", gap: "0" }}>
-                        {/* Amount column — 100px fixed */}
-                        <div style={{ width: "100px", textAlign: "right", flexShrink: 0 }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: "8px", flexShrink: 0 }}>
+                        {/* Amount */}
+                        <div style={{ minWidth: "70px", textAlign: "right", flexShrink: 0 }}>
                           {quickEditBillId === bill.id ? (
                             <input
                               type="number"
@@ -4512,8 +4512,8 @@ function Dashboard() {
                           )}
                         </div>
 
-                        {/* Action column — 180px fixed */}
-                        <div style={{ width: "180px", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, paddingLeft: "12px" }}>
+                        {/* Action column */}
+                        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
                           {!isBillDue(bill) ? (
                             <button
                               onClick={() => markBillUnpaid(bill)}
@@ -4535,8 +4535,8 @@ function Dashboard() {
                           )}
                         </div>
 
-                        {/* Edit column — 60px fixed */}
-                        <div style={{ width: "60px", display: "flex", justifyContent: "flex-end", flexShrink: 0 }}>
+                        {/* Edit column */}
+                        <div style={{ display: "flex", justifyContent: "flex-end", flexShrink: 0 }}>
                           <button
                             onClick={() => {
                               if (editingBill?.id === bill.id) {
