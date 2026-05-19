@@ -23,6 +23,7 @@ function App() {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (_event === "SIGNED_OUT") navigate("/");
       setSession(session);
     });
 
@@ -65,7 +66,6 @@ function App() {
           .maybeSingle();
 
         if (created) {
-          if (!localStorage.getItem("activeNav")) localStorage.setItem("activeNav", "dashboard");
           setHasHousehold(true);
           setCheckingHousehold(false);
           return;
@@ -77,7 +77,6 @@ function App() {
           .eq("user_id", session.user.id)
           .maybeSingle();
 
-        if (membership && !localStorage.getItem("activeNav")) localStorage.setItem("activeNav", "dashboard");
         setHasHousehold(!!membership);
         setCheckingHousehold(false);
       }
@@ -94,7 +93,7 @@ function App() {
   if (session) {
     if (inviteCode) return <JoinHousehold />;
     if (hasHousehold) return <Dashboard />;
-    return <Onboarding onComplete={() => { localStorage.setItem("activeNav", "dashboard"); setHasHousehold(true); }} />;
+    return <Onboarding onComplete={() => setHasHousehold(true)} />;
   }
 
   // Logged-out routing
