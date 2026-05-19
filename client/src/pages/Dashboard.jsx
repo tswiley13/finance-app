@@ -298,6 +298,7 @@ function Dashboard() {
   const [confirmDeleteMemberId, setConfirmDeleteMemberId] = useState(null);
   const [userEmail, setUserEmail] = useState("");
   const [userId, setUserId] = useState("");
+  const [plaidConnected, setPlaidConnected] = useState(false);
   const [expandedPeriods, setExpandedPeriods] = useState(new Set([0]));
   const [minimumBuffer, setMinimumBuffer] = useState("");
   const [isSaving, setIsSaving] = useState(false);
@@ -425,6 +426,14 @@ function Dashboard() {
         setAccounts(accountsRes.data || []);
         setCategories(categoriesRes.data || []);
         setMembers(membersRes.data || []);
+
+        const { data: plaidItems } = await supabase
+          .from("plaid_items")
+          .select("id")
+          .eq("user_id", user.id)
+          .limit(1);
+        setPlaidConnected(!!(plaidItems && plaidItems.length > 0));
+
         setLoading(false);
       } catch (err) {
         console.log("Load error:", err.message);
@@ -4785,6 +4794,7 @@ function Dashboard() {
                             </div>
                           )}
                       </div>
+
                       {quickEditAccountId === acct.id ? (
                         <input
                           type="number"
@@ -4826,6 +4836,11 @@ function Dashboard() {
                       )}
                     </div>
                   ))
+                )}
+                {!plaidConnected && (
+                  <div style={{ marginTop: "12px", paddingTop: "12px", borderTop: "1px solid rgba(255,255,255,0.04)" }}>
+                    <PlaidConnectButton userId={userId} onSuccess={() => { setPlaidConnected(true); }} />
+                  </div>
                 )}
               </div>
               <div className="panel">
