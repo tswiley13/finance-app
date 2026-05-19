@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
+import { usePlaidLink } from "react-plaid-link";
 import { supabase } from "../supabase";
 import { QRCodeSVG as QRCode } from "qrcode.react";
 import {
@@ -145,6 +146,70 @@ const css = `
   .mobile-nav-drawer-footer { padding: 12px; border-top: 1px solid rgba(255,255,255,0.06); }
 `;
 
+const SUPABASE_FUNCTIONS_URL = "https://zxrmeucubrcbuhqxtjco.supabase.co/functions/v1";
+
+function PlaidConnectButton({ userId, onSuccess }) {
+  const [linkToken, setLinkToken] = useState(null);
+  const [fetching, setFetching] = useState(false);
+
+  async function fetchLinkToken() {
+    setFetching(true);
+    const { data: { session } } = await supabase.auth.getSession();
+    const res = await fetch(`${SUPABASE_FUNCTIONS_URL}/plaid-create-link-token`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "Authorization": `Bearer ${session.access_token}` },
+      body: JSON.stringify({ user_id: userId }),
+    });
+    const data = await res.json();
+    if (data.link_token) setLinkToken(data.link_token);
+    else { console.error("Plaid link token error:", data); setFetching(false); }
+  }
+
+  const { open, ready } = usePlaidLink({
+    token: linkToken,
+    onSuccess: async (public_token, metadata) => {
+      const { data: { session } } = await supabase.auth.getSession();
+      await fetch(`${SUPABASE_FUNCTIONS_URL}/plaid-exchange-token`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${session.access_token}` },
+        body: JSON.stringify({
+          public_token,
+          institution_name: metadata.institution?.name,
+          accounts: metadata.accounts,
+        }),
+      });
+      setLinkToken(null);
+      setFetching(false);
+      onSuccess();
+    },
+    onExit: () => { setLinkToken(null); setFetching(false); },
+  });
+
+  useEffect(() => {
+    if (linkToken && ready) open();
+  }, [linkToken, ready, open]);
+
+  return (
+    <button
+      onClick={fetchLinkToken}
+      disabled={fetching}
+      style={{
+        background: fetching ? "#2D2B45" : "none",
+        border: "1px solid rgba(108,99,255,0.5)",
+        color: "#6C63FF",
+        padding: "8px 16px",
+        borderRadius: "8px",
+        cursor: fetching ? "not-allowed" : "pointer",
+        fontSize: "13px",
+        fontWeight: "600",
+        fontFamily: "'Inter', sans-serif",
+      }}
+    >
+      {fetching ? "Connecting..." : "+ Connect Bank"}
+    </button>
+  );
+}
+
 function Dashboard() {
   const [household, setHousehold] = useState(null);
   const [payPeriods, setPayPeriods] = useState([]);
@@ -232,6 +297,7 @@ function Dashboard() {
   const [showAddMember, setShowAddMember] = useState(false);
   const [confirmDeleteMemberId, setConfirmDeleteMemberId] = useState(null);
   const [userEmail, setUserEmail] = useState("");
+  const [userId, setUserId] = useState("");
   const [expandedPeriods, setExpandedPeriods] = useState(new Set([0]));
   const [minimumBuffer, setMinimumBuffer] = useState("");
   const [isSaving, setIsSaving] = useState(false);
@@ -283,6 +349,7 @@ function Dashboard() {
           data: { user },
         } = await supabase.auth.getUser();
         setUserEmail(user.email || "");
+        setUserId(user.id);
         const { data: memberRow, error: memberError } = await supabase
           .from("household_members")
           .select("household_id")
@@ -2975,6 +3042,7 @@ function Dashboard() {
             >
               + Add Account
             </button>
+            <PlaidConnectButton userId={userId} onSuccess={() => alert("Bank connected! Balances will sync shortly.")} />
           </div>
 
           {showAccountForm && (
