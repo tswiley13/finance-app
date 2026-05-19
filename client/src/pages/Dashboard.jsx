@@ -165,17 +165,14 @@ function PlaidConnectButton({ userId, onSuccess }) {
     setFetching(true);
     setPlaidError(null);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      const res = await fetch(`${SUPABASE_FUNCTIONS_URL}/plaid-create-link-token`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${session.access_token}` },
-        body: JSON.stringify({ user_id: userId }),
+      const { data, error } = await supabase.functions.invoke("plaid-create-link-token", {
+        body: { user_id: userId },
       });
-      const data = await res.json();
-      if (data.link_token) {
+      if (error) throw error;
+      if (data?.link_token) {
         setLinkToken(data.link_token);
       } else {
-        setPlaidError(data.error_message || data.error || JSON.stringify(data));
+        setPlaidError(data?.error_message || data?.error || JSON.stringify(data));
         setFetching(false);
       }
     } catch (err) {
@@ -185,15 +182,12 @@ function PlaidConnectButton({ userId, onSuccess }) {
   }
 
   async function handleSuccess(public_token, metadata) {
-    const { data: { session } } = await supabase.auth.getSession();
-    await fetch(`${SUPABASE_FUNCTIONS_URL}/plaid-exchange-token`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "Authorization": `Bearer ${session.access_token}` },
-      body: JSON.stringify({
+    await supabase.functions.invoke("plaid-exchange-token", {
+      body: {
         public_token,
         institution_name: metadata.institution?.name,
         accounts: metadata.accounts,
-      }),
+      },
     });
     setLinkToken(null);
     setFetching(false);
@@ -374,14 +368,10 @@ function Dashboard() {
   async function syncPlaidBalances(householdId) {
     setPlaidSyncing(true);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      const res = await fetch(`${SUPABASE_FUNCTIONS_URL}/plaid-sync-balances`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${session.access_token}` },
-        body: JSON.stringify({ household_id: householdId }),
+      const { data } = await supabase.functions.invoke("plaid-sync-balances", {
+        body: { household_id: householdId },
       });
-      const data = await res.json();
-      if (data.synced > 0) {
+      if (data?.synced > 0) {
         const { data: refreshed } = await supabase.from("accounts").select("*").eq("household_id", householdId);
         if (refreshed) setAccounts(refreshed);
         setPlaidLastSynced(new Date());
