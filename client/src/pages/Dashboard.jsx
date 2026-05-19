@@ -3785,14 +3785,11 @@ function Dashboard() {
                           <input
                             type="number"
                             value={quickEditIncomeAmount}
-                            onChange={(e) =>
-                              setQuickEditIncomeAmount(e.target.value)
-                            }
-                            onBlur={() =>
-                              updateIncomeAmount(inc.id, quickEditIncomeAmount)
-                            }
+                            onChange={(e) => setQuickEditIncomeAmount(e.target.value)}
+                            onBlur={() => updateIncomeAmount(inc.id, quickEditIncomeAmount)}
+                            onKeyDown={(e) => { if (e.key === "Enter") updateIncomeAmount(inc.id, quickEditIncomeAmount); if (e.key === "Escape") setQuickEditIncomeId(null); }}
                             autoFocus
-                                  onFocus={(e) => e.target.select()}
+                            onFocus={(e) => e.target.select()}
                             style={{
                               background: "#2D2B45",
                               border: "1px solid #6C63FF",
@@ -4346,6 +4343,7 @@ function Dashboard() {
                               value={quickEditBillAmount}
                               onChange={(e) => setQuickEditBillAmount(e.target.value)}
                               onBlur={() => updateBillAmount(bill.id, quickEditBillAmount)}
+                              onKeyDown={(e) => { if (e.key === "Enter") updateBillAmount(bill.id, quickEditBillAmount); if (e.key === "Escape") setQuickEditBillId(null); }}
                               autoFocus
                               onFocus={(e) => e.target.select()}
                               style={{
