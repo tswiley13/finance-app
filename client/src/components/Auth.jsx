@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Link } from "react-router-dom";
 import { supabase } from "../supabase";
 
 function AuthPage({ defaultSignUp = false }) {
@@ -10,6 +11,7 @@ function AuthPage({ defaultSignUp = false }) {
   const [signedUp, setSignedUp] = useState(false);
   const [resendLoading, setResendLoading] = useState(false);
   const [resendMessage, setResendMessage] = useState(null);
+  const [agreedToTerms, setAgreedToTerms] = useState(false);
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -17,6 +19,11 @@ function AuthPage({ defaultSignUp = false }) {
     setError(null);
 
     if (isSignUp) {
+      if (!agreedToTerms) {
+        setError("You must agree to the Terms of Service and Privacy Policy to create an account.");
+        setLoading(false);
+        return;
+      }
       const { error } = await supabase.auth.signUp({ email, password });
       if (error) {
         setError(error.message);
@@ -297,6 +304,23 @@ function AuthPage({ defaultSignUp = false }) {
                 </div>
               )}
 
+              {isSignUp && (
+                <label style={{ display: "flex", alignItems: "flex-start", gap: "10px", cursor: "pointer", marginTop: "8px" }}>
+                  <input
+                    type="checkbox"
+                    checked={agreedToTerms}
+                    onChange={(e) => setAgreedToTerms(e.target.checked)}
+                    style={{ marginTop: "2px", flexShrink: 0 }}
+                  />
+                  <span style={{ fontSize: "12px", color: "#8B8FA8", lineHeight: "1.5" }}>
+                    I agree to the{" "}
+                    <Link to="/terms" target="_blank" style={{ color: "#6C63FF", textDecoration: "none" }}>Terms of Service</Link>
+                    {" "}and{" "}
+                    <Link to="/privacy" target="_blank" style={{ color: "#6C63FF", textDecoration: "none" }}>Privacy Policy</Link>
+                  </span>
+                </label>
+              )}
+
               <button
                 type="submit"
                 disabled={loading}
@@ -350,10 +374,11 @@ function AuthPage({ defaultSignUp = false }) {
       {/* Footer */}
       <div className="auth-footer">
         <div style={{ fontSize: "12px", color: "#484F58" }}>
-          © 2026 Stryde. All rights reserved.
+          © 2026 Stryde Financial LLC. All rights reserved.
         </div>
-        <div style={{ fontSize: "12px", color: "#484F58" }}>
-          Built for those who serve.
+        <div style={{ display: "flex", gap: "16px" }}>
+          <Link to="/privacy" style={{ fontSize: "12px", color: "#484F58", textDecoration: "none" }}>Privacy Policy</Link>
+          <Link to="/terms" style={{ fontSize: "12px", color: "#484F58", textDecoration: "none" }}>Terms of Service</Link>
         </div>
       </div>
     </div>

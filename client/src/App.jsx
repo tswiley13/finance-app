@@ -6,6 +6,8 @@ import Onboarding from "./pages/Onboarding";
 import Dashboard from "./pages/Dashboard";
 import JoinHousehold from "./pages/JoinHousehold";
 import Landing from "./pages/Landing";
+import PrivacyPolicy from "./pages/PrivacyPolicy";
+import TermsOfService from "./pages/TermsOfService";
 
 function App() {
   const [session, setSession] = useState(undefined);
@@ -104,6 +106,8 @@ function App() {
       <Route path="/" element={<Landing />} />
       <Route path="/signin" element={<AuthPage defaultSignUp={false} />} />
       <Route path="/signup" element={<AuthPage defaultSignUp={true} />} />
+      <Route path="/privacy" element={<PrivacyPolicy />} />
+      <Route path="/terms" element={<TermsOfService />} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );

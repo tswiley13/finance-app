@@ -254,7 +254,10 @@ function Landing() {
       <footer className="landing-footer">
         <div style={{ fontSize: "18px", fontWeight: "900", letterSpacing: "0.12em", textTransform: "uppercase" }}>Stryde</div>
         <div style={{ fontSize: "12px", color: "#4A4F5C" }}>© 2026 Stryde Financial LLC. All rights reserved.</div>
-        <div style={{ fontSize: "12px", color: "#4A4F5C" }}>Built for those who plan ahead.</div>
+        <div style={{ display: "flex", gap: "16px" }}>
+          <a href="/privacy" style={{ fontSize: "12px", color: "#4A4F5C", textDecoration: "none" }}>Privacy Policy</a>
+          <a href="/terms" style={{ fontSize: "12px", color: "#4A4F5C", textDecoration: "none" }}>Terms of Service</a>
+        </div>
       </footer>
 
     </div>
