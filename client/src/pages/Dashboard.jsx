@@ -247,6 +247,26 @@ function Dashboard() {
     setActiveNav(tab);
   }, [searchParams]);
 
+  // Auto sign-out after 15 minutes of inactivity
+  useEffect(() => {
+    const TIMEOUT_MS = 15 * 60 * 1000;
+    let timer;
+
+    const reset = () => {
+      clearTimeout(timer);
+      timer = setTimeout(() => supabase.auth.signOut(), TIMEOUT_MS);
+    };
+
+    const events = ["mousemove", "mousedown", "keydown", "touchstart", "scroll"];
+    events.forEach(e => window.addEventListener(e, reset, { passive: true }));
+    reset();
+
+    return () => {
+      clearTimeout(timer);
+      events.forEach(e => window.removeEventListener(e, reset));
+    };
+  }, []);
+
   useEffect(() => {
     if (scrollToInvite && activeNav === "settings") {
       setTimeout(() => {
