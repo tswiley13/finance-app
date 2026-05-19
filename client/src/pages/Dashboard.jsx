@@ -148,6 +148,14 @@ const css = `
 
 const SUPABASE_FUNCTIONS_URL = "https://zxrmeucubrcbuhqxtjco.supabase.co/functions/v1";
 
+function PlaidLinkOpener({ token, onSuccess, onExit }) {
+  const { open, ready } = usePlaidLink({ token, onSuccess, onExit });
+  useEffect(() => {
+    if (ready) open();
+  }, [ready, open]);
+  return null;
+}
+
 function PlaidConnectButton({ userId, onSuccess }) {
   const [linkToken, setLinkToken] = useState(null);
   const [fetching, setFetching] = useState(false);
@@ -176,32 +184,32 @@ function PlaidConnectButton({ userId, onSuccess }) {
     }
   }
 
-  const { open, ready } = usePlaidLink({
-    token: linkToken,
-    onSuccess: async (public_token, metadata) => {
-      const { data: { session } } = await supabase.auth.getSession();
-      await fetch(`${SUPABASE_FUNCTIONS_URL}/plaid-exchange-token`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${session.access_token}` },
-        body: JSON.stringify({
-          public_token,
-          institution_name: metadata.institution?.name,
-          accounts: metadata.accounts,
-        }),
-      });
-      setLinkToken(null);
-      setFetching(false);
-      onSuccess();
-    },
-    onExit: () => { setLinkToken(null); setFetching(false); },
-  });
+  async function handleSuccess(public_token, metadata) {
+    const { data: { session } } = await supabase.auth.getSession();
+    await fetch(`${SUPABASE_FUNCTIONS_URL}/plaid-exchange-token`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "Authorization": `Bearer ${session.access_token}` },
+      body: JSON.stringify({
+        public_token,
+        institution_name: metadata.institution?.name,
+        accounts: metadata.accounts,
+      }),
+    });
+    setLinkToken(null);
+    setFetching(false);
+    onSuccess();
+  }
 
-  useEffect(() => {
-    if (linkToken && ready) open();
-  }, [linkToken, ready, open]);
+  function handleExit() {
+    setLinkToken(null);
+    setFetching(false);
+  }
 
   return (
     <div>
+      {linkToken && (
+        <PlaidLinkOpener token={linkToken} onSuccess={handleSuccess} onExit={handleExit} />
+      )}
       <button
         onClick={fetchLinkToken}
         disabled={fetching}
