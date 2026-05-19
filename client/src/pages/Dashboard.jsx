@@ -3333,7 +3333,7 @@ function Dashboard() {
             {accounts.length === 0 ? (
               <div className="empty-state">No accounts added yet</div>
             ) : (
-              accounts.map((acct, i) => (
+              [...accounts].sort((a, b) => a.name.localeCompare(b.name)).map((acct, i) => (
                 <div key={i}>
                   <div className="row-item">
                     <div>
@@ -4827,7 +4827,7 @@ function Dashboard() {
                 {accounts.length === 0 ? (
                   <div className="empty-state">No accounts added yet</div>
                 ) : (
-                  accounts.map((acct, i) => (
+                  [...accounts].sort((a, b) => a.name.localeCompare(b.name)).map((acct, i) => (
                     <div className="row-item" key={i}>
                       <div>
                         <div className="row-name">
