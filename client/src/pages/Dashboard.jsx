@@ -570,44 +570,16 @@ function Dashboard() {
     return false;
   }
 
-  function isBillPaidInPeriod(bill, periodStart) {
+  function isBillPaidInPeriod(bill, periodStart, periodEnd) {
     if (!bill.is_paid && !(bill.paid_amount > 0)) return false;
-
-    const paidDate = new Date(bill.paid_date || new Date());
-    paidDate.setHours(0, 0, 0, 0);
-    const freq = bill.frequency || "monthly";
-
-    if (freq === "biweekly" || freq === "payday") {
-      // Payment counts if it happened after the period started
-      return paidDate >= periodStart;
-    }
-
-    // Monthly: payment counts only if same month as period
-    return paidDate.getMonth() === periodStart.getMonth() &&
-           paidDate.getFullYear() === periodStart.getFullYear();
+    if (!bill.paid_date) return false;
+    const paidDate = new Date(bill.paid_date + "T12:00:00");
+    return paidDate >= periodStart && paidDate <= periodEnd;
   }
 
-  function isBillDueInPeriod(bill, periodStart, periodEnd) {
-    if (!bill.is_paid) return true;
-
-    const paidDate = new Date(bill.paid_date);
-    paidDate.setHours(0, 0, 0, 0);
-    const freq = bill.frequency || "monthly";
-
-    if (freq === "biweekly" || freq === "payday") {
-      // Due again once a new period has started after payment
-      return paidDate < periodStart;
-    }
-
-    // Monthly: due again if paid before the period's start month
-    const paidMonth = paidDate.getMonth();
-    const paidYear = paidDate.getFullYear();
-    const periodMonth = periodStart.getMonth();
-    const periodYear = periodStart.getFullYear();
-
-    if (paidYear < periodYear) return true;
-    if (paidYear === periodYear && paidMonth < periodMonth) return true;
-    return false;
+  function isBillDueInPeriod(bill) {
+    // Bills always recur — scheduling is handled by dueInPeriod below
+    return true;
   }
 
   async function addBill() {
@@ -935,7 +907,7 @@ function Dashboard() {
       });
 
       const periodBills = bills.filter((bill) => {
-        if (!isBillDueInPeriod(bill, periodStart, periodEnd)) return false;
+        if (!isBillDueInPeriod(bill)) return false;
 
         const freq = bill.frequency || "monthly";
 
@@ -1819,7 +1791,8 @@ function Dashboard() {
                       <div style={{ marginTop: "12px", borderTop: "1px solid rgba(255,255,255,0.05)", paddingTop: "12px" }}>
                         {item.bills.map((bill, j) => {
                           const periodStart = new Date(item.period.start_date + "T00:00:00");
-                          const paidThisPeriod = isBillPaidInPeriod(bill, periodStart);
+                          const periodEnd = new Date(item.period.end_date + "T23:59:59");
+                          const paidThisPeriod = isBillPaidInPeriod(bill, periodStart, periodEnd);
                           const effectivePaid = bill.is_paid && paidThisPeriod;
                           const effectivePaidAmount = paidThisPeriod ? (bill.paid_amount || 0) : 0;
                           const remaining = (bill.amount || 0) - effectivePaidAmount;
