@@ -104,14 +104,20 @@
   }
 
   .landing-nav-signin {
-    display: none;
+    display: block;
+    font-size: 12px;
+    text-align: center;
+    margin-top: 4px;
+  }
+
+  .landing-nav-links {
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 4px;
   }
 
   .landing-mobile-signin {
-    display: block;
-    font-size: 13px;
-    color: #6E7681;
-    margin-top: 16px;
+    display: none;
   }
 
   .landing-hero {
