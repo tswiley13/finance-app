@@ -138,7 +138,7 @@ function Onboarding({ onComplete }) {
         return;
       }
 
-      onComplete();
+      setStep(6);
     }
 
     checkResume();
@@ -993,7 +993,7 @@ function Onboarding({ onComplete }) {
           ))}
           {stepNum > 1 && (
             <button
-              onClick={onComplete}
+              onClick={() => supabase.auth.signOut()}
               style={{ position: "absolute", right: 0, background: "none", border: "none", color: "#6E7681", fontSize: "12px", cursor: "pointer", padding: "4px 0", fontFamily: "'Inter', sans-serif" }}
             >
               Finish Later
@@ -2023,6 +2023,7 @@ function Onboarding({ onComplete }) {
             const periods = calculatePayPeriods();
             await savePayPeriods(periods);
             await saveDefaultCategories(householdId);
+            await supabase.auth.updateUser({ data: { onboarding_complete: true } });
             onComplete();
           }}>
             Finish Setup

@@ -12,6 +12,7 @@ import TermsOfService from "./pages/TermsOfService";
 function App() {
   const [session, setSession] = useState(undefined);
   const [hasHousehold, setHasHousehold] = useState(false);
+  const [onboardingComplete, setOnboardingComplete] = useState(false);
   const [checkingHousehold, setCheckingHousehold] = useState(false);
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -67,8 +68,11 @@ function App() {
           .eq("created_by", session.user.id)
           .maybeSingle();
 
+        const isComplete = !!session.user.user_metadata?.onboarding_complete;
+
         if (created) {
           setHasHousehold(true);
+          setOnboardingComplete(isComplete);
           setCheckingHousehold(false);
           return;
         }
@@ -80,6 +84,7 @@ function App() {
           .maybeSingle();
 
         setHasHousehold(!!membership);
+        setOnboardingComplete(isComplete);
         setCheckingHousehold(false);
       }
 
@@ -94,8 +99,8 @@ function App() {
   // Logged-in users always go to the app
   if (session) {
     if (inviteCode) return <JoinHousehold />;
-    if (hasHousehold) return <Dashboard />;
-    return <Onboarding onComplete={() => setHasHousehold(true)} />;
+    if (hasHousehold && onboardingComplete) return <Dashboard />;
+    return <Onboarding onComplete={() => { setHasHousehold(true); setOnboardingComplete(true); }} />;
   }
 
   // Logged-out routing
