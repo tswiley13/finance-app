@@ -822,8 +822,8 @@ function Onboarding({ onComplete }) {
     return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
   }
 
-  function calculatePayPeriods() {
-    const paychecks = incomeList.filter((i) => i.frequency !== "monthly");
+  function calculatePayPeriods(incomeData) {
+    const paychecks = (incomeData || incomeList).filter((i) => i.frequency !== "monthly");
 
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -2020,7 +2020,11 @@ function Onboarding({ onComplete }) {
               const ok = await addDebt();
               if (!ok) return;
             }
-            const periods = calculatePayPeriods();
+            const { data: freshIncome } = await supabase
+              .from("income")
+              .select("*")
+              .eq("household_id", householdId);
+            const periods = calculatePayPeriods(freshIncome || []);
             await savePayPeriods(periods);
             await saveDefaultCategories(householdId);
             await supabase.auth.updateUser({ data: { onboarding_complete: true } });
