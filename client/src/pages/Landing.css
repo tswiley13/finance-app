@@ -35,37 +35,51 @@
 
 .landing-mobile-menu {
   display: none;
+  position: fixed;
+  inset: 0;
+  background: #13111F;
   flex-direction: column;
-  background: #1A1826;
-  border-bottom: 1px solid rgba(255,255,255,0.08);
-  padding: 12px 24px 24px;
-  gap: 4px;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  z-index: 100;
+  animation: menuFadeIn 0.2s ease;
+}
+
+@keyframes menuFadeIn {
+  from { opacity: 0; transform: translateY(-8px); }
+  to   { opacity: 1; transform: translateY(0); }
 }
 
 .landing-mobile-menu a,
 .landing-mobile-menu button {
-  font-size: 18px;
+  font-size: 36px;
+  font-weight: 700;
   color: #F0F6FC;
   text-decoration: none;
   background: none;
   border: none;
   cursor: pointer;
-  font-family: "'Inter', sans-serif";
-  padding: 14px 0;
-  text-align: left;
-  border-bottom: 1px solid rgba(255,255,255,0.06);
+  font-family: 'Inter', sans-serif;
+  padding: 12px 24px;
+  text-align: center;
+  letter-spacing: -0.02em;
   width: 100%;
 }
 
+.landing-mobile-menu a:hover,
+.landing-mobile-menu button:hover {
+  color: #6C63FF;
+}
+
 .landing-mobile-menu-cta {
-  margin-top: 8px;
+  margin-top: 16px;
   background: linear-gradient(135deg, #6C63FF, #948cf2) !important;
   color: #13111F !important;
-  border-radius: 10px !important;
+  border-radius: 12px !important;
   font-weight: 700 !important;
-  padding: 14px !important;
-  text-align: center !important;
-  border: none !important;
+  max-width: 280px;
+  font-size: 18px !important;
 }
 
 .landing-hero {
@@ -159,6 +173,14 @@
 
   .landing-mobile-menu {
     display: flex;
+  }
+
+  .landing-hamburger span {
+    width: 22px;
+    height: 2px;
+    background: #F0F6FC;
+    border-radius: 2px;
+    display: block;
   }
 
   .landing-hero {

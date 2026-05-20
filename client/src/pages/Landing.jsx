@@ -30,7 +30,11 @@ function Landing() {
           onClick={() => setMenuOpen(!menuOpen)}
           aria-label="Menu"
         >
-          <span /><span /><span />
+          {menuOpen ? (
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#F0F6FC" strokeWidth="2" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          ) : (
+            <><span /><span /><span /></>
+          )}
         </button>
       </nav>
 
@@ -39,7 +43,7 @@ function Landing() {
         <div className="landing-mobile-menu">
           <a href="#features" onClick={() => setMenuOpen(false)}>Features</a>
           <a href="#pricing" onClick={() => setMenuOpen(false)}>Pricing</a>
-          <button onClick={() => { setMenuOpen(false); goToSignIn(); }}>Sign In</button>
+          <a onClick={() => { setMenuOpen(false); goToSignIn(); }}>Sign In</a>
           <button className="landing-mobile-menu-cta" onClick={() => { setMenuOpen(false); goToSignUp(); }}>Get Started Free</button>
         </div>
       )}
