@@ -935,10 +935,11 @@ function Dashboard() {
         return dueInPeriod(bill.due_day);
       });
 
-      const periodBillsTotal = periodBills.reduce(
-        (sum, b) => sum + ((b.amount || 0) - (b.paid_amount || 0)),
-        0,
-      );
+      const periodBillsTotal = periodBills.reduce((sum, b) => {
+        const paidInThisPeriod = isBillPaidInPeriod(b, periodStart, periodEnd);
+        const paidAmt = paidInThisPeriod ? (b.paid_amount || 0) : 0;
+        return sum + ((b.amount || 0) - paidAmt);
+      }, 0);
 
       const isCurrentPeriod = periodStart <= today && periodEnd >= today;
 
