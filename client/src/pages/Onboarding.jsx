@@ -138,6 +138,11 @@ function Onboarding({ onComplete }) {
         return;
       }
 
+      const { data: existingDebts } = await supabase
+        .from("debts")
+        .select("*")
+        .eq("household_id", household.id);
+      setDebtList(existingDebts || []);
       setStep(6);
     }
 
@@ -993,7 +998,10 @@ function Onboarding({ onComplete }) {
           ))}
           {stepNum > 1 && (
             <button
-              onClick={() => supabase.auth.signOut()}
+              onClick={async () => {
+                if (step === 6 && debtName) await addDebt();
+                supabase.auth.signOut();
+              }}
               style={{ position: "absolute", right: 0, background: "none", border: "none", color: "#6E7681", fontSize: "12px", cursor: "pointer", padding: "4px 0", fontFamily: "'Inter', sans-serif" }}
             >
               Finish Later
