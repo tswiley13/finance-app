@@ -246,6 +246,7 @@ function Dashboard() {
   const [dueDay, setDueDay] = useState("");
   const [paymentMethod, setPaymentMethod] = useState("");
   const [billCategory, setBillCategory] = useState("");
+  const [billFormError, setBillFormError] = useState("");
   const [billOwner, setBillOwner] = useState("joint");
   const [billAccountId, setBillAccountId] = useState("");
   const [transferToAccountId, setTransferToAccountId] = useState("");
@@ -560,14 +561,15 @@ function Dashboard() {
   async function addBill() {
     if (isSaving) return;
     const isPayday = (billFrequency || "monthly") === "payday";
-    if (!billName || !billAmount || (!isPayday && !dueDay) || !billCategory || !billAccountId) {
-      alert("Please fill in all required bill fields.");
+    if (!billName || !billAmount || (!isPayday && !dueDay) || !billAccountId) {
+      setBillFormError("Please fill in all required fields.");
       return;
     }
     if ((billFrequency || "monthly") === "semi-monthly" && !billDueDay2) {
-      alert("Semi-monthly bills require a second due day.");
+      setBillFormError("Semi-monthly bills require a second due day.");
       return;
     }
+    setBillFormError("");
 
     setIsSaving(true);
     const householdData = household;
@@ -618,14 +620,15 @@ function Dashboard() {
   async function updateBill() {
     if (isSaving) return;
     const isPaydayEdit = (billFrequency || "monthly") === "payday";
-    if (!billName || !billAmount || (!isPaydayEdit && !dueDay) || !billCategory || !billAccountId) {
-      alert("Please fill in all required bill fields.");
+    if (!billName || !billAmount || (!isPaydayEdit && !dueDay) || !billAccountId) {
+      setBillFormError("Please fill in all required fields.");
       return;
     }
     if ((billFrequency || "monthly") === "semi-monthly" && !billDueDay2) {
-      alert("Semi-monthly bills require a second due day.");
+      setBillFormError("Semi-monthly bills require a second due day.");
       return;
     }
+    setBillFormError("");
 
     setIsSaving(true);
     const { error } = await supabase
@@ -4387,6 +4390,11 @@ function Dashboard() {
                   ))}
                 </select>
               )}
+              {billFormError && (
+                <div style={{ fontSize: "13px", color: "#F87171", background: "rgba(248,113,113,0.08)", border: "1px solid rgba(248,113,113,0.2)", borderRadius: "6px", padding: "8px 12px", marginTop: "8px" }}>
+                  {billFormError}
+                </div>
+              )}
               <div style={{ display: "flex", gap: "8px", marginTop: "12px" }}>
                 <button
                   onClick={addBill}
@@ -4396,7 +4404,7 @@ function Dashboard() {
                   {isSaving ? "Saving..." : "Add Bill"}
                 </button>
                 <button
-                  onClick={() => setShowBillForm(false)}
+                  onClick={() => { setShowBillForm(false); setBillFormError(""); }}
                   style={{ background: "none", border: "1px solid rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.6)", padding: "8px 16px", borderRadius: "6px", cursor: "pointer", fontSize: "13px", fontFamily: "'Inter', sans-serif" }}
                 >
                   Cancel

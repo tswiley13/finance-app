@@ -176,6 +176,20 @@ function Onboarding({ onComplete }) {
       role: "owner",
     });
 
+    // Seed default categories
+    await supabase.from("categories").insert([
+      { household_id: created.id, name: "Housing" },
+      { household_id: created.id, name: "Utilities" },
+      { household_id: created.id, name: "Insurance" },
+      { household_id: created.id, name: "Subscriptions" },
+      { household_id: created.id, name: "Transportation" },
+      { household_id: created.id, name: "Food" },
+      { household_id: created.id, name: "Health" },
+      { household_id: created.id, name: "Debt" },
+      { household_id: created.id, name: "Personal" },
+      { household_id: created.id, name: "Other" },
+    ]);
+
     setHouseholdId(created.id);
     setStep(2);
   }
