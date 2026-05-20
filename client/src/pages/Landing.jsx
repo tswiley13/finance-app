@@ -36,17 +36,16 @@ function Landing() {
             <><span /><span /><span /></>
           )}
         </button>
+        {/* Mobile dropdown menu */}
+        {menuOpen && (
+          <div className="landing-mobile-menu">
+            <a href="#features" onClick={() => setMenuOpen(false)}>Features</a>
+            <a href="#pricing" onClick={() => setMenuOpen(false)}>Pricing</a>
+            <a onClick={() => { setMenuOpen(false); goToSignIn(); }}>Sign In</a>
+            <button className="landing-mobile-menu-cta" onClick={() => { setMenuOpen(false); goToSignUp(); }}>Get Started Free</button>
+          </div>
+        )}
       </nav>
-
-      {/* Mobile menu overlay */}
-      {menuOpen && (
-        <div className="landing-mobile-menu">
-          <a href="#features" onClick={() => setMenuOpen(false)}>Features</a>
-          <a href="#pricing" onClick={() => setMenuOpen(false)}>Pricing</a>
-          <a onClick={() => { setMenuOpen(false); goToSignIn(); }}>Sign In</a>
-          <button className="landing-mobile-menu-cta" onClick={() => { setMenuOpen(false); goToSignUp(); }}>Get Started Free</button>
-        </div>
-      )}
 
       {/* Hero */}
       <section className="landing-hero">

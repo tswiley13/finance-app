@@ -35,51 +35,55 @@
 
 .landing-mobile-menu {
   display: none;
-  position: fixed;
-  inset: 0;
-  background: #13111F;
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 20px;
+  width: 260px;
+  background: rgba(28, 26, 46, 0.96);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 16px;
   flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
+  padding: 8px;
   z-index: 100;
-  animation: menuFadeIn 0.2s ease;
+  box-shadow: 0 16px 48px rgba(0,0,0,0.5);
+  animation: menuFadeIn 0.15s ease;
 }
 
 @keyframes menuFadeIn {
-  from { opacity: 0; transform: translateY(-8px); }
+  from { opacity: 0; transform: translateY(-6px); }
   to   { opacity: 1; transform: translateY(0); }
 }
 
 .landing-mobile-menu a,
 .landing-mobile-menu button {
-  font-size: 36px;
-  font-weight: 700;
+  font-size: 18px;
+  font-weight: 500;
   color: #F0F6FC;
   text-decoration: none;
   background: none;
   border: none;
   cursor: pointer;
   font-family: 'Inter', sans-serif;
-  padding: 12px 24px;
+  padding: 14px 16px;
   text-align: center;
-  letter-spacing: -0.02em;
+  border-radius: 10px;
   width: 100%;
+  transition: background 0.15s;
 }
 
 .landing-mobile-menu a:hover,
 .landing-mobile-menu button:hover {
-  color: #6C63FF;
+  background: rgba(255,255,255,0.06);
 }
 
 .landing-mobile-menu-cta {
-  margin-top: 16px;
   background: linear-gradient(135deg, #6C63FF, #948cf2) !important;
   color: #13111F !important;
-  border-radius: 12px !important;
+  border-radius: 10px !important;
   font-weight: 700 !important;
-  max-width: 280px;
-  font-size: 18px !important;
+  margin-top: 4px;
 }
 
 .landing-hero {
