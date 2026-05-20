@@ -230,6 +230,18 @@ function PlaidConnectButton({ userId, onSuccess }) {
   );
 }
 
+const DEFAULT_CATEGORIES = [
+  { name: "Housing" },
+  { name: "Utilities" },
+  { name: "Insurance" },
+  { name: "Subscriptions" },
+  { name: "Loans" },
+  { name: "Transportation" },
+  { name: "Food & Gas" },
+  { name: "Savings" },
+  { name: "Other" },
+];
+
 function Dashboard() {
   const [household, setHousehold] = useState(null);
   const [payPeriods, setPayPeriods] = useState([]);
@@ -4355,7 +4367,7 @@ function Dashboard() {
                   style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", color: "#F2F0EB", padding: "8px 12px", borderRadius: "6px", fontSize: "13px", fontFamily: "'Inter', sans-serif" }}
                 >
                   <option value="">Select category</option>
-                  {categories.map((cat, i) => (
+                  {(categories.length > 0 ? categories : DEFAULT_CATEGORIES).map((cat, i) => (
                     <option key={i} value={cat.name}>{cat.name}</option>
                   ))}
                 </select>
@@ -4690,7 +4702,7 @@ function Dashboard() {
                             }}
                           >
                             <option value="">Select category</option>
-                            {categories.map((cat, i) => (
+                            {(categories.length > 0 ? categories : DEFAULT_CATEGORIES).map((cat, i) => (
                               <option key={i} value={cat.name}>
                                 {cat.name}
                               </option>
