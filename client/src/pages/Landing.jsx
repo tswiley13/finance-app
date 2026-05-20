@@ -1,8 +1,10 @@
 import { useNavigate } from "react-router-dom";
+import { useState } from "react";
 import "./Landing.css";
 
 function Landing() {
   const navigate = useNavigate();
+  const [menuOpen, setMenuOpen] = useState(false);
 
   function goToSignUp() { navigate("/signup"); }
   function goToSignIn() { navigate("/signin"); }
@@ -13,24 +15,34 @@ function Landing() {
       {/* Nav */}
       <nav className="landing-nav">
         <div style={{ fontSize: "22px", fontWeight: "900", letterSpacing: "0.12em", textTransform: "uppercase" }}>Stryde</div>
+
+        {/* Desktop links */}
         <div className="landing-nav-links">
           <a href="#features" style={{ fontSize: "14px", color: "#8B8FA8", textDecoration: "none" }}>Features</a>
           <a href="#pricing" style={{ fontSize: "14px", color: "#8B8FA8", textDecoration: "none" }}>Pricing</a>
-          <button
-            onClick={goToSignUp}
-            style={{ fontSize: "14px", fontWeight: "700", color: "#13111F", background: "linear-gradient(135deg, #6C63FF, #948cf2)", border: "none", borderRadius: "8px", padding: "10px 20px", cursor: "pointer", fontFamily: "'Inter', sans-serif" }}
-          >
-            Get Started Free
-          </button>
-          <button
-            onClick={goToSignIn}
-            className="landing-nav-signin"
-            style={{ fontSize: "14px", color: "#8B8FA8", background: "none", border: "none", cursor: "pointer", fontFamily: "'Inter', sans-serif" }}
-          >
-            Sign In
-          </button>
+          <button onClick={goToSignIn} style={{ fontSize: "14px", color: "#8B8FA8", background: "none", border: "none", cursor: "pointer", fontFamily: "'Inter', sans-serif" }}>Sign In</button>
+          <button onClick={goToSignUp} style={{ fontSize: "14px", fontWeight: "700", color: "#13111F", background: "linear-gradient(135deg, #6C63FF, #948cf2)", border: "none", borderRadius: "8px", padding: "10px 20px", cursor: "pointer", fontFamily: "'Inter', sans-serif" }}>Get Started Free</button>
         </div>
+
+        {/* Mobile hamburger */}
+        <button
+          className="landing-hamburger"
+          onClick={() => setMenuOpen(!menuOpen)}
+          aria-label="Menu"
+        >
+          <span /><span /><span />
+        </button>
       </nav>
+
+      {/* Mobile menu overlay */}
+      {menuOpen && (
+        <div className="landing-mobile-menu">
+          <a href="#features" onClick={() => setMenuOpen(false)}>Features</a>
+          <a href="#pricing" onClick={() => setMenuOpen(false)}>Pricing</a>
+          <button onClick={() => { setMenuOpen(false); goToSignIn(); }}>Sign In</button>
+          <button className="landing-mobile-menu-cta" onClick={() => { setMenuOpen(false); goToSignUp(); }}>Get Started Free</button>
+        </div>
+      )}
 
       {/* Hero */}
       <section className="landing-hero">
