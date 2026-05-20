@@ -1,8 +1,67 @@
 import { useState, useEffect } from "react";
+import { usePlaidLink } from "react-plaid-link";
 import { supabase } from "../supabase";
+
+function PlaidLinkOpener({ token, onSuccess, onExit }) {
+  const { open, ready } = usePlaidLink({ token, onSuccess, onExit });
+  useEffect(() => { if (ready) open(); }, [ready, open]);
+  return null;
+}
+
+function PlaidConnectButton({ userId, onSuccess }) {
+  const [linkToken, setLinkToken] = useState(null);
+  const [fetching, setFetching] = useState(false);
+  const [plaidError, setPlaidError] = useState(null);
+
+  async function fetchLinkToken() {
+    setFetching(true);
+    setPlaidError(null);
+    try {
+      const { data, error } = await supabase.functions.invoke("plaid-create-link-token", {
+        body: { user_id: userId },
+      });
+      if (error) throw error;
+      if (data?.link_token) {
+        setLinkToken(data.link_token);
+      } else {
+        setPlaidError(data?.error_message || data?.error || JSON.stringify(data));
+        setFetching(false);
+      }
+    } catch (err) {
+      setPlaidError(err.message);
+      setFetching(false);
+    }
+  }
+
+  async function handleSuccess(public_token, metadata) {
+    await supabase.functions.invoke("plaid-exchange-token", {
+      body: { public_token, institution_name: metadata.institution?.name, accounts: metadata.accounts },
+    });
+    setLinkToken(null);
+    setFetching(false);
+    onSuccess();
+  }
+
+  function handleExit() { setLinkToken(null); setFetching(false); }
+
+  return (
+    <div>
+      {linkToken && <PlaidLinkOpener token={linkToken} onSuccess={handleSuccess} onExit={handleExit} />}
+      <button
+        onClick={fetchLinkToken}
+        disabled={fetching}
+        style={{ background: fetching ? "rgba(108,99,255,0.1)" : "none", border: "1px solid rgba(108,99,255,0.5)", color: "#6C63FF", padding: "10px 20px", borderRadius: "8px", cursor: fetching ? "not-allowed" : "pointer", fontSize: "13px", fontWeight: "600", fontFamily: "'Inter', sans-serif", width: "100%" }}
+      >
+        {fetching ? "Connecting..." : "+ Connect Bank"}
+      </button>
+      {plaidError && <div style={{ fontSize: "12px", color: "#F87171", marginTop: "8px" }}>{plaidError}</div>}
+    </div>
+  );
+}
 
 function Onboarding({ onComplete }) {
   const [step, setStep] = useState(null);
+  const [userId, setUserId] = useState(null);
   const [householdId, setHouseholdId] = useState(null);
   const [accountError, setAccountError] = useState(null);
   const [householdName, setHouseholdName] = useState("");
@@ -83,6 +142,7 @@ function Onboarding({ onComplete }) {
   useEffect(() => {
     async function checkResume() {
       const { data: { user } } = await supabase.auth.getUser();
+      setUserId(user.id);
 
       const { data: household } = await supabase
         .from("households")
@@ -1129,6 +1189,16 @@ function Onboarding({ onComplete }) {
       const ac = carouselCards[activeIndex];
       return shell(3, "Set up your accounts", "Fill in your account details. Tap Add Account to save and add more.", (
         <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+          {userId && (
+            <div>
+              <PlaidConnectButton userId={userId} onSuccess={() => {}} />
+              <div style={{ display: "flex", alignItems: "center", gap: "10px", margin: "12px 0 4px" }}>
+                <div style={{ flex: 1, height: "1px", background: "rgba(255,255,255,0.08)" }} />
+                <span style={{ fontSize: "11px", color: "#6E7681" }}>or add manually</span>
+                <div style={{ flex: 1, height: "1px", background: "rgba(255,255,255,0.08)" }} />
+              </div>
+            </div>
+          )}
           {carouselCards.some(c => c.saved) && (
             <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
               {carouselCards.map((card, idx) => !card.saved ? null : (
@@ -1222,6 +1292,17 @@ function Onboarding({ onComplete }) {
 
     return shell(3, "Set up your accounts", "Fill out a card for each account. Hit Add Account to keep going.", (
       <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
+
+        {userId && (
+          <div>
+            <PlaidConnectButton userId={userId} onSuccess={() => {}} />
+            <div style={{ display: "flex", alignItems: "center", gap: "10px", margin: "12px 0 0" }}>
+              <div style={{ flex: 1, height: "1px", background: "rgba(255,255,255,0.08)" }} />
+              <span style={{ fontSize: "11px", color: "#6E7681" }}>or add manually</span>
+              <div style={{ flex: 1, height: "1px", background: "rgba(255,255,255,0.08)" }} />
+            </div>
+          </div>
+        )}
 
         {/* Slider */}
         <div style={{ position: "relative", width: `${CONTAINER_W}px`, margin: "0 auto" }}>
