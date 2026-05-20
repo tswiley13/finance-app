@@ -1712,10 +1712,15 @@ function Dashboard() {
           <div className="dashboard-grid">
             <div className="dashboard-left">
               <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-                {rows.map((item, i) => (
+                {rows.map((item, i) => {
+                  const isExpanded = expandedPeriods.has(i);
+                  return (
                   <div key={i} className="panel" style={{ borderLeft: item.isCurrent ? "3px solid #6C63FF" : "3px solid transparent" }}>
                     {/* Card header */}
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "16px" }}>
+                    <div
+                      onClick={() => setExpandedPeriods(prev => { const n = new Set(prev); n.has(i) ? n.delete(i) : n.add(i); return n; })}
+                      style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", cursor: "pointer", marginBottom: isExpanded ? "16px" : "0" }}
+                    >
                       <div>
                         <div style={{ fontSize: "14px", fontWeight: "600", color: "#F0F6FC", display: "flex", alignItems: "center", gap: "8px" }}>
                           {fmtDate(item.period.start_date)} — {fmtDate(item.period.end_date)}
@@ -1734,14 +1739,19 @@ function Dashboard() {
                           </div>
                         )}
                       </div>
-                      <div style={{ textAlign: "right" }}>
-                        <div style={{ fontSize: "9px", color: "#8B8FA8", letterSpacing: "0.1em", textTransform: "uppercase", fontWeight: "600", marginBottom: "3px" }}>End Balance</div>
-                        <div style={{ fontFamily: "'DM Mono', monospace", fontSize: "22px", fontWeight: "500", color: item.endBalance < 0 ? "#F87171" : "#4ADE80" }}>
-                          {item.endBalance < 0 ? "-" : ""}${fmt(Math.abs(item.endBalance))}
+                      <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+                        <div style={{ textAlign: "right" }}>
+                          <div style={{ fontSize: "9px", color: "#8B8FA8", letterSpacing: "0.1em", textTransform: "uppercase", fontWeight: "600", marginBottom: "3px" }}>End Balance</div>
+                          <div style={{ fontFamily: "'DM Mono', monospace", fontSize: "22px", fontWeight: "500", color: item.endBalance < 0 ? "#F87171" : "#4ADE80" }}>
+                            {item.endBalance < 0 ? "-" : ""}${fmt(Math.abs(item.endBalance))}
+                          </div>
                         </div>
+                        <span style={{ fontSize: "12px", color: "#6E7681" }}>{isExpanded ? "▲" : "▼"}</span>
                       </div>
                     </div>
 
+                    {isExpanded && (
+                    <>
                     {/* 3 tiles: Start | Income | Bills */}
                     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "8px" }}>
                       <div style={{ background: "rgba(255,255,255,0.03)", borderRadius: "8px", padding: "10px 12px" }}>
@@ -1803,8 +1813,11 @@ function Dashboard() {
                         })}
                       </div>
                     )}
+                    </>
+                    )}
                   </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
             {renderSidePanel()}
