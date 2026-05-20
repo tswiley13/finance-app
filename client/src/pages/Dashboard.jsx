@@ -570,6 +570,23 @@ function Dashboard() {
     return false;
   }
 
+  function isBillPaidInPeriod(bill, periodStart) {
+    if (!bill.is_paid && !(bill.paid_amount > 0)) return false;
+
+    const paidDate = new Date(bill.paid_date || new Date());
+    paidDate.setHours(0, 0, 0, 0);
+    const freq = bill.frequency || "monthly";
+
+    if (freq === "biweekly" || freq === "payday") {
+      // Payment counts if it happened after the period started
+      return paidDate >= periodStart;
+    }
+
+    // Monthly: payment counts only if same month as period
+    return paidDate.getMonth() === periodStart.getMonth() &&
+           paidDate.getFullYear() === periodStart.getFullYear();
+  }
+
   function isBillDueInPeriod(bill, periodStart, periodEnd) {
     if (!bill.is_paid) return true;
 
@@ -1801,8 +1818,12 @@ function Dashboard() {
                     {item.bills.length > 0 && (
                       <div style={{ marginTop: "12px", borderTop: "1px solid rgba(255,255,255,0.05)", paddingTop: "12px" }}>
                         {item.bills.map((bill, j) => {
-                          const remaining = (bill.amount || 0) - (bill.paid_amount || 0);
-                          const isPartial = !bill.is_paid && bill.paid_amount > 0;
+                          const periodStart = new Date(item.period.start_date + "T00:00:00");
+                          const paidThisPeriod = isBillPaidInPeriod(bill, periodStart);
+                          const effectivePaid = bill.is_paid && paidThisPeriod;
+                          const effectivePaidAmount = paidThisPeriod ? (bill.paid_amount || 0) : 0;
+                          const remaining = (bill.amount || 0) - effectivePaidAmount;
+                          const isPartial = !effectivePaid && effectivePaidAmount > 0;
                           return (
                           <div key={j} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "7px 0", borderBottom: j < item.bills.length - 1 ? "1px solid rgba(255,255,255,0.04)" : "none" }}>
                             <div>
@@ -1822,7 +1843,7 @@ function Dashboard() {
                                   <button onClick={() => { markBillPaid(pendingPaidBill, pendingPaidAmount); setPendingPaidBill(null); }} style={{ background: "rgba(74,222,128,0.15)", border: "1px solid rgba(74,222,128,0.4)", color: "#4ADE80", padding: "3px 8px", borderRadius: "5px", cursor: "pointer", fontSize: "11px", fontFamily: "'Inter', sans-serif", fontWeight: "600" }}>✓</button>
                                   <button onClick={() => setPendingPaidBill(null)} style={{ background: "rgba(248,113,113,0.1)", border: "1px solid rgba(248,113,113,0.3)", color: "#F87171", padding: "3px 8px", borderRadius: "5px", cursor: "pointer", fontSize: "11px", fontFamily: "'Inter', sans-serif" }}>✕</button>
                                 </div>
-                              ) : bill.is_paid ? (
+                              ) : effectivePaid ? (
                                 <button onClick={() => markBillUnpaid(bill)} style={{ background: "none", border: "1px solid rgba(248,113,113,0.4)", color: "#F87171", padding: "3px 10px", borderRadius: "5px", cursor: "pointer", fontSize: "11px", fontFamily: "'Inter', sans-serif" }}>Unpaid</button>
                               ) : (
                                 <div style={{ display: "flex", gap: "4px" }}>
