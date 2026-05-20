@@ -68,23 +68,9 @@ function App() {
           .eq("created_by", session.user.id)
           .maybeSingle();
 
-        let isComplete = !!session.user.user_metadata?.onboarding_complete;
+        const isComplete = !!session.user.user_metadata?.onboarding_complete;
 
         if (created) {
-          // For existing users who completed onboarding before the flag existed,
-          // check for bills as a signal they finished setup
-          if (!isComplete) {
-            const { data: bills } = await supabase
-              .from("bills")
-              .select("id")
-              .eq("household_id", created.id)
-              .limit(1)
-              .maybeSingle();
-            if (bills) {
-              isComplete = true;
-              await supabase.auth.updateUser({ data: { onboarding_complete: true } });
-            }
-          }
           setHasHousehold(true);
           setOnboardingComplete(isComplete);
           setCheckingHousehold(false);
