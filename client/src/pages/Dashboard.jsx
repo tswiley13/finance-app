@@ -942,7 +942,12 @@ function Dashboard() {
         return (a.name || "").localeCompare(b.name || "");
       });
 
-      const periodBillsTotal = periodBills.reduce((sum, b) => {
+      // Hide bills fully paid within this period — they've been handled
+      const displayBills = periodBills.filter(
+        (b) => !(b.is_paid && isBillPaidInPeriod(b, periodStart, periodEnd))
+      );
+
+      const periodBillsTotal = displayBills.reduce((sum, b) => {
         const paidInThisPeriod = isBillPaidInPeriod(b, periodStart, periodEnd);
         const paidAmt = paidInThisPeriod ? (b.paid_amount || 0) : 0;
         return sum + ((b.amount || 0) - paidAmt);
@@ -959,7 +964,7 @@ function Dashboard() {
         isCurrentPeriod,
         income: periodIncome,
         incomeItems: periodIncomeItems,
-        bills: periodBills,
+        bills: displayBills,
         billsTotal: periodBillsTotal,
         leftOver: periodIncome - periodBillsTotal,
         contributions,
