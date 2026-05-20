@@ -1032,7 +1032,7 @@ function Onboarding({ onComplete }) {
   }
 
   if (step === 2) {
-    return shell(2, "Who's in your household?", "Add everyone who shares finances with you. Flying solo? You can skip this step.", (
+    return shell(2, "Who manages finances with you?", "Add other adults who manage finances with you. This is for people who need access to the budget — not kids or other household members. Flying solo? Skip this step.", (
       <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
         <div style={{ display: "flex", gap: "8px" }}>
           <div style={{ flex: 1 }}>
