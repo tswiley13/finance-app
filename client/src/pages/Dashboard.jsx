@@ -935,6 +935,13 @@ function Dashboard() {
         return dueInPeriod(bill.due_day);
       });
 
+      periodBills.sort((a, b) => {
+        const dayA = a.due_day ?? 999;
+        const dayB = b.due_day ?? 999;
+        if (dayA !== dayB) return dayA - dayB;
+        return (a.name || "").localeCompare(b.name || "");
+      });
+
       const periodBillsTotal = periodBills.reduce((sum, b) => {
         const paidInThisPeriod = isBillPaidInPeriod(b, periodStart, periodEnd);
         const paidAmt = paidInThisPeriod ? (b.paid_amount || 0) : 0;
