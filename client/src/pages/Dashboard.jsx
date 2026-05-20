@@ -570,6 +570,29 @@ function Dashboard() {
     return false;
   }
 
+  function isBillDueInPeriod(bill, periodStart, periodEnd) {
+    if (!bill.is_paid) return true;
+
+    const paidDate = new Date(bill.paid_date);
+    paidDate.setHours(0, 0, 0, 0);
+    const freq = bill.frequency || "monthly";
+
+    if (freq === "biweekly" || freq === "payday") {
+      // Due again once a new period has started after payment
+      return paidDate < periodStart;
+    }
+
+    // Monthly: due again if paid before the period's start month
+    const paidMonth = paidDate.getMonth();
+    const paidYear = paidDate.getFullYear();
+    const periodMonth = periodStart.getMonth();
+    const periodYear = periodStart.getFullYear();
+
+    if (paidYear < periodYear) return true;
+    if (paidYear === periodYear && paidMonth < periodMonth) return true;
+    return false;
+  }
+
   async function addBill() {
     if (isSaving) return;
     const isPayday = (billFrequency || "monthly") === "payday";
@@ -895,7 +918,7 @@ function Dashboard() {
       });
 
       const periodBills = bills.filter((bill) => {
-        if (!isBillDue(bill)) return false;
+        if (!isBillDueInPeriod(bill, periodStart, periodEnd)) return false;
 
         const freq = bill.frequency || "monthly";
 
