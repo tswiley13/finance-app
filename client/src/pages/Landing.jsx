@@ -18,6 +18,7 @@ function Landing() {
           <a href="#pricing" style={{ fontSize: "14px", color: "#8B8FA8", textDecoration: "none" }}>Pricing</a>
           <button
             onClick={goToSignIn}
+            className="landing-nav-signin"
             style={{ fontSize: "14px", color: "#8B8FA8", background: "none", border: "none", cursor: "pointer", fontFamily: "'Inter', sans-serif" }}
           >
             Sign In
@@ -55,6 +56,10 @@ function Landing() {
           </a>
         </div>
         <p style={{ fontSize: "12px", color: "#4A4F5C", marginTop: "20px" }}>No credit card required · 14-day free trial</p>
+        <p className="landing-mobile-signin">
+          Already have an account?{" "}
+          <span onClick={goToSignIn} style={{ color: "#6C63FF", cursor: "pointer", fontWeight: "600" }}>Sign In</span>
+        </p>
       </section>
 
       {/* App preview */}

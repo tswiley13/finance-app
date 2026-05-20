@@ -43,6 +43,10 @@
   align-items: center;
 }
 
+.landing-mobile-signin {
+  display: none;
+}
+
 .landing-preview {
   padding: 0 64px 100px;
 }
@@ -97,6 +101,17 @@
 
   .landing-nav-links a {
     display: none;
+  }
+
+  .landing-nav-signin {
+    display: none;
+  }
+
+  .landing-mobile-signin {
+    display: block;
+    font-size: 13px;
+    color: #6E7681;
+    margin-top: 16px;
   }
 
   .landing-hero {
