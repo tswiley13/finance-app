@@ -5033,7 +5033,17 @@ function Dashboard() {
                   );
 
                   // Split bills into regular bills and explicit account transfers
-                  const periodBills = currentBreakdown?.bills || [];
+                  const allPeriodBills = currentBreakdown?.bills || [];
+                  const wtmgPStart = currentBreakdown ? new Date(currentBreakdown.period.start_date + "T00:00:00") : null;
+                  const wtmgPEnd = currentBreakdown ? new Date(currentBreakdown.period.end_date + "T23:59:59") : null;
+                  const wtmgPeriodKey = currentBreakdown?.period.start_date;
+
+                  // Exclude bills already paid this period or skipped this period
+                  const periodBills = allPeriodBills.filter((b) => {
+                    if (skippedBillPeriods.has(`${b.id}-${wtmgPeriodKey}`)) return false;
+                    if (wtmgPStart && isBillPaidInPeriod(b, wtmgPStart, wtmgPEnd)) return false;
+                    return true;
+                  });
 
                   // Regular bills: current period only, not transfer bills, not assigned to accumulating accounts
                   const regularBills = periodBills.filter((b) => {
