@@ -508,9 +508,14 @@ function Dashboard() {
 
         setLoading(false);
 
-        if (connected && !sessionStorage.getItem("plaidSyncedThisSession")) {
-          sessionStorage.setItem("plaidSyncedThisSession", "1");
-          syncPlaidBalances(householdData.id);
+        if (connected) {
+          const lastSynced = localStorage.getItem("plaidLastSynced");
+          const minutesSinceSync = lastSynced
+            ? (Date.now() - new Date(lastSynced).getTime()) / 60000
+            : Infinity;
+          if (minutesSinceSync > 30) {
+            syncPlaidBalances(householdData.id);
+          }
         }
       } catch (err) {
         console.log("Load error:", err.message);
