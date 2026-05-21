@@ -5077,7 +5077,14 @@ function Dashboard() {
               <div className="panel">
                 <div className="panel-header">
                   <div className="panel-title">Where the Money Goes</div>
-                  <div className="panel-count">This pay period</div>
+                  <div className="panel-count">{(() => {
+                    const bd = getPayPeriodBreakdown().find(i => i.isCurrentPeriod);
+                    const nxt = bd?.incomeItems
+                      .map(inc => inc.actualPayDate ? new Date(inc.actualPayDate + "T00:00:00") : null)
+                      .filter(d => d && d > new Date())
+                      .sort((a, b) => a - b)[0];
+                    return nxt ? `Until ${fmtDate(nxt.toISOString().split("T")[0])}` : "This pay period";
+                  })()}</div>
                 </div>
                 {(() => {
                   const currentBreakdown = getPayPeriodBreakdown().find(
@@ -5090,10 +5097,27 @@ function Dashboard() {
                   const wtmgPEnd = currentBreakdown ? new Date(currentBreakdown.period.end_date + "T23:59:59") : null;
                   const wtmgPeriodKey = currentBreakdown?.period.start_date;
 
-                  // Exclude bills already paid this period or skipped this period
+                  // Find the next income date in this period that hasn't arrived yet.
+                  // Bills due before that date are what the current paycheck needs to cover.
+                  // If no future income, show all remaining bills (last paycheck of the period).
+                  const wtmgToday = new Date();
+                  const nextIncomeDate = currentBreakdown?.incomeItems
+                    .map(inc => inc.actualPayDate ? new Date(inc.actualPayDate + "T00:00:00") : null)
+                    .filter(d => d && d > wtmgToday)
+                    .sort((a, b) => a - b)[0] || null;
+
+                  // Exclude bills already paid this period or skipped this period.
+                  // Also exclude bills whose due date falls on or after the next income date.
                   const periodBills = allPeriodBills.filter((b) => {
                     if (skippedBillPeriods.has(`${b.id}-${wtmgPeriodKey}`)) return false;
                     if (wtmgPStart && isBillPaidInPeriod(b, wtmgPStart, wtmgPEnd)) return false;
+                    if (nextIncomeDate) {
+                      const freq = b.frequency || "monthly";
+                      if (freq === "payday" || freq === "biweekly") return true; // payday bills always go with current check
+                      const dueDate = new Date(wtmgPStart.getFullYear(), wtmgPStart.getMonth(), b.due_day);
+                      if (dueDate < wtmgPStart) dueDate.setMonth(dueDate.getMonth() + 1);
+                      if (dueDate >= nextIncomeDate) return false;
+                    }
                     return true;
                   });
 
