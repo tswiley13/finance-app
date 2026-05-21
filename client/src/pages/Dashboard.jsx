@@ -509,9 +509,10 @@ function Dashboard() {
         setLoading(false);
 
         if (connected) {
-          const lastSignIn = new Date(user.last_sign_in_at);
-          const secondsSinceLogin = (Date.now() - lastSignIn.getTime()) / 1000;
-          if (secondsSinceLogin < 60) {
+          const today = localDateStr();
+          const lastSyncDate = localStorage.getItem("plaidLastSyncDate");
+          if (lastSyncDate !== today) {
+            localStorage.setItem("plaidLastSyncDate", today);
             syncPlaidBalances(householdData.id);
           }
         }
