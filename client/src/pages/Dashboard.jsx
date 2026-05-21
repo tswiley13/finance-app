@@ -395,11 +395,9 @@ function Dashboard() {
       const { data } = await supabase.functions.invoke("plaid-sync-balances", {
         body: { household_id: householdId },
       });
-      if (data?.synced > 0) {
-        const { data: refreshed } = await supabase.from("accounts").select("*").eq("household_id", householdId);
-        if (refreshed) setAccounts(refreshed);
-        setPlaidLastSynced(new Date());
-      }
+      const { data: refreshed } = await supabase.from("accounts").select("*").eq("household_id", householdId);
+      if (refreshed) setAccounts(refreshed);
+      setPlaidLastSynced(new Date());
     } catch (err) {
       console.error("Plaid sync error:", err);
     }
