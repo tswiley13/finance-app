@@ -5189,8 +5189,35 @@ function Dashboard() {
                             </div>
                             {subtitle && <div className="row-sub">{subtitle}</div>}
                             {transferred > 0 && !done && (
-                              <div style={{ fontSize: "10px", color: "#6C63FF", marginTop: "2px" }}>
-                                ${fmt(transferred)} transferred · ${fmt(remaining)} remaining
+                              <div style={{ display: "flex", alignItems: "center", gap: "8px", marginTop: "2px" }}>
+                                <div style={{ fontSize: "10px", color: "#6C63FF" }}>
+                                  ${fmt(transferred)} transferred · ${fmt(remaining)} remaining
+                                </div>
+                                <button
+                                  onClick={async () => {
+                                    const accountId = targetAccountId || rowKey;
+                                    const account = accounts.find(a => a.id === accountId);
+                                    if (account) {
+                                      const newBalance = (account.current_balance || 0) - transferred;
+                                      await supabase.from("accounts").update({ current_balance: newBalance }).eq("id", accountId);
+                                      setAccounts(prev => prev.map(a => a.id === accountId ? { ...a, current_balance: newBalance } : a));
+                                    }
+                                    setTransfers(prev => {
+                                      const next = { ...prev };
+                                      delete next[rowKey];
+                                      try {
+                                        const today = localDateStr();
+                                        const currentPeriod = payPeriods.find(p => p.start_date <= today && p.end_date >= today);
+                                        const periodKey = currentPeriod?.start_date || today;
+                                        localStorage.setItem("wtmgTransfers", JSON.stringify({ periodKey, data: next }));
+                                      } catch {}
+                                      return next;
+                                    });
+                                  }}
+                                  style={{ background: "none", border: "none", color: "#8B8FA8", cursor: "pointer", fontSize: "10px", fontFamily: "'Inter', sans-serif", padding: 0, textDecoration: "underline" }}
+                                >
+                                  Undo
+                                </button>
                               </div>
                             )}
                           </div>
@@ -5245,6 +5272,32 @@ function Dashboard() {
                                   Partial
                                 </button>
                               </div>
+                            ) : done ? (
+                              <button
+                                onClick={async () => {
+                                  const accountId = targetAccountId || rowKey;
+                                  const account = accounts.find(a => a.id === accountId);
+                                  if (account) {
+                                    const newBalance = (account.current_balance || 0) - transferred;
+                                    await supabase.from("accounts").update({ current_balance: newBalance }).eq("id", accountId);
+                                    setAccounts(prev => prev.map(a => a.id === accountId ? { ...a, current_balance: newBalance } : a));
+                                  }
+                                  setTransfers(prev => {
+                                    const next = { ...prev };
+                                    delete next[rowKey];
+                                    try {
+                                      const today = localDateStr();
+                                      const currentPeriod = payPeriods.find(p => p.start_date <= today && p.end_date >= today);
+                                      const periodKey = currentPeriod?.start_date || today;
+                                      localStorage.setItem("wtmgTransfers", JSON.stringify({ periodKey, data: next }));
+                                    } catch {}
+                                    return next;
+                                  });
+                                }}
+                                style={{ background: "none", border: "1px solid rgba(255,255,255,0.1)", color: "#8B8FA8", padding: "4px 10px", borderRadius: "6px", cursor: "pointer", fontSize: "11px", fontFamily: "'Inter', sans-serif" }}
+                              >
+                                Undo
+                              </button>
                             ) : null}
                           </div>
                         </div>
