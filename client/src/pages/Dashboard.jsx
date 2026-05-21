@@ -335,6 +335,7 @@ function Dashboard() {
   const [plaidSyncing, setPlaidSyncing] = useState(false);
   const [plaidLastSynced, setPlaidLastSynced] = useState(null);
   const [expandedPeriods, setExpandedPeriods] = useState(new Set([0]));
+  const [skippedBillPeriods, setSkippedBillPeriods] = useState(new Set());
   const [minimumBuffer, setMinimumBuffer] = useState("");
   const [isSaving, setIsSaving] = useState(false);
 
@@ -723,44 +724,28 @@ function Dashboard() {
     setBills(bills.filter((b) => b.id !== billId));
   }
 
-  async function markBillPaid(bill, actualAmount) {
+  async function markBillPaid(bill, actualAmount, periodStartDate = null) {
     const today = new Date().toISOString().split("T")[0];
+    const paidDate = periodStartDate || today;
     const paidAmt = actualAmount !== undefined && actualAmount !== "" ? parseFloat(actualAmount) : bill.amount;
     const totalPaid = (bill.paid_amount || 0) + paidAmt;
     const isFullyPaid = totalPaid >= bill.amount;
 
     const updateData = isFullyPaid
-      ? { is_paid: true, paid_date: today, paid_amount: totalPaid }
-      : { is_paid: false, paid_amount: totalPaid };
+      ? { is_paid: true, paid_date: paidDate, paid_amount: totalPaid }
+      : { is_paid: false, paid_date: paidDate, paid_amount: totalPaid };
 
     const { error } = await supabase.from("bills").update(updateData).eq("id", bill.id);
     if (error) { console.log("Error:", error.message); return; }
 
-    setBills(bills.map((b) => b.id === bill.id ? { ...b, ...updateData } : b));
+    setBills(prev => prev.map((b) => b.id === bill.id ? { ...b, ...updateData } : b));
   }
 
   async function markBillUnpaid(bill) {
-    const { error } = await supabase
-      .from("bills")
-      .update({
-        is_paid: false,
-        paid_date: null,
-        paid_amount: null,
-      })
-      .eq("id", bill.id);
-
-    if (error) {
-      console.log("Error:", error.message);
-      return;
-    }
-
-    setBills(
-      bills.map((b) =>
-        b.id === bill.id
-          ? { ...b, is_paid: false, paid_date: null, paid_amount: null }
-          : b,
-      ),
-    );
+    const updateData = { is_paid: false, paid_date: null, paid_amount: null };
+    const { error } = await supabase.from("bills").update(updateData).eq("id", bill.id);
+    if (error) { console.log("Error:", error.message); return; }
+    setBills(prev => prev.map((b) => b.id === bill.id ? { ...b, ...updateData } : b));
   }
 
   function getRemainingIncomeThisMonth() {
@@ -942,12 +927,7 @@ function Dashboard() {
         return (a.name || "").localeCompare(b.name || "");
       });
 
-      // Hide bills fully paid within this period — they've been handled
-      const displayBills = periodBills.filter(
-        (b) => !(b.is_paid && isBillPaidInPeriod(b, periodStart, periodEnd))
-      );
-
-      const periodBillsTotal = displayBills.reduce((sum, b) => {
+      const periodBillsTotal = periodBills.reduce((sum, b) => {
         const paidInThisPeriod = isBillPaidInPeriod(b, periodStart, periodEnd);
         const paidAmt = paidInThisPeriod ? (b.paid_amount || 0) : 0;
         return sum + ((b.amount || 0) - paidAmt);
@@ -964,7 +944,7 @@ function Dashboard() {
         isCurrentPeriod,
         income: periodIncome,
         incomeItems: periodIncomeItems,
-        bills: displayBills,
+        bills: periodBills,
         billsTotal: periodBillsTotal,
         leftOver: periodIncome - periodBillsTotal,
         contributions,
@@ -1660,7 +1640,15 @@ function Dashboard() {
               .reduce((sum, inc) => sum + (inc.fixed_amount || 0), 0)
           : item.income;
 
-        const billsDeducted = item.billsTotal;
+        const pStart = new Date(item.period.start_date + "T00:00:00");
+        const pEnd = new Date(item.period.end_date + "T23:59:59");
+        const skippedTotal = item.bills
+          .filter(b => skippedBillPeriods.has(`${b.id}-${item.period.start_date}`))
+          .reduce((sum, b) => {
+            const paidAmt = isBillPaidInPeriod(b, pStart, pEnd) ? (b.paid_amount || 0) : 0;
+            return sum + ((b.amount || 0) - paidAmt);
+          }, 0);
+        const billsDeducted = item.billsTotal - skippedTotal;
         const endBalance = startBalance + pendingIncome - billsDeducted;
         runningBalance = endBalance;
 
@@ -1793,25 +1781,34 @@ function Dashboard() {
                         <div style={{ fontSize: "9px", color: "#8B8FA8", letterSpacing: "0.1em", textTransform: "uppercase", fontWeight: "600", marginBottom: "4px" }}>
                           Bills
                         </div>
-                        <div style={{ fontFamily: "'DM Mono', monospace", fontSize: "14px", color: item.billsTotal > 0 ? "#F87171" : "#8B8FA8" }}>
-                          {item.billsTotal > 0 ? `$${fmt(item.billsTotal)}` : "—"}
+                        <div style={{ fontFamily: "'DM Mono', monospace", fontSize: "14px", color: item.billsDeducted > 0 ? "#F87171" : "#8B8FA8" }}>
+                          {item.billsDeducted > 0 ? `$${fmt(item.billsDeducted)}` : "—"}
                         </div>
                       </div>
                     </div>
 
                     {/* Bill list */}
-                    {item.bills.length > 0 && (
+                    {item.bills.length > 0 && (() => {
+                      const pStart = new Date(item.period.start_date + "T00:00:00");
+                      const pEnd = new Date(item.period.end_date + "T23:59:59");
+                      const periodKey = item.period.start_date;
+                      const periodDateArg = item.isCurrent ? null : periodKey;
+
+                      const activeBills = item.bills.filter(b => !skippedBillPeriods.has(`${b.id}-${periodKey}`));
+                      const unpaidBills = activeBills.filter(b => !(b.is_paid && isBillPaidInPeriod(b, pStart, pEnd)));
+                      const paidBills = activeBills.filter(b => b.is_paid && isBillPaidInPeriod(b, pStart, pEnd));
+
+                      if (activeBills.length === 0) return null;
+                      return (
                       <div style={{ marginTop: "12px", borderTop: "1px solid rgba(255,255,255,0.05)", paddingTop: "12px" }}>
-                        {item.bills.map((bill, j) => {
-                          const periodStart = new Date(item.period.start_date + "T00:00:00");
-                          const periodEnd = new Date(item.period.end_date + "T23:59:59");
-                          const paidThisPeriod = isBillPaidInPeriod(bill, periodStart, periodEnd);
-                          const effectivePaid = bill.is_paid && paidThisPeriod;
+                        {unpaidBills.map((bill, j) => {
+                          const paidThisPeriod = isBillPaidInPeriod(bill, pStart, pEnd);
                           const effectivePaidAmount = paidThisPeriod ? (bill.paid_amount || 0) : 0;
                           const remaining = (bill.amount || 0) - effectivePaidAmount;
-                          const isPartial = !effectivePaid && effectivePaidAmount > 0;
+                          const isPartial = effectivePaidAmount > 0;
+                          const isLast = j === unpaidBills.length - 1 && paidBills.length === 0;
                           return (
-                          <div key={j} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "7px 0", borderBottom: j < item.bills.length - 1 ? "1px solid rgba(255,255,255,0.04)" : "none" }}>
+                          <div key={bill.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "7px 0", borderBottom: isLast ? "none" : "1px solid rgba(255,255,255,0.04)" }}>
                             <div>
                               <div style={{ fontSize: "13px", color: "#F0F6FC", fontWeight: "500" }}>
                                 {bill.name}
@@ -1821,28 +1818,40 @@ function Dashboard() {
                                 {isPartial ? `$${fmt(bill.paid_amount)} paid · $${fmt(remaining)} remaining` : (bill.frequency || "monthly") === "payday" ? "Every Pay Day" : (bill.frequency || "monthly") === "biweekly" ? "Biweekly" : `Due the ${bill.due_day}${getSuffix(bill.due_day)}`}
                               </div>
                             </div>
-                            <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                            <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
                               <span style={{ fontFamily: "'DM Mono', monospace", fontSize: "13px", color: isPartial ? "#FBBF24" : "#8B8FA8" }}>${fmt(isPartial ? remaining : bill.amount)}</span>
-                              {pendingPaidBill?._key === `${bill.id}-${item.period.start_date}` ? (
+                              {pendingPaidBill?._key === `${bill.id}-${periodKey}` ? (
                                 <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
                                   <input type="text" inputMode="decimal" value={pendingPaidAmount} onChange={(e) => setPendingPaidAmount(e.target.value)} autoFocus placeholder="Amt paid" style={{ width: "90px", background: "#13111F", border: "1px solid rgba(108,99,255,0.4)", borderRadius: "5px", color: "#F0F6FC", padding: "3px 6px", fontSize: "11px", fontFamily: "'DM Mono', monospace", outline: "none" }} />
-                                  <button onClick={() => { markBillPaid(pendingPaidBill, pendingPaidAmount); setPendingPaidBill(null); }} style={{ background: "rgba(74,222,128,0.15)", border: "1px solid rgba(74,222,128,0.4)", color: "#4ADE80", padding: "3px 8px", borderRadius: "5px", cursor: "pointer", fontSize: "11px", fontFamily: "'Inter', sans-serif", fontWeight: "600" }}>✓</button>
+                                  <button onClick={() => { markBillPaid(pendingPaidBill, pendingPaidAmount, periodDateArg); setPendingPaidBill(null); }} style={{ background: "rgba(74,222,128,0.15)", border: "1px solid rgba(74,222,128,0.4)", color: "#4ADE80", padding: "3px 8px", borderRadius: "5px", cursor: "pointer", fontSize: "11px", fontFamily: "'Inter', sans-serif", fontWeight: "600" }}>✓</button>
                                   <button onClick={() => setPendingPaidBill(null)} style={{ background: "rgba(248,113,113,0.1)", border: "1px solid rgba(248,113,113,0.3)", color: "#F87171", padding: "3px 8px", borderRadius: "5px", cursor: "pointer", fontSize: "11px", fontFamily: "'Inter', sans-serif" }}>✕</button>
                                 </div>
-                              ) : effectivePaid ? (
-                                <button onClick={() => markBillUnpaid(bill)} style={{ background: "none", border: "1px solid rgba(248,113,113,0.4)", color: "#F87171", padding: "3px 10px", borderRadius: "5px", cursor: "pointer", fontSize: "11px", fontFamily: "'Inter', sans-serif" }}>Unpaid</button>
                               ) : (
                                 <div style={{ display: "flex", gap: "4px" }}>
-                                  <button onClick={() => markBillPaid(bill, bill.amount)} style={{ background: "rgba(74,222,128,0.1)", border: "1px solid rgba(74,222,128,0.3)", color: "#4ADE80", padding: "3px 10px", borderRadius: "5px", cursor: "pointer", fontSize: "11px", fontFamily: "'Inter', sans-serif", fontWeight: "500" }}>Paid</button>
-                                  <button onClick={() => { setPendingPaidBill({ ...bill, _key: `${bill.id}-${item.period.start_date}` }); setPendingPaidAmount(""); }} style={{ background: "rgba(251,191,36,0.08)", border: "1px solid rgba(251,191,36,0.3)", color: "#FBBF24", padding: "3px 10px", borderRadius: "5px", cursor: "pointer", fontSize: "11px", fontFamily: "'Inter', sans-serif" }}>{isPartial ? "More" : "Partial"}</button>
+                                  <button onClick={() => markBillPaid(bill, bill.amount, periodDateArg)} style={{ background: "rgba(74,222,128,0.1)", border: "1px solid rgba(74,222,128,0.3)", color: "#4ADE80", padding: "3px 10px", borderRadius: "5px", cursor: "pointer", fontSize: "11px", fontFamily: "'Inter', sans-serif", fontWeight: "500" }}>Paid</button>
+                                  <button onClick={() => { setPendingPaidBill({ ...bill, _key: `${bill.id}-${periodKey}` }); setPendingPaidAmount(""); }} style={{ background: "rgba(251,191,36,0.08)", border: "1px solid rgba(251,191,36,0.3)", color: "#FBBF24", padding: "3px 10px", borderRadius: "5px", cursor: "pointer", fontSize: "11px", fontFamily: "'Inter', sans-serif" }}>{isPartial ? "More" : "Partial"}</button>
+                                  <button onClick={() => setSkippedBillPeriods(prev => new Set([...prev, `${bill.id}-${periodKey}`]))} style={{ background: "rgba(248,113,113,0.06)", border: "1px solid rgba(248,113,113,0.25)", color: "#F87171", padding: "3px 7px", borderRadius: "5px", cursor: "pointer", fontSize: "11px", fontFamily: "'Inter', sans-serif", lineHeight: 1 }}>✕</button>
                                 </div>
                               )}
                             </div>
                           </div>
                           );
                         })}
+                        {paidBills.map((bill, j) => (
+                          <div key={bill.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "7px 0", borderBottom: j < paidBills.length - 1 ? "1px solid rgba(255,255,255,0.03)" : "none", opacity: 0.45 }}>
+                            <div>
+                              <div style={{ fontSize: "13px", color: "#8B8FA8", fontWeight: "500", textDecoration: "line-through" }}>{bill.name}</div>
+                              <div style={{ fontSize: "11px", color: "#5C6080", marginTop: "2px" }}>Paid</div>
+                            </div>
+                            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                              <span style={{ fontFamily: "'DM Mono', monospace", fontSize: "13px", color: "#5C6080", textDecoration: "line-through" }}>${fmt(bill.amount)}</span>
+                              <button onClick={() => markBillUnpaid(bill)} style={{ background: "none", border: "1px solid rgba(248,113,113,0.3)", color: "#F87171", padding: "2px 8px", borderRadius: "5px", cursor: "pointer", fontSize: "10px", fontFamily: "'Inter', sans-serif" }}>Undo</button>
+                            </div>
+                          </div>
+                        ))}
                       </div>
-                    )}
+                      );
+                    })()}
                     </>
                     )}
                   </div>
