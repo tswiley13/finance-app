@@ -301,7 +301,17 @@ function Dashboard() {
   const [quickEditBillAmount, setQuickEditBillAmount] = useState("");
   const [transferringId, setTransferringId] = useState(null);
   const [transferAmount, setTransferAmount] = useState("");
-  const [transfers, setTransfers] = useState({});
+  const [transfers, setTransfers] = useState(() => {
+    try {
+      const saved = localStorage.getItem("wtmgTransfers");
+      if (!saved) return {};
+      const { periodKey, data } = JSON.parse(saved);
+      const today = localDateStr();
+      // Only restore if the saved data is from the current period
+      if (periodKey && today >= periodKey) return data || {};
+      return {};
+    } catch { return {}; }
+  });
   const [setAsideDone, setSetAsideDone] = useState({});
   const [quickEditIncomeId, setQuickEditIncomeId] = useState(null);
   const [quickEditIncomeAmount, setQuickEditIncomeAmount] = useState("");
@@ -1223,10 +1233,16 @@ function Dashboard() {
       a.id === accountId ? { ...a, current_balance: newBalance } : a
     ));
 
-    setTransfers((prev) => ({
-      ...prev,
-      [accountId]: (prev[accountId] || 0) + parsed,
-    }));
+    setTransfers((prev) => {
+      const next = { ...prev, [accountId]: (prev[accountId] || 0) + parsed };
+      try {
+        const today = localDateStr();
+        const currentPeriod = payPeriods.find(p => p.start_date <= today && p.end_date >= today);
+        const periodKey = currentPeriod?.start_date || today;
+        localStorage.setItem("wtmgTransfers", JSON.stringify({ periodKey, data: next }));
+      } catch {}
+      return next;
+    });
 
     setTransferringId(null);
     setTransferAmount("");
