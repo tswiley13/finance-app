@@ -5214,12 +5214,20 @@ function Dashboard() {
                                 </button>
                               </>
                             ) : !done ? (
-                              <button
-                                onClick={() => { setTransferringId(rowKey); setTransferAmount(remaining.toFixed(2)); }}
-                                style={{ background: "rgba(0,212,170,0.1)", border: "1px solid rgba(0,212,170,0.4)", color: "#00D4AA", padding: "4px 10px", borderRadius: "6px", cursor: "pointer", fontSize: "11px", fontFamily: "'Inter', sans-serif", fontWeight: "500" }}
-                              >
-                                Transfer
-                              </button>
+                              <div style={{ display: "flex", gap: "6px" }}>
+                                <button
+                                  onClick={() => confirmTransfer(rowKey, remaining)}
+                                  style={{ background: "rgba(0,212,170,0.1)", border: "1px solid rgba(0,212,170,0.4)", color: "#00D4AA", padding: "4px 10px", borderRadius: "6px", cursor: "pointer", fontSize: "11px", fontFamily: "'Inter', sans-serif", fontWeight: "500" }}
+                                >
+                                  Transfer
+                                </button>
+                                <button
+                                  onClick={() => { setTransferringId(rowKey); setTransferAmount(""); }}
+                                  style={{ background: "rgba(251,191,36,0.08)", border: "1px solid rgba(251,191,36,0.3)", color: "#FBBF24", padding: "4px 10px", borderRadius: "6px", cursor: "pointer", fontSize: "11px", fontFamily: "'Inter', sans-serif", fontWeight: "500" }}
+                                >
+                                  Partial
+                                </button>
+                              </div>
                             ) : null}
                           </div>
                         </div>
@@ -5257,7 +5265,7 @@ function Dashboard() {
                   const periodTransferRows = periodTransferBills.map((bill) => {
                     const destAcct = accounts.find((a) => a.id === bill.transfer_to_account_id);
                     const destName = destAcct ? destAcct.name : "Unknown";
-                    return renderTransferRow(`transfer-${bill.id}`, destName, bill.amount, null);
+                    return renderTransferRow(`transfer-${bill.id}`, bill.name, bill.amount, `Transfer to ${destName}`);
                   });
 
                   // Account-driven: accumulating accounts with due_day + accumulation_target
