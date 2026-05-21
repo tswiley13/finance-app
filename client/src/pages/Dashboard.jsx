@@ -508,14 +508,9 @@ function Dashboard() {
 
         setLoading(false);
 
-        if (connected) {
-          const lastSynced = localStorage.getItem("plaidLastSynced");
-          const minutesSinceSync = lastSynced
-            ? (Date.now() - new Date(lastSynced).getTime()) / 60000
-            : Infinity;
-          if (minutesSinceSync > 30) {
-            syncPlaidBalances(householdData.id);
-          }
+        if (connected && sessionStorage.getItem("triggerPlaidSync")) {
+          sessionStorage.removeItem("triggerPlaidSync");
+          syncPlaidBalances(householdData.id);
         }
       } catch (err) {
         console.log("Load error:", err.message);

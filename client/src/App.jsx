@@ -27,6 +27,7 @@ function App() {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
       if (_event === "SIGNED_OUT") navigate("/");
+      if (_event === "SIGNED_IN") sessionStorage.setItem("triggerPlaidSync", "1");
       setSession(session);
     });
 
