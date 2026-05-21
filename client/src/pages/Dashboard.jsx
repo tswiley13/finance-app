@@ -4941,7 +4941,18 @@ function Dashboard() {
               <div className="panel">
                 <div className="panel-header">
                   <div className="panel-title">Accounts</div>
-                  <div className="panel-count">{accounts.length} total</div>
+                  <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                    {plaidConnected && (
+                      <button
+                        onClick={() => syncPlaidBalances(household?.id)}
+                        disabled={plaidSyncing}
+                        style={{ background: "none", border: "none", color: plaidSyncing ? "#5C6080" : "#6C63FF", cursor: plaidSyncing ? "default" : "pointer", fontSize: "12px", fontWeight: "600", fontFamily: "'Inter', sans-serif", padding: 0 }}
+                      >
+                        {plaidSyncing ? "Syncing..." : plaidLastSynced ? `Synced ${plaidLastSynced.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}` : "Sync"}
+                      </button>
+                    )}
+                    <div className="panel-count">{accounts.length} total</div>
+                  </div>
                 </div>
                 {accounts.length === 0 ? (
                   <div className="empty-state">No accounts added yet</div>
