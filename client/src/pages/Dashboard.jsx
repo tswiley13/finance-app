@@ -1795,11 +1795,12 @@ function Dashboard() {
                       const periodKey = item.period.start_date;
                       const periodDateArg = item.isCurrent ? null : periodKey;
 
+                      const skippedBills = item.bills.filter(b => skippedBillPeriods.has(`${b.id}-${periodKey}`));
                       const activeBills = item.bills.filter(b => !skippedBillPeriods.has(`${b.id}-${periodKey}`));
                       const unpaidBills = activeBills.filter(b => !(b.is_paid && isBillPaidInPeriod(b, pStart, pEnd)));
                       const paidBills = activeBills.filter(b => b.is_paid && isBillPaidInPeriod(b, pStart, pEnd));
 
-                      if (activeBills.length === 0) return null;
+                      if (activeBills.length === 0 && skippedBills.length === 0) return null;
                       return (
                       <div style={{ marginTop: "12px", borderTop: "1px solid rgba(255,255,255,0.05)", paddingTop: "12px" }}>
                         {unpaidBills.map((bill, j) => {
@@ -1807,7 +1808,7 @@ function Dashboard() {
                           const effectivePaidAmount = paidThisPeriod ? (bill.paid_amount || 0) : 0;
                           const remaining = (bill.amount || 0) - effectivePaidAmount;
                           const isPartial = effectivePaidAmount > 0;
-                          const isLast = j === unpaidBills.length - 1 && paidBills.length === 0;
+                          const isLast = j === unpaidBills.length - 1 && paidBills.length === 0 && skippedBills.length === 0;
                           return (
                           <div key={bill.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "7px 0", borderBottom: isLast ? "none" : "1px solid rgba(255,255,255,0.04)" }}>
                             <div>
@@ -1839,7 +1840,7 @@ function Dashboard() {
                           );
                         })}
                         {paidBills.map((bill, j) => (
-                          <div key={bill.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "7px 0", borderBottom: j < paidBills.length - 1 ? "1px solid rgba(255,255,255,0.03)" : "none", opacity: 0.45 }}>
+                          <div key={bill.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "7px 0", borderBottom: j < paidBills.length - 1 || skippedBills.length > 0 ? "1px solid rgba(255,255,255,0.03)" : "none", opacity: 0.45 }}>
                             <div>
                               <div style={{ fontSize: "13px", color: "#8B8FA8", fontWeight: "500", textDecoration: "line-through" }}>{bill.name}</div>
                               <div style={{ fontSize: "11px", color: "#5C6080", marginTop: "2px" }}>Paid</div>
@@ -1847,6 +1848,18 @@ function Dashboard() {
                             <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
                               <span style={{ fontFamily: "'DM Mono', monospace", fontSize: "13px", color: "#5C6080", textDecoration: "line-through" }}>${fmt(bill.amount)}</span>
                               <button onClick={() => markBillUnpaid(bill)} style={{ background: "none", border: "1px solid rgba(248,113,113,0.3)", color: "#F87171", padding: "2px 8px", borderRadius: "5px", cursor: "pointer", fontSize: "10px", fontFamily: "'Inter', sans-serif" }}>Undo</button>
+                            </div>
+                          </div>
+                        ))}
+                        {skippedBills.map((bill, j) => (
+                          <div key={bill.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "7px 0", borderBottom: j < skippedBills.length - 1 ? "1px solid rgba(255,255,255,0.03)" : "none", opacity: 0.4 }}>
+                            <div>
+                              <div style={{ fontSize: "13px", color: "#8B8FA8", fontWeight: "500" }}>{bill.name}</div>
+                              <div style={{ fontSize: "11px", color: "#5C6080", marginTop: "2px" }}>Skipped</div>
+                            </div>
+                            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                              <span style={{ fontFamily: "'DM Mono', monospace", fontSize: "13px", color: "#5C6080" }}>${fmt(bill.amount)}</span>
+                              <button onClick={() => setSkippedBillPeriods(prev => { const n = new Set(prev); n.delete(`${bill.id}-${periodKey}`); return n; })} style={{ background: "none", border: "1px solid rgba(108,99,255,0.35)", color: "#6C63FF", padding: "2px 8px", borderRadius: "5px", cursor: "pointer", fontSize: "10px", fontFamily: "'Inter', sans-serif" }}>Restore</button>
                             </div>
                           </div>
                         ))}
