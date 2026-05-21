@@ -1676,11 +1676,14 @@ function Dashboard() {
           }, 0);
         const billsDeducted = item.billsTotal - skippedUnpaidTotal;
 
-        // End balance: all bills at full amount, excluding skipped only
-        // Marking a bill paid doesn't change the projection — the money is still spent
-        const billsForEndBalance = item.bills
-          .filter(b => !skippedBillPeriods.has(`${b.id}-${periodKey}`))
-          .reduce((sum, b) => sum + (b.amount || 0), 0);
+        // End balance:
+        // Current period — bank balance already reflects paid bills, so only subtract what's still unpaid
+        // Future periods — full projection at face value regardless of paid status
+        const billsForEndBalance = isCurrent
+          ? billsDeducted
+          : item.bills
+              .filter(b => !skippedBillPeriods.has(`${b.id}-${periodKey}`))
+              .reduce((sum, b) => sum + (b.amount || 0), 0);
 
         const endBalance = startBalance + pendingIncome - billsForEndBalance;
         runningBalance = endBalance;
