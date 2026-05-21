@@ -338,7 +338,12 @@ function Dashboard() {
   const [userId, setUserId] = useState("");
   const [plaidConnected, setPlaidConnected] = useState(false);
   const [plaidSyncing, setPlaidSyncing] = useState(false);
-  const [plaidLastSynced, setPlaidLastSynced] = useState(null);
+  const [plaidLastSynced, setPlaidLastSynced] = useState(() => {
+    try {
+      const saved = localStorage.getItem("plaidLastSynced");
+      return saved ? new Date(saved) : null;
+    } catch { return null; }
+  });
   const [expandedPeriods, setExpandedPeriods] = useState(new Set([0]));
   const [skippedBillPeriods, setSkippedBillPeriods] = useState(() => {
     try {
@@ -397,7 +402,9 @@ function Dashboard() {
       });
       const { data: refreshed } = await supabase.from("accounts").select("*").eq("household_id", householdId);
       if (refreshed) setAccounts(refreshed);
-      setPlaidLastSynced(new Date());
+      const syncedAt = new Date();
+      localStorage.setItem("plaidLastSynced", syncedAt.toISOString());
+      setPlaidLastSynced(syncedAt);
     } catch (err) {
       console.error("Plaid sync error:", err);
     }
