@@ -345,12 +345,7 @@ function Dashboard() {
     } catch { return null; }
   });
   const [expandedPeriods, setExpandedPeriods] = useState(new Set([0]));
-  const [skippedBillPeriods, setSkippedBillPeriods] = useState(() => {
-    try {
-      const saved = localStorage.getItem("skippedBillPeriods");
-      return saved ? new Set(JSON.parse(saved)) : new Set();
-    } catch { return new Set(); }
-  });
+  const [skippedBillPeriods, setSkippedBillPeriods] = useState(new Set());
   const [minimumBuffer, setMinimumBuffer] = useState("");
   const [isSaving, setIsSaving] = useState(false);
 
@@ -503,9 +498,18 @@ function Dashboard() {
         const connected = !!(plaidItems && plaidItems.length > 0);
         setPlaidConnected(connected);
 
+        const { data: skipRows } = await supabase
+          .from("bill_skips")
+          .select("bill_id, period_start")
+          .eq("user_id", user.id);
+        if (skipRows) {
+          setSkippedBillPeriods(new Set(skipRows.map(r => `${r.bill_id}-${r.period_start}`)));
+        }
+
         setLoading(false);
 
-        if (connected) {
+        if (connected && !sessionStorage.getItem("plaidSyncedThisSession")) {
+          sessionStorage.setItem("plaidSyncedThisSession", "1");
           syncPlaidBalances(householdData.id);
         }
       } catch (err) {
@@ -774,6 +778,28 @@ function Dashboard() {
     const { error } = await supabase.from("bills").update(updateData).eq("id", bill.id);
     if (error) { console.log("Error:", error.message); return; }
     setBills(prev => prev.map((b) => b.id === bill.id ? { ...b, ...updateData } : b));
+  }
+
+  async function skipBill(billId, periodKey) {
+    const key = `${billId}-${periodKey}`;
+    const { error } = await supabase.from("bill_skips").insert({
+      user_id: userId,
+      bill_id: billId,
+      period_start: periodKey,
+    });
+    if (error && error.code !== "23505") return; // 23505 = unique violation (already skipped)
+    setSkippedBillPeriods(prev => new Set([...prev, key]));
+  }
+
+  async function restoreBill(billId, periodKey) {
+    const key = `${billId}-${periodKey}`;
+    const { error } = await supabase.from("bill_skips")
+      .delete()
+      .eq("user_id", userId)
+      .eq("bill_id", billId)
+      .eq("period_start", periodKey);
+    if (error) return;
+    setSkippedBillPeriods(prev => { const n = new Set(prev); n.delete(key); return n; });
   }
 
   function getRemainingIncomeThisMonth() {
@@ -1876,7 +1902,7 @@ function Dashboard() {
                                 <div style={{ display: "flex", gap: "4px" }}>
                                   <button onClick={() => markBillPaid(bill, bill.amount, periodDateArg, periodEndArg)} style={{ background: "rgba(74,222,128,0.1)", border: "1px solid rgba(74,222,128,0.3)", color: "#4ADE80", padding: "3px 10px", borderRadius: "5px", cursor: "pointer", fontSize: "11px", fontFamily: "'Inter', sans-serif", fontWeight: "500" }}>Paid</button>
                                   <button onClick={() => { setPendingPaidBill({ ...bill, _key: `${bill.id}-${periodKey}` }); setPendingPaidAmount(""); }} style={{ background: "rgba(251,191,36,0.08)", border: "1px solid rgba(251,191,36,0.3)", color: "#FBBF24", padding: "3px 10px", borderRadius: "5px", cursor: "pointer", fontSize: "11px", fontFamily: "'Inter', sans-serif" }}>{isPartial ? "More" : "Partial"}</button>
-                                  <button onClick={() => setSkippedBillPeriods(prev => { const n = new Set([...prev, `${bill.id}-${periodKey}`]); localStorage.setItem("skippedBillPeriods", JSON.stringify([...n])); return n; })} style={{ background: "rgba(248,113,113,0.06)", border: "1px solid rgba(248,113,113,0.25)", color: "#F87171", padding: "3px 7px", borderRadius: "5px", cursor: "pointer", fontSize: "11px", fontFamily: "'Inter', sans-serif", lineHeight: 1 }}>✕</button>
+                                  <button onClick={() => skipBill(bill.id, periodKey)} style={{ background: "rgba(248,113,113,0.06)", border: "1px solid rgba(248,113,113,0.25)", color: "#F87171", padding: "3px 7px", borderRadius: "5px", cursor: "pointer", fontSize: "11px", fontFamily: "'Inter', sans-serif", lineHeight: 1 }}>✕</button>
                                 </div>
                               )}
                             </div>
@@ -1903,7 +1929,7 @@ function Dashboard() {
                             </div>
                             <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
                               <span style={{ fontFamily: "'DM Mono', monospace", fontSize: "13px", color: "#5C6080" }}>${fmt(bill.amount)}</span>
-                              <button onClick={() => setSkippedBillPeriods(prev => { const n = new Set(prev); n.delete(`${bill.id}-${periodKey}`); localStorage.setItem("skippedBillPeriods", JSON.stringify([...n])); return n; })} style={{ background: "none", border: "1px solid rgba(108,99,255,0.35)", color: "#6C63FF", padding: "2px 8px", borderRadius: "5px", cursor: "pointer", fontSize: "10px", fontFamily: "'Inter', sans-serif" }}>Restore</button>
+                              <button onClick={() => restoreBill(bill.id, periodKey)} style={{ background: "none", border: "1px solid rgba(108,99,255,0.35)", color: "#6C63FF", padding: "2px 8px", borderRadius: "5px", cursor: "pointer", fontSize: "10px", fontFamily: "'Inter', sans-serif" }}>Restore</button>
                             </div>
                           </div>
                         ))}
