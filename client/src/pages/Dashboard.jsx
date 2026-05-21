@@ -3849,7 +3849,7 @@ function Dashboard() {
           </div>
 
           <div style={{ display: "flex", justifyContent: "flex-end", marginTop: "12px" }}>
-            <PlaidConnectButton userId={userId} onSuccess={() => alert("Bank connected! Balances will sync shortly.")} />
+            <PlaidConnectButton userId={userId} onSuccess={() => { if (household?.id) syncPlaidBalances(household.id); }} />
           </div>
         </div>
       );
@@ -5018,7 +5018,7 @@ function Dashboard() {
                 )}
                 {!plaidConnected && (
                   <div style={{ marginTop: "12px", paddingTop: "12px", borderTop: "1px solid rgba(255,255,255,0.04)" }}>
-                    <PlaidConnectButton userId={userId} onSuccess={() => { setPlaidConnected(true); }} />
+                    <PlaidConnectButton userId={userId} onSuccess={() => { setPlaidConnected(true); if (household?.id) syncPlaidBalances(household.id); }} />
                   </div>
                 )}
               </div>
