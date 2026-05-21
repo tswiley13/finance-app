@@ -1213,10 +1213,11 @@ function Dashboard() {
     setAccounts(accounts.filter((a) => a.id !== accountId));
   }
 
-  async function confirmTransfer(accountId, amount) {
+  async function confirmTransfer(rowKey, amount, targetAccountId = null) {
     const parsed = parseFloat(amount);
     if (!parsed || parsed <= 0) return;
 
+    const accountId = targetAccountId || rowKey;
     const account = accounts.find((a) => a.id === accountId);
     if (!account) return;
 
@@ -1234,7 +1235,7 @@ function Dashboard() {
     ));
 
     setTransfers((prev) => {
-      const next = { ...prev, [accountId]: (prev[accountId] || 0) + parsed };
+      const next = { ...prev, [rowKey]: (prev[rowKey] || 0) + parsed };
       try {
         const today = localDateStr();
         const currentPeriod = payPeriods.find(p => p.start_date <= today && p.end_date >= today);
@@ -5174,7 +5175,7 @@ function Dashboard() {
                     grouped[key].bills.push(bill);
                   });
 
-                  const renderTransferRow = (rowKey, label, suggestedAmount, subtitle) => {
+                  const renderTransferRow = (rowKey, label, suggestedAmount, subtitle, targetAccountId = null) => {
                     const transferred = transfers[rowKey] || 0;
                     const remaining = Math.max(0, suggestedAmount - transferred);
                     const done = transferred >= suggestedAmount;
@@ -5209,7 +5210,7 @@ function Dashboard() {
                                   value={transferAmount}
                                   onChange={(e) => setTransferAmount(e.target.value)}
                                   onKeyDown={(e) => {
-                                    if (e.key === "Enter") confirmTransfer(rowKey, transferAmount);
+                                    if (e.key === "Enter") confirmTransfer(rowKey, transferAmount, targetAccountId);
                                     if (e.key === "Escape") { setTransferringId(null); setTransferAmount(""); }
                                   }}
                                   autoFocus
@@ -5217,7 +5218,7 @@ function Dashboard() {
                                   style={{ background: "#2D2B45", border: "1px solid #6C63FF", color: "#F0F6FC", padding: "4px 8px", borderRadius: "6px", fontSize: "13px", fontFamily: "'DM Mono', monospace", width: "90px", textAlign: "right" }}
                                 />
                                 <button
-                                  onClick={() => confirmTransfer(rowKey, transferAmount)}
+                                  onClick={() => confirmTransfer(rowKey, transferAmount, targetAccountId)}
                                   style={{ background: "#6C63FF", border: "none", color: "#0F1218", padding: "4px 10px", borderRadius: "6px", cursor: "pointer", fontSize: "11px", fontFamily: "'Inter', sans-serif", fontWeight: "600" }}
                                 >
                                   Confirm
@@ -5232,7 +5233,7 @@ function Dashboard() {
                             ) : !done ? (
                               <div style={{ display: "flex", gap: "6px" }}>
                                 <button
-                                  onClick={() => confirmTransfer(rowKey, remaining)}
+                                  onClick={() => confirmTransfer(rowKey, remaining, targetAccountId)}
                                   style={{ background: "rgba(0,212,170,0.1)", border: "1px solid rgba(0,212,170,0.4)", color: "#00D4AA", padding: "4px 10px", borderRadius: "6px", cursor: "pointer", fontSize: "11px", fontFamily: "'Inter', sans-serif", fontWeight: "500" }}
                                 >
                                   Transfer
@@ -5281,7 +5282,7 @@ function Dashboard() {
                   const periodTransferRows = periodTransferBills.map((bill) => {
                     const destAcct = accounts.find((a) => a.id === bill.transfer_to_account_id);
                     const destName = destAcct ? destAcct.name : "Unknown";
-                    return renderTransferRow(`transfer-${bill.id}`, bill.name, bill.amount, `Transfer to ${destName}`);
+                    return renderTransferRow(`transfer-${bill.id}`, bill.name, bill.amount, `Transfer to ${destName}`, bill.transfer_to_account_id);
                   });
 
                   // Account-driven: accumulating accounts with due_day + accumulation_target
