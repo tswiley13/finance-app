@@ -231,6 +231,10 @@ function PlaidConnectButton({ userId, onSuccess }) {
   );
 }
 
+function localDateStr(d = new Date()) {
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+
 const DEFAULT_CATEGORIES = [
   { name: "Housing" },
   { name: "Utilities" },
@@ -731,7 +735,7 @@ function Dashboard() {
   }
 
   async function markBillPaid(bill, actualAmount, periodStartDate = null, periodEndDate = null) {
-    const today = new Date().toISOString().split("T")[0];
+    const today = localDateStr();
     const paidDate = periodStartDate || today;
     const paidAmt = actualAmount !== undefined && actualAmount !== "" ? parseFloat(actualAmount) : bill.amount;
 
@@ -1400,7 +1404,7 @@ function Dashboard() {
   }
 
   async function markDebtPaidOff(debt) {
-    const today = new Date().toISOString().split("T")[0];
+    const today = localDateStr();
 
     const { error } = await supabase
       .from("debts")
