@@ -18,6 +18,7 @@ import {
   Landmark,
   Menu,
   X,
+  RefreshCw,
 } from "lucide-react";
 
 const css = `
@@ -5619,14 +5620,19 @@ function Dashboard() {
             );
           })()}
 
-          {/* Desktop: period badge */}
-          <div className="period-badge topbar-period">
-            <div className="period-label">Current Pay Period</div>
-            {currentPeriod ? (
-              <div className="period-dates">{fmtDate(currentPeriod.start_date)} — {fmtDate(currentPeriod.end_date)}</div>
-            ) : (
-              <div className="period-label" style={{ color: "#8B8FA8" }}>No active period</div>
-            )}
+          {/* Desktop: period badge + refresh */}
+          <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+            <div className="period-badge topbar-period">
+              <div className="period-label">Current Pay Period</div>
+              {currentPeriod ? (
+                <div className="period-dates">{fmtDate(currentPeriod.start_date)} — {fmtDate(currentPeriod.end_date)}</div>
+              ) : (
+                <div className="period-label" style={{ color: "#8B8FA8" }}>No active period</div>
+              )}
+            </div>
+            <button onClick={() => window.location.reload()} title="Reload" style={{ display: "flex", alignItems: "center", justifyContent: "center", width: "34px", height: "34px", borderRadius: "8px", background: "none", border: "1px solid rgba(255,255,255,0.08)", color: "#8B8FA8", cursor: "pointer", flexShrink: 0, transition: "all 0.15s ease" }} onMouseEnter={e => { e.currentTarget.style.background = "rgba(108,99,255,0.1)"; e.currentTarget.style.color = "#6C63FF"; e.currentTarget.style.borderColor = "rgba(108,99,255,0.3)"; }} onMouseLeave={e => { e.currentTarget.style.background = "none"; e.currentTarget.style.color = "#8B8FA8"; e.currentTarget.style.borderColor = "rgba(255,255,255,0.08)"; }}>
+              <RefreshCw size={15} />
+            </button>
           </div>
         </div>
 
