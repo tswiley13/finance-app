@@ -4637,8 +4637,8 @@ function Dashboard() {
                           )}
                         </div>
 
-                        {/* Edit column */}
-                        <div style={{ display: "flex", justifyContent: "flex-end", flexShrink: 0 }}>
+                        {/* Edit + Delete column */}
+                        <div style={{ display: "flex", gap: "4px", justifyContent: "flex-end", flexShrink: 0 }}>
                           <button
                             onClick={() => {
                               if (editingBill?.id === bill.id) {
@@ -4664,6 +4664,29 @@ function Dashboard() {
                           >
                             {editingBill?.id === bill.id ? "Cancel" : "Edit"}
                           </button>
+                          {confirmDeleteBillId === bill.id ? (
+                            <>
+                              <button
+                                onClick={() => { deleteBill(bill.id); setConfirmDeleteBillId(null); setEditingBill(null); }}
+                                style={{ background: "none", border: "1px solid #F87171", color: "#F87171", padding: "4px 10px", borderRadius: "6px", cursor: "pointer", fontSize: "11px", fontFamily: "'Inter', sans-serif", whiteSpace: "nowrap" }}
+                              >
+                                Confirm
+                              </button>
+                              <button
+                                onClick={() => setConfirmDeleteBillId(null)}
+                                style={{ background: "none", border: "1px solid rgba(255,255,255,0.1)", color: "#8B8FA8", padding: "4px 10px", borderRadius: "6px", cursor: "pointer", fontSize: "11px", fontFamily: "'Inter', sans-serif", whiteSpace: "nowrap" }}
+                              >
+                                Cancel
+                              </button>
+                            </>
+                          ) : (
+                            <button
+                              onClick={() => setConfirmDeleteBillId(bill.id)}
+                              style={{ background: "none", border: "1px solid rgba(255,255,255,0.1)", color: "#F87171", padding: "4px 10px", borderRadius: "6px", cursor: "pointer", fontSize: "11px", fontFamily: "'Inter', sans-serif", whiteSpace: "nowrap" }}
+                            >
+                              Delete
+                            </button>
+                          )}
                         </div>
                       </div>
                     </div>
