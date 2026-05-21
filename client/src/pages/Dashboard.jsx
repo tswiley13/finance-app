@@ -1705,10 +1705,10 @@ function Dashboard() {
         })
         .reduce((sum, inc) => sum + (inc.fixed_amount || 0), 0);
 
-      // Bills remaining: sum unpaid bills from each pay period that starts in the current
-      // calendar month. For monthly bills, only count if the due date in the period's own
-      // start-month falls within the period (this correctly excludes June 1 bills that live
-      // inside the May 21-Jun 3 period). Biweekly bills count once per period they appear in.
+      // Bills remaining: unpaid, non-skipped bills due in the current calendar month.
+      // Only periods starting in the current month are considered. Monthly bills are only
+      // counted if their due date (in the period's start month) falls within the period —
+      // this correctly excludes e.g. June 1 bills inside the May 21–Jun 3 period.
       const monthBills = breakdown
         .filter((item) => {
           const pStart = new Date(item.period.start_date + "T00:00:00");
@@ -1717,7 +1717,10 @@ function Dashboard() {
         .reduce((sum, item) => {
           const pStart = new Date(item.period.start_date + "T00:00:00");
           const pEnd = new Date(item.period.end_date + "T23:59:59");
+          const periodKey = item.period.start_date;
           const calMonthBills = item.bills.filter((b) => {
+            if (skippedBillPeriods.has(`${b.id}-${periodKey}`)) return false;
+            if (isBillPaidInPeriod(b, pStart, pEnd)) return false;
             const freq = b.frequency || "monthly";
             if (freq === "biweekly" || freq === "payday") return true;
             if (freq === "quarterly" || freq === "annually") return false;
