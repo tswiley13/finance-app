@@ -1665,14 +1665,24 @@ function Dashboard() {
 
         const pStart = new Date(item.period.start_date + "T00:00:00");
         const pEnd = new Date(item.period.end_date + "T23:59:59");
-        const skippedTotal = item.bills
-          .filter(b => skippedBillPeriods.has(`${b.id}-${item.period.start_date}`))
+        const periodKey = item.period.start_date;
+
+        // Bills tile: remaining unpaid amounts, excluding skipped
+        const skippedUnpaidTotal = item.bills
+          .filter(b => skippedBillPeriods.has(`${b.id}-${periodKey}`))
           .reduce((sum, b) => {
             const paidAmt = isBillPaidInPeriod(b, pStart, pEnd) ? (b.paid_amount || 0) : 0;
             return sum + ((b.amount || 0) - paidAmt);
           }, 0);
-        const billsDeducted = item.billsTotal - skippedTotal;
-        const endBalance = startBalance + pendingIncome - billsDeducted;
+        const billsDeducted = item.billsTotal - skippedUnpaidTotal;
+
+        // End balance: all bills at full amount, excluding skipped only
+        // Marking a bill paid doesn't change the projection — the money is still spent
+        const billsForEndBalance = item.bills
+          .filter(b => !skippedBillPeriods.has(`${b.id}-${periodKey}`))
+          .reduce((sum, b) => sum + (b.amount || 0), 0);
+
+        const endBalance = startBalance + pendingIncome - billsForEndBalance;
         runningBalance = endBalance;
 
         return { ...item, startBalance, pendingIncome, billsDeducted, endBalance, isCurrent };
