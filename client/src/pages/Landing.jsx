@@ -127,8 +127,7 @@ function Landing() {
                 icon: "🏦",
                 title: "Real-Time Bank Balances",
                 desc: "Connect your accounts via Plaid and see live balances without logging into your bank.",
-                live: false,
-                badge: "Coming Soon",
+                live: true,
               },
               {
                 icon: "🤖",
