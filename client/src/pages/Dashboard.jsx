@@ -508,9 +508,12 @@ function Dashboard() {
 
         setLoading(false);
 
-        if (connected && sessionStorage.getItem("triggerPlaidSync")) {
-          sessionStorage.removeItem("triggerPlaidSync");
-          syncPlaidBalances(householdData.id);
+        if (connected) {
+          const lastSignIn = new Date(user.last_sign_in_at);
+          const secondsSinceLogin = (Date.now() - lastSignIn.getTime()) / 1000;
+          if (secondsSinceLogin < 60) {
+            syncPlaidBalances(householdData.id);
+          }
         }
       } catch (err) {
         console.log("Load error:", err.message);
