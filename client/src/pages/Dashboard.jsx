@@ -5192,47 +5192,37 @@ function Dashboard() {
                     const remaining = Math.max(0, suggestedAmount - transferred);
                     const done = transferred >= suggestedAmount;
 
+                    const undoTransfer = () => {
+                      setTransfers(prev => {
+                        const next = { ...prev };
+                        delete next[rowKey];
+                        try {
+                          const today = localDateStr();
+                          const currentPeriod = payPeriods.find(p => p.start_date <= today && p.end_date >= today);
+                          const periodKey = currentPeriod?.start_date || today;
+                          localStorage.setItem("wtmgTransfers", JSON.stringify({ periodKey, data: next }));
+                        } catch {}
+                        return next;
+                      });
+                    };
+
                     return (
                       <div key={rowKey} style={{ borderBottom: "1px solid rgba(255,255,255,0.04)", padding: "10px 0" }}>
+                        {/* Main row */}
                         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                           <div>
                             <div className="row-name" style={{ color: done ? "#4ADE80" : "#F0F6FC" }}>
                               {done ? "✓ " : ""}{label}
                             </div>
                             {subtitle && <div className="row-sub">{subtitle}</div>}
-                            {transferred > 0 && !done && (
-                              <div style={{ display: "flex", alignItems: "center", gap: "8px", marginTop: "2px" }}>
-                                <div style={{ fontSize: "10px", color: "#6C63FF" }}>
-                                  ${fmt(transferred)} transferred · ${fmt(remaining)} remaining
-                                </div>
-                                <button
-                                  onClick={() => {
-                                    setTransfers(prev => {
-                                      const next = { ...prev };
-                                      delete next[rowKey];
-                                      try {
-                                        const today = localDateStr();
-                                        const currentPeriod = payPeriods.find(p => p.start_date <= today && p.end_date >= today);
-                                        const periodKey = currentPeriod?.start_date || today;
-                                        localStorage.setItem("wtmgTransfers", JSON.stringify({ periodKey, data: next }));
-                                      } catch {}
-                                      return next;
-                                    });
-                                  }}
-                                  style={{ background: "none", border: "none", color: "#8B8FA8", cursor: "pointer", fontSize: "10px", fontFamily: "'Inter', sans-serif", padding: 0, textDecoration: "underline" }}
-                                >
-                                  Undo
-                                </button>
-                              </div>
-                            )}
                           </div>
-                          <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
                             {!done && (
                               <div style={{ textAlign: "right" }}>
-                                <div className="row-amount" style={{ color: remaining < suggestedAmount ? "#6C63FF" : "#F0F6FC" }}>
+                                <div className="row-amount" style={{ color: transferred > 0 ? "#6C63FF" : "#F0F6FC" }}>
                                   ${fmt(remaining)}
                                 </div>
-                                <div style={{ fontSize: "10px", color: "#8B8FA8" }}>this paycheck</div>
+                                <div style={{ fontSize: "10px", color: "#8B8FA8" }}>remaining</div>
                               </div>
                             )}
                             {!done && transferringId === rowKey ? (
@@ -5279,19 +5269,7 @@ function Dashboard() {
                               </div>
                             ) : done ? (
                               <button
-                                onClick={() => {
-                                  setTransfers(prev => {
-                                    const next = { ...prev };
-                                    delete next[rowKey];
-                                    try {
-                                      const today = localDateStr();
-                                      const currentPeriod = payPeriods.find(p => p.start_date <= today && p.end_date >= today);
-                                      const periodKey = currentPeriod?.start_date || today;
-                                      localStorage.setItem("wtmgTransfers", JSON.stringify({ periodKey, data: next }));
-                                    } catch {}
-                                    return next;
-                                  });
-                                }}
+                                onClick={undoTransfer}
                                 style={{ background: "none", border: "1px solid rgba(255,255,255,0.1)", color: "#8B8FA8", padding: "4px 10px", borderRadius: "6px", cursor: "pointer", fontSize: "11px", fontFamily: "'Inter', sans-serif" }}
                               >
                                 Undo
@@ -5299,6 +5277,20 @@ function Dashboard() {
                             ) : null}
                           </div>
                         </div>
+                        {/* Partial transfer info row */}
+                        {transferred > 0 && !done && (
+                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "6px" }}>
+                            <div style={{ fontSize: "10px", color: "#6C63FF" }}>
+                              ${fmt(transferred)} transferred so far
+                            </div>
+                            <button
+                              onClick={undoTransfer}
+                              style={{ background: "none", border: "none", color: "#8B8FA8", cursor: "pointer", fontSize: "10px", fontFamily: "'Inter', sans-serif", padding: 0, textDecoration: "underline" }}
+                            >
+                              Undo
+                            </button>
+                          </div>
+                        )}
                       </div>
                     );
                   };
