@@ -348,6 +348,7 @@ function Dashboard() {
   const [userId, setUserId] = useState("");
   const [plaidConnected, setPlaidConnected] = useState(false);
   const [plaidSyncing, setPlaidSyncing] = useState(false);
+  const [plaidReconnectNeeded, setPlaidReconnectNeeded] = useState(false);
   const [plaidLastSynced, setPlaidLastSynced] = useState(() => {
     try {
       const saved = localStorage.getItem("plaidLastSynced");
@@ -409,6 +410,13 @@ function Dashboard() {
       console.log("[Plaid] Edge function response:", data, "error:", fnError);
       if (fnError) {
         console.error("[Plaid] Edge function error:", fnError);
+      }
+      // Check if bank login has expired
+      const loginRequired = data?.debug?.some(d => d.plaid_error === "ITEM_LOGIN_REQUIRED");
+      if (loginRequired) {
+        setPlaidReconnectNeeded(true);
+      } else if (data?.synced > 0) {
+        setPlaidReconnectNeeded(false);
       }
       const { data: refreshed, error: dbError } = await supabase.from("accounts").select("*").eq("household_id", householdId);
       console.log("[Plaid] Refreshed accounts from DB:", refreshed, "db error:", dbError);
@@ -3912,9 +3920,19 @@ function Dashboard() {
             )}
           </div>
 
-          <div style={{ display: "flex", justifyContent: "flex-end", marginTop: "12px" }}>
-            <PlaidConnectButton userId={userId} onSuccess={() => { if (household?.id) syncPlaidBalances(household.id); }} />
-          </div>
+          {plaidReconnectNeeded && (
+            <div style={{ marginTop: "12px", padding: "10px 12px", background: "rgba(251,191,36,0.08)", border: "1px solid rgba(251,191,36,0.3)", borderRadius: "8px" }}>
+              <div style={{ fontSize: "12px", color: "#FBBF24", marginBottom: "8px", fontFamily: "'Inter', sans-serif" }}>
+                ⚠️ Your bank connection has expired. Please reconnect to resume syncing.
+              </div>
+              <PlaidConnectButton userId={userId} onSuccess={() => { setPlaidReconnectNeeded(false); if (household?.id) syncPlaidBalances(household.id); }} />
+            </div>
+          )}
+          {!plaidConnected && !plaidReconnectNeeded && (
+            <div style={{ display: "flex", justifyContent: "flex-end", marginTop: "12px" }}>
+              <PlaidConnectButton userId={userId} onSuccess={() => { if (household?.id) syncPlaidBalances(household.id); }} />
+            </div>
+          )}
         </div>
       );
     }
@@ -5097,7 +5115,15 @@ function Dashboard() {
                     </div>
                   ))
                 )}
-                {!plaidConnected && (
+                {plaidReconnectNeeded && (
+                  <div style={{ marginTop: "12px", paddingTop: "12px", borderTop: "1px solid rgba(255,255,255,0.04)" }}>
+                    <div style={{ fontSize: "12px", color: "#FBBF24", marginBottom: "8px", fontFamily: "'Inter', sans-serif" }}>
+                      ⚠️ Your bank connection has expired. Please reconnect to resume syncing.
+                    </div>
+                    <PlaidConnectButton userId={userId} onSuccess={() => { setPlaidReconnectNeeded(false); if (household?.id) syncPlaidBalances(household.id); }} />
+                  </div>
+                )}
+                {!plaidConnected && !plaidReconnectNeeded && (
                   <div style={{ marginTop: "12px", paddingTop: "12px", borderTop: "1px solid rgba(255,255,255,0.04)" }}>
                     <PlaidConnectButton userId={userId} onSuccess={() => { setPlaidConnected(true); if (household?.id) syncPlaidBalances(household.id); }} />
                   </div>
