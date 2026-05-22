@@ -72,7 +72,7 @@ const css = `
   .stat-amount.neutral { color: #4ADE80; }
   .stat-amount.negative { color: #F87171; }
 
-  .dashboard-grid { display: grid; grid-template-columns: calc((100% - 24px) / 3 * 2 + 12px) calc((100% - 24px) / 3); gap: 12px; align-items: start; width: 100%; }
+  .dashboard-grid { display: grid; grid-template-columns: 58% 40%; gap: 12px; align-items: start; width: 100%; }
   .dashboard-left { display: flex; flex-direction: column; gap: 12px; }
   .dashboard-right { display: flex; flex-direction: column; gap: 12px; }
 
