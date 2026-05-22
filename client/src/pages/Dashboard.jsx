@@ -5613,11 +5613,13 @@ function Dashboard() {
                                     <button
                                       onClick={async (e) => {
                                         e.stopPropagation();
-                                        const acct = accounts.find((a) => a.id === c.accountId);
-                                        if (acct) {
-                                          const newBalance = (acct.current_balance || 0) + c.amount;
-                                          await supabase.from("accounts").update({ current_balance: newBalance }).eq("id", c.accountId);
-                                          setAccounts((prev) => prev.map((a) => a.id === c.accountId ? { ...a, current_balance: newBalance } : a));
+                                        if (!plaidConnected) {
+                                          const acct = accounts.find((a) => a.id === c.accountId);
+                                          if (acct) {
+                                            const newBalance = (acct.current_balance || 0) + c.amount;
+                                            await supabase.from("accounts").update({ current_balance: newBalance }).eq("id", c.accountId);
+                                            setAccounts((prev) => prev.map((a) => a.id === c.accountId ? { ...a, current_balance: newBalance } : a));
+                                          }
                                         }
                                         setSetAsideDone((prev) => ({ ...prev, [saKey]: true }));
                                       }}
