@@ -402,16 +402,22 @@ function Dashboard() {
   async function syncPlaidBalances(householdId) {
     setPlaidSyncing(true);
     try {
-      const { data } = await supabase.functions.invoke("plaid-sync-balances", {
+      console.log("[Plaid] Invoking sync for household:", householdId);
+      const { data, error: fnError } = await supabase.functions.invoke("plaid-sync-balances", {
         body: { household_id: householdId },
       });
-      const { data: refreshed } = await supabase.from("accounts").select("*").eq("household_id", householdId);
+      console.log("[Plaid] Edge function response:", data, "error:", fnError);
+      if (fnError) {
+        console.error("[Plaid] Edge function error:", fnError);
+      }
+      const { data: refreshed, error: dbError } = await supabase.from("accounts").select("*").eq("household_id", householdId);
+      console.log("[Plaid] Refreshed accounts from DB:", refreshed, "db error:", dbError);
       if (refreshed) setAccounts(refreshed);
       const syncedAt = new Date();
       localStorage.setItem("plaidLastSynced", syncedAt.toISOString());
       setPlaidLastSynced(syncedAt);
     } catch (err) {
-      console.error("Plaid sync error:", err);
+      console.error("[Plaid] Sync threw:", err);
     }
     setPlaidSyncing(false);
   }
@@ -1213,26 +1219,9 @@ function Dashboard() {
     setAccounts(accounts.filter((a) => a.id !== accountId));
   }
 
-  async function confirmTransfer(rowKey, amount, targetAccountId = null) {
+  function confirmTransfer(rowKey, amount, targetAccountId = null) {
     const parsed = parseFloat(amount);
     if (!parsed || parsed <= 0) return;
-
-    const accountId = targetAccountId || rowKey;
-    const account = accounts.find((a) => a.id === accountId);
-    if (!account) return;
-
-    const newBalance = (account.current_balance || 0) + parsed;
-
-    const { error } = await supabase
-      .from("accounts")
-      .update({ current_balance: newBalance })
-      .eq("id", accountId);
-
-    if (error) { console.log("Error:", error.message); return; }
-
-    setAccounts(accounts.map((a) =>
-      a.id === accountId ? { ...a, current_balance: newBalance } : a
-    ));
 
     setTransfers((prev) => {
       const next = { ...prev, [rowKey]: (prev[rowKey] || 0) + parsed };
@@ -3332,21 +3321,27 @@ function Dashboard() {
                   <option value="checking">Checking</option>
                   <option value="savings">Savings</option>
                 </select>
-                <input
-                  type="number"
-                  placeholder="Current balance"
-                  value={currentBalance}
-                  onChange={(e) => setCurrentBalance(e.target.value)}
-                  style={{
-                    background: "rgba(255,255,255,0.06)",
-                    border: "1px solid rgba(255,255,255,0.1)",
-                    color: "#F2F0EB",
-                    padding: "8px 12px",
-                    borderRadius: "6px",
-                    fontSize: "13px",
-                    fontFamily: "'Inter', sans-serif",
-                  }}
-                />
+                {plaidConnected ? (
+                  <div style={{ fontSize: "12px", color: "#6C63FF", padding: "8px 0", fontFamily: "'Inter', sans-serif" }}>
+                    Balance will be set automatically by Plaid on next sync.
+                  </div>
+                ) : (
+                  <input
+                    type="number"
+                    placeholder="Current balance"
+                    value={currentBalance}
+                    onChange={(e) => setCurrentBalance(e.target.value)}
+                    style={{
+                      background: "rgba(255,255,255,0.06)",
+                      border: "1px solid rgba(255,255,255,0.1)",
+                      color: "#F2F0EB",
+                      padding: "8px 12px",
+                      borderRadius: "6px",
+                      fontSize: "13px",
+                      fontFamily: "'Inter', sans-serif",
+                    }}
+                  />
+                )}
                 <div
                   style={{ display: "flex", alignItems: "center", gap: "8px" }}
                 >
@@ -3552,7 +3547,7 @@ function Dashboard() {
                         gap: "8px",
                       }}
                     >
-                      {quickEditAccountId === acct.id ? (
+                      {!plaidConnected && quickEditAccountId === acct.id ? (
                         <input
                           type="number"
                           value={quickEditBalance}
@@ -3575,16 +3570,22 @@ function Dashboard() {
                           }}
                         />
                       ) : (
-                        <div
-                          className="row-amount"
-                          onClick={() => {
-                            setQuickEditAccountId(acct.id);
-                            setQuickEditBalance(acct.current_balance ?? "");
-                          }}
-                          style={{ cursor: "pointer" }}
-                          title="Click to edit"
-                        >
-                          ${fmt(acct.current_balance)}
+                        <div style={{ textAlign: "right" }}>
+                          <div
+                            className="row-amount"
+                            onClick={() => {
+                              if (plaidConnected) return;
+                              setQuickEditAccountId(acct.id);
+                              setQuickEditBalance(acct.current_balance ?? "");
+                            }}
+                            style={{ cursor: plaidConnected ? "default" : "pointer" }}
+                            title={plaidConnected ? "" : "Click to edit"}
+                          >
+                            ${fmt(acct.current_balance)}
+                          </div>
+                          {plaidConnected && (
+                            <div style={{ fontSize: "10px", color: "#6C63FF", marginTop: "2px" }}>via Plaid</div>
+                          )}
                         </div>
                       )}
                       <button
@@ -3746,7 +3747,12 @@ function Dashboard() {
                           <option value="checking">Checking</option>
                           <option value="savings">Savings</option>
                         </select>
-                        <input
+                        {plaidConnected && (
+                          <div style={{ fontSize: "12px", color: "#6C63FF", padding: "8px 0", fontFamily: "'Inter', sans-serif" }}>
+                            Balance is managed by Plaid — sync to update.
+                          </div>
+                        )}
+                        {!plaidConnected && <input
                           type="number"
                           placeholder="Current balance"
                           value={currentBalance}
@@ -3760,7 +3766,7 @@ function Dashboard() {
                             fontSize: "13px",
                             fontFamily: "'Inter', sans-serif",
                           }}
-                        />
+                        />}
                         <input
                           type="number"
                           placeholder="Minimum buffer (e.g. 100)"
@@ -5043,7 +5049,7 @@ function Dashboard() {
                           )}
                       </div>
 
-                      {quickEditAccountId === acct.id ? (
+                      {!plaidConnected && quickEditAccountId === acct.id ? (
                         <input
                           type="number"
                           value={quickEditBalance}
@@ -5070,16 +5076,22 @@ function Dashboard() {
                           }}
                         />
                       ) : (
-                        <div
-                          className="row-amount"
-                          onClick={() => {
-                            setQuickEditAccountId(acct.id);
-                            setQuickEditBalance(acct.current_balance ?? "");
-                          }}
-                          style={{ cursor: "pointer" }}
-                          title="Click to edit"
-                        >
-                          ${fmt(acct.current_balance)}
+                        <div style={{ textAlign: "right" }}>
+                          <div
+                            className="row-amount"
+                            onClick={() => {
+                              if (plaidConnected) return;
+                              setQuickEditAccountId(acct.id);
+                              setQuickEditBalance(acct.current_balance ?? "");
+                            }}
+                            style={{ cursor: plaidConnected ? "default" : "pointer" }}
+                            title={plaidConnected ? "" : "Click to edit"}
+                          >
+                            ${fmt(acct.current_balance)}
+                          </div>
+                          {plaidConnected && (
+                            <div style={{ fontSize: "10px", color: "#6C63FF", marginTop: "2px" }}>via Plaid</div>
+                          )}
                         </div>
                       )}
                     </div>
@@ -5194,14 +5206,7 @@ function Dashboard() {
                                   ${fmt(transferred)} transferred · ${fmt(remaining)} remaining
                                 </div>
                                 <button
-                                  onClick={async () => {
-                                    const accountId = targetAccountId || rowKey;
-                                    const account = accounts.find(a => a.id === accountId);
-                                    if (account) {
-                                      const newBalance = (account.current_balance || 0) - transferred;
-                                      await supabase.from("accounts").update({ current_balance: newBalance }).eq("id", accountId);
-                                      setAccounts(prev => prev.map(a => a.id === accountId ? { ...a, current_balance: newBalance } : a));
-                                    }
+                                  onClick={() => {
                                     setTransfers(prev => {
                                       const next = { ...prev };
                                       delete next[rowKey];
@@ -5274,14 +5279,7 @@ function Dashboard() {
                               </div>
                             ) : done ? (
                               <button
-                                onClick={async () => {
-                                  const accountId = targetAccountId || rowKey;
-                                  const account = accounts.find(a => a.id === accountId);
-                                  if (account) {
-                                    const newBalance = (account.current_balance || 0) - transferred;
-                                    await supabase.from("accounts").update({ current_balance: newBalance }).eq("id", accountId);
-                                    setAccounts(prev => prev.map(a => a.id === accountId ? { ...a, current_balance: newBalance } : a));
-                                  }
+                                onClick={() => {
                                   setTransfers(prev => {
                                     const next = { ...prev };
                                     delete next[rowKey];
