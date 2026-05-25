@@ -411,12 +411,13 @@ function Dashboard() {
       if (fnError) {
         console.error("[Plaid] Edge function error:", fnError);
       }
-      // Check if bank login has expired
-      const loginRequired = data?.debug?.some(d => d.plaid_error === "ITEM_LOGIN_REQUIRED");
-      if (loginRequired) {
+      // Check if bank login has expired (only show warning if token was deleted and nothing synced)
+      if (data?.loginRequired) {
         setPlaidReconnectNeeded(true);
+        setPlaidConnected(false);
       } else if (data?.synced > 0) {
         setPlaidReconnectNeeded(false);
+        setPlaidConnected(true);
       }
       const { data: refreshed, error: dbError } = await supabase.from("accounts").select("*").eq("household_id", householdId);
       console.log("[Plaid] Refreshed accounts from DB:", refreshed, "db error:", dbError);
