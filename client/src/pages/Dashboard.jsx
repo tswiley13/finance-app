@@ -873,7 +873,7 @@ function Dashboard() {
         return end >= today;
       })
       .sort((a, b) => new Date(a.start_date) - new Date(b.start_date))
-      .slice(0, 4);
+      .slice(0, 6);
 
     // Pre-compute per-period contributions from accumulating accounts with a due_day
     const allContributions = [];
