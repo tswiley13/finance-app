@@ -157,7 +157,7 @@ function PlaidLinkOpener({ token, onSuccess, onExit }) {
   return null;
 }
 
-function PlaidConnectButton({ userId, onSuccess }) {
+function PlaidConnectButton({ userId, onSuccess, updateMode = false }) {
   const [linkToken, setLinkToken] = useState(null);
   const [fetching, setFetching] = useState(false);
   const [plaidError, setPlaidError] = useState(null);
@@ -167,7 +167,7 @@ function PlaidConnectButton({ userId, onSuccess }) {
     setPlaidError(null);
     try {
       const { data, error } = await supabase.functions.invoke("plaid-create-link-token", {
-        body: { user_id: userId },
+        body: { user_id: userId, update_mode: updateMode },
       });
       if (error) throw error;
       if (data?.link_token) {
@@ -183,13 +183,17 @@ function PlaidConnectButton({ userId, onSuccess }) {
   }
 
   async function handleSuccess(public_token, metadata) {
-    await supabase.functions.invoke("plaid-exchange-token", {
-      body: {
-        public_token,
-        institution_name: metadata.institution?.name,
-        accounts: metadata.accounts,
-      },
-    });
+    if (!updateMode) {
+      // Full connect — exchange for a new access token
+      await supabase.functions.invoke("plaid-exchange-token", {
+        body: {
+          public_token,
+          institution_name: metadata.institution?.name,
+          accounts: metadata.accounts,
+        },
+      });
+    }
+    // Update mode — existing token is now reactivated, just sync
     setLinkToken(null);
     setFetching(false);
     onSuccess();
@@ -210,8 +214,8 @@ function PlaidConnectButton({ userId, onSuccess }) {
         disabled={fetching}
         style={{
           background: fetching ? "#2D2B45" : "none",
-          border: "1px solid rgba(108,99,255,0.5)",
-          color: "#6C63FF",
+          border: `1px solid ${updateMode ? "rgba(251,191,36,0.5)" : "rgba(108,99,255,0.5)"}`,
+          color: updateMode ? "#FBBF24" : "#6C63FF",
           padding: "8px 16px",
           borderRadius: "8px",
           cursor: fetching ? "not-allowed" : "pointer",
@@ -220,7 +224,7 @@ function PlaidConnectButton({ userId, onSuccess }) {
           fontFamily: "'Inter', sans-serif",
         }}
       >
-        {fetching ? "Connecting..." : "+ Connect Bank"}
+        {fetching ? "Connecting..." : updateMode ? "Reconnect Bank" : "+ Connect Bank"}
       </button>
       {plaidError && (
         <div style={{ fontSize: "12px", color: "#F87171", marginTop: "8px", maxWidth: "260px", wordBreak: "break-word" }}>
@@ -3926,7 +3930,7 @@ function Dashboard() {
               <div style={{ fontSize: "12px", color: "#FBBF24", marginBottom: "8px", fontFamily: "'Inter', sans-serif" }}>
                 ⚠️ Your bank connection has expired. Please reconnect to resume syncing.
               </div>
-              <PlaidConnectButton userId={userId} onSuccess={() => { setPlaidReconnectNeeded(false); if (household?.id) syncPlaidBalances(household.id); }} />
+              <PlaidConnectButton userId={userId} updateMode={true} onSuccess={() => { setPlaidReconnectNeeded(false); setPlaidConnected(true); if (household?.id) syncPlaidBalances(household.id); }} />
             </div>
           )}
           {!plaidConnected && !plaidReconnectNeeded && (
@@ -5121,7 +5125,7 @@ function Dashboard() {
                     <div style={{ fontSize: "12px", color: "#FBBF24", marginBottom: "8px", fontFamily: "'Inter', sans-serif" }}>
                       ⚠️ Your bank connection has expired. Please reconnect to resume syncing.
                     </div>
-                    <PlaidConnectButton userId={userId} onSuccess={() => { setPlaidReconnectNeeded(false); if (household?.id) syncPlaidBalances(household.id); }} />
+                    <PlaidConnectButton userId={userId} updateMode={true} onSuccess={() => { setPlaidReconnectNeeded(false); setPlaidConnected(true); if (household?.id) syncPlaidBalances(household.id); }} />
                   </div>
                 )}
                 {!plaidConnected && !plaidReconnectNeeded && (
