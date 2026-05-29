@@ -353,6 +353,7 @@ function Dashboard() {
   const [plaidConnected, setPlaidConnected] = useState(false);
   const [plaidSyncing, setPlaidSyncing] = useState(false);
   const [plaidReconnectNeeded, setPlaidReconnectNeeded] = useState(false);
+  const [earlyPayments, setEarlyPayments] = useState(new Set());
   const [plaidLastSynced, setPlaidLastSynced] = useState(() => {
     try {
       const saved = localStorage.getItem("plaidLastSynced");
@@ -533,6 +534,14 @@ function Dashboard() {
           .eq("user_id", user.id);
         if (skipRows) {
           setSkippedBillPeriods(new Set(skipRows.map(r => `${r.bill_id}-${r.period_start}`)));
+        }
+
+        const { data: earlyRows } = await supabase
+          .from("income_early_payments")
+          .select("income_id, period_start")
+          .eq("user_id", user.id);
+        if (earlyRows) {
+          setEarlyPayments(new Set(earlyRows.map(r => `${r.income_id}-${r.period_start}`)));
         }
 
         setLoading(false);
@@ -833,6 +842,30 @@ function Dashboard() {
       .eq("period_start", periodKey);
     if (error) return;
     setSkippedBillPeriods(prev => { const n = new Set(prev); n.delete(key); return n; });
+  }
+
+  async function markIncomeReceived(incomeId, periodStart) {
+    const key = `${incomeId}-${periodStart}`;
+    const today = localDateStr();
+    const { error } = await supabase.from("income_early_payments").insert({
+      user_id: userId,
+      income_id: incomeId,
+      period_start: periodStart,
+      received_date: today,
+    });
+    if (error && error.code !== "23505") return;
+    setEarlyPayments(prev => new Set([...prev, key]));
+  }
+
+  async function unmarkIncomeReceived(incomeId, periodStart) {
+    const key = `${incomeId}-${periodStart}`;
+    const { error } = await supabase.from("income_early_payments")
+      .delete()
+      .eq("user_id", userId)
+      .eq("income_id", incomeId)
+      .eq("period_start", periodStart);
+    if (error) return;
+    setEarlyPayments(prev => { const n = new Set(prev); n.delete(key); return n; });
   }
 
   function getRemainingIncomeThisMonth() {
@@ -1713,7 +1746,10 @@ function Dashboard() {
         // Future periods: full income + all bills chain normally.
         const pendingIncome = isCurrent
           ? item.incomeItems
-              .filter((inc) => inc.actualPayDate && new Date(inc.actualPayDate + "T12:00:00") > today)
+              .filter((inc) => {
+                if (earlyPayments.has(`${inc.id}-${item.period.start_date}`)) return false;
+                return inc.actualPayDate && new Date(inc.actualPayDate + "T12:00:00") > today;
+              })
               .reduce((sum, inc) => sum + (inc.fixed_amount || 0), 0)
           : item.income;
 
@@ -1879,6 +1915,41 @@ function Dashboard() {
                         </div>
                       </div>
                     </div>
+
+                    {/* Income list — show in current period with Mark Received for future items */}
+                    {item.isCurrent && item.incomeItems.length > 0 && (
+                      <div style={{ marginTop: "12px", borderTop: "1px solid rgba(255,255,255,0.05)", paddingTop: "12px" }}>
+                        <div style={{ fontSize: "9px", color: "#8B8FA8", letterSpacing: "0.12em", textTransform: "uppercase", fontWeight: "600", marginBottom: "8px" }}>Income</div>
+                        {item.incomeItems.map((inc, j) => {
+                          const periodKey = item.period.start_date;
+                          const epKey = `${inc.id}-${periodKey}`;
+                          const isEarlyReceived = earlyPayments.has(epKey);
+                          const isFuture = inc.actualPayDate && new Date(inc.actualPayDate + "T12:00:00") > new Date();
+                          const isLast = j === item.incomeItems.length - 1;
+                          return (
+                            <div key={inc.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "6px 0", borderBottom: isLast ? "none" : "1px solid rgba(255,255,255,0.04)" }}>
+                              <div>
+                                <div style={{ fontSize: "13px", color: isEarlyReceived ? "#4ADE80" : "#F0F6FC", fontWeight: "500" }}>
+                                  {isEarlyReceived ? "✓ " : ""}{inc.name}
+                                </div>
+                                <div style={{ fontSize: "11px", color: "#8B8FA8", marginTop: "2px" }}>
+                                  {inc.actualPayDate ? fmtDate(inc.actualPayDate) : ""}
+                                  {isEarlyReceived ? " · Received early" : ""}
+                                </div>
+                              </div>
+                              <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                                <span style={{ fontFamily: "'DM Mono', monospace", fontSize: "13px", color: isEarlyReceived ? "#4ADE80" : "#8B8FA8" }}>+${fmt(inc.fixed_amount || 0)}</span>
+                                {isEarlyReceived ? (
+                                  <button onClick={() => unmarkIncomeReceived(inc.id, periodKey)} style={{ background: "none", border: "none", color: "#8B8FA8", cursor: "pointer", fontSize: "10px", fontFamily: "'Inter', sans-serif", padding: 0, textDecoration: "underline" }}>Undo</button>
+                                ) : isFuture ? (
+                                  <button onClick={() => markIncomeReceived(inc.id, periodKey)} style={{ background: "rgba(74,222,128,0.1)", border: "1px solid rgba(74,222,128,0.3)", color: "#4ADE80", padding: "3px 10px", borderRadius: "5px", cursor: "pointer", fontSize: "11px", fontFamily: "'Inter', sans-serif", fontWeight: "500" }}>Got Paid</button>
+                                ) : null}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
 
                     {/* Bill list */}
                     {item.bills.length > 0 && (() => {
@@ -5162,6 +5233,7 @@ function Dashboard() {
                   // If no future income, show all remaining bills (last paycheck of the period).
                   const wtmgToday = new Date();
                   const nextIncomeDate = currentBreakdown?.incomeItems
+                    .filter(inc => !earlyPayments.has(`${inc.id}-${wtmgPeriodKey}`))
                     .map(inc => inc.actualPayDate ? new Date(inc.actualPayDate + "T00:00:00") : null)
                     .filter(d => d && d > wtmgToday)
                     .sort((a, b) => a - b)[0] || null;
