@@ -1767,10 +1767,21 @@ function Dashboard() {
         const billsDeducted = item.billsTotal - skippedUnpaidTotal;
 
         // End balance:
-        // Current period — bank balance already reflects paid bills, so only subtract what's still unpaid
-        // Future periods — full projection at face value regardless of paid status
+        // Current period — primary balance already reflects transfers made to bill accounts.
+        // Only subtract bills assigned directly to the primary account that are still unpaid.
+        // Bills assigned to other accounts (e.g. Wiley Bills) have already been funded via transfers.
+        // Future periods — full projection at face value regardless of paid status.
+        const primaryAccountIds = new Set(
+          accounts.filter(a => a.is_primary && !a.is_accumulating).map(a => a.id)
+        );
         const billsForEndBalance = isCurrent
-          ? billsDeducted
+          ? item.bills
+              .filter(b => {
+                if (skippedBillPeriods.has(`${b.id}-${periodKey}`)) return false;
+                if (isBillPaidInPeriod(b, pStart, pEnd)) return false;
+                return primaryAccountIds.has(b.account_id);
+              })
+              .reduce((sum, b) => sum + (b.amount || 0), 0)
           : item.bills
               .filter(b => !skippedBillPeriods.has(`${b.id}-${periodKey}`))
               .reduce((sum, b) => sum + (b.amount || 0), 0);
