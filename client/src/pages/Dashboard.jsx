@@ -1928,7 +1928,7 @@ function Dashboard() {
                     </div>
 
                     {/* Income list — show in current period with Mark Received for future items */}
-                    {item.isCurrent && item.incomeItems.length > 0 && (
+                    {item.incomeItems.length > 0 && (
                       <div style={{ marginTop: "12px", borderTop: "1px solid rgba(255,255,255,0.05)", paddingTop: "12px" }}>
                         <div style={{ fontSize: "9px", color: "#8B8FA8", letterSpacing: "0.12em", textTransform: "uppercase", fontWeight: "600", marginBottom: "8px" }}>Income</div>
                         {item.incomeItems.map((inc, j) => {
