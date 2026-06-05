@@ -1660,18 +1660,28 @@ function Dashboard() {
     today.setHours(0, 0, 0, 0);
 
     const allDates = [];
+    const endOfYear = new Date(today.getFullYear(), 11, 31, 23, 59, 59);
+    const lookbackDays = 60; // include ~2 months of past periods
+
     paychecks.forEach((inc) => {
       const baseDate = new Date(inc.next_pay_date + "T12:00:00");
       const interval = inc.frequency === "weekly" ? 7 : 14;
-      const daysUntilNext = Math.ceil((baseDate - today) / (1000 * 60 * 60 * 24));
-      const periodsBack = Math.ceil(daysUntilNext / interval) + 1;
-      const startOffset = -periodsBack;
-      const endOfYear = new Date(today.getFullYear(), 11, 31); // Dec 31 of current year
-      for (let i = startOffset; ; i++) {
-        const date = new Date(baseDate);
-        date.setDate(baseDate.getDate() + i * interval);
-        if (date > endOfYear) break;
-        allDates.push(date);
+
+      // Walk backwards from baseDate to find earliest date within lookback window
+      const current = new Date(baseDate);
+      while (current > today) {
+        current.setDate(current.getDate() - interval);
+      }
+      while (current > new Date(today.getTime() - lookbackDays * 86400000)) {
+        current.setDate(current.getDate() - interval);
+      }
+      current.setDate(current.getDate() + interval); // step forward once to be in range
+
+      // Walk forward from there through end of year
+      const cursor = new Date(current);
+      while (cursor <= endOfYear) {
+        allDates.push(new Date(cursor));
+        cursor.setDate(cursor.getDate() + interval);
       }
     });
 
