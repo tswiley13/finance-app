@@ -1761,7 +1761,9 @@ function Dashboard() {
           else due = dueInPrev(bill.due_day);
           if (!due) return false;
           if (skippedBillPeriods.has(`${bill.id}-${prevKey}`)) return false;
-          if (isBillPaidInPeriod(bill, prevStart, prevEnd)) return false;
+          // Consider paid if marked paid any time on or after the previous period started
+          // (handles bills cleared after the period rolled over)
+          if (bill.paid_date && new Date(bill.paid_date + "T12:00:00") >= prevStart) return false;
           return true;
         });
       }
@@ -1961,9 +1963,22 @@ function Dashboard() {
                         <div style={{ fontSize: "9px", color: "#8B8FA8", letterSpacing: "0.1em", textTransform: "uppercase", fontWeight: "600", marginBottom: "4px" }}>
                           Bills
                         </div>
-                        <div style={{ fontFamily: "'DM Mono', monospace", fontSize: "14px", color: item.billsDeducted > 0 ? "#F87171" : "#8B8FA8" }}>
-                          {item.billsDeducted > 0 ? `$${fmt(item.billsDeducted)}` : "—"}
-                        </div>
+                        {(() => {
+                          const carryTotal = item.isCurrent ? carryOverBills.reduce((s, b) => s + (b.amount || 0), 0) : 0;
+                          const total = item.billsDeducted + carryTotal;
+                          return (
+                            <>
+                              <div style={{ fontFamily: "'DM Mono', monospace", fontSize: "14px", color: total > 0 ? "#F87171" : "#8B8FA8" }}>
+                                {total > 0 ? `$${fmt(total)}` : "—"}
+                              </div>
+                              {carryTotal > 0 && (
+                                <div style={{ fontSize: "9px", color: "#FBBF24", marginTop: "3px" }}>
+                                  incl. ${fmt(carryTotal)} carried
+                                </div>
+                              )}
+                            </>
+                          );
+                        })()}
                       </div>
                     </div>
 
