@@ -1840,7 +1840,17 @@ function Dashboard() {
 
       return (
         <div className="content-area">
-          <h2 style={{ fontFamily: "'Syne', sans-serif", fontSize: "24px", marginBottom: "20px" }}>Monthly Projection</h2>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "20px" }}>
+            <h2 style={{ fontFamily: "'Syne', sans-serif", fontSize: "24px", margin: 0 }}>Monthly Projection</h2>
+            <button
+              className="mobile-only"
+              onClick={() => window.location.reload()}
+              title="Reload"
+              style={{ display: "flex", alignItems: "center", justifyContent: "center", width: "34px", height: "34px", borderRadius: "8px", background: "none", border: "1px solid rgba(255,255,255,0.08)", color: "#8B8FA8", cursor: "pointer", flexShrink: 0 }}
+            >
+              <RefreshCw size={15} />
+            </button>
+          </div>
 
           {/* Monthly summary */}
           <div className="stat-row-4">
@@ -5946,7 +5956,7 @@ function Dashboard() {
                 <div className="period-label" style={{ color: "#8B8FA8" }}>No active period</div>
               )}
             </div>
-            <button onClick={() => window.location.reload()} title="Reload" style={{ display: "flex", alignItems: "center", justifyContent: "center", width: "34px", height: "34px", borderRadius: "8px", background: "none", border: "1px solid rgba(255,255,255,0.08)", color: "#8B8FA8", cursor: "pointer", flexShrink: 0, transition: "all 0.15s ease" }} onMouseEnter={e => { e.currentTarget.style.background = "rgba(108,99,255,0.1)"; e.currentTarget.style.color = "#6C63FF"; e.currentTarget.style.borderColor = "rgba(108,99,255,0.3)"; }} onMouseLeave={e => { e.currentTarget.style.background = "none"; e.currentTarget.style.color = "#8B8FA8"; e.currentTarget.style.borderColor = "rgba(255,255,255,0.08)"; }}>
+            <button className="desktop-only" onClick={() => window.location.reload()} title="Reload" style={{ display: "flex", alignItems: "center", justifyContent: "center", width: "34px", height: "34px", borderRadius: "8px", background: "none", border: "1px solid rgba(255,255,255,0.08)", color: "#8B8FA8", cursor: "pointer", flexShrink: 0, transition: "all 0.15s ease" }} onMouseEnter={e => { e.currentTarget.style.background = "rgba(108,99,255,0.1)"; e.currentTarget.style.color = "#6C63FF"; e.currentTarget.style.borderColor = "rgba(108,99,255,0.3)"; }} onMouseLeave={e => { e.currentTarget.style.background = "none"; e.currentTarget.style.color = "#8B8FA8"; e.currentTarget.style.borderColor = "rgba(255,255,255,0.08)"; }}>
               <RefreshCw size={15} />
             </button>
           </div>
