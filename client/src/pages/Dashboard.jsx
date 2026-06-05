@@ -1080,10 +1080,20 @@ function Dashboard() {
         return dueInPeriod(bill.due_day);
       });
 
+      const billActualDate = (bill) => {
+        const freq = bill.frequency || "monthly";
+        if (freq === "payday" || freq === "biweekly") return periodStart;
+        if (!bill.due_day) return periodEnd;
+        const thisMonth = new Date(periodStart.getFullYear(), periodStart.getMonth(), bill.due_day);
+        const nextMonth = new Date(periodStart.getFullYear(), periodStart.getMonth() + 1, bill.due_day);
+        if (thisMonth >= periodStart && thisMonth <= periodEnd) return thisMonth;
+        if (nextMonth >= periodStart && nextMonth <= periodEnd) return nextMonth;
+        return nextMonth;
+      };
       periodBills.sort((a, b) => {
-        const dayA = a.due_day ?? 999;
-        const dayB = b.due_day ?? 999;
-        if (dayA !== dayB) return dayA - dayB;
+        const dateA = billActualDate(a);
+        const dateB = billActualDate(b);
+        if (dateA - dateB !== 0) return dateA - dateB;
         return (a.name || "").localeCompare(b.name || "");
       });
 
