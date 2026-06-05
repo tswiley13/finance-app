@@ -547,6 +547,15 @@ function Dashboard() {
 
         setLoading(false);
 
+        // Auto-regenerate pay periods if none extend into the current year
+        const currentYear = new Date().getFullYear();
+        const periodsData = periodsRes.data || [];
+        const lastPeriod = [...periodsData].sort((a, b) => new Date(b.end_date) - new Date(a.end_date))[0];
+        if (!lastPeriod || new Date(lastPeriod.end_date + "T12:00:00").getFullYear() < currentYear) {
+          // Trigger silent regeneration — will run after state is set
+          setTimeout(() => regeneratePayPeriods(), 500);
+        }
+
         if (connected) {
           const today = localDateStr();
           const lastSyncDate = localStorage.getItem("plaidLastSyncDate");
