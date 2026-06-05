@@ -276,6 +276,8 @@ function Dashboard() {
   const [billFrequency, setBillFrequency] = useState("");
   const [billDueDay2, setBillDueDay2] = useState("");
   const [billDueMonth, setBillDueMonth] = useState("");
+  const [quickEditBillAmountId, setQuickEditBillAmountId] = useState(null);
+  const [quickEditBillAmountVal, setQuickEditBillAmountVal] = useState("");
   const [showBillForm, setShowBillForm] = useState(false);
   const [editingIncome, setEditingIncome] = useState(null);
   const [showIncomeForm, setShowIncomeForm] = useState(false);
@@ -856,6 +858,14 @@ function Dashboard() {
       .eq("period_start", periodKey);
     if (error) return;
     setSkippedBillPeriods(prev => { const n = new Set(prev); n.delete(key); return n; });
+  }
+
+  async function saveBillAmount(billId, newAmount) {
+    const parsed = parseFloat(newAmount);
+    if (!parsed || parsed <= 0) { setQuickEditBillAmountId(null); return; }
+    await supabase.from("bills").update({ amount: parsed }).eq("id", billId);
+    setBills(prev => prev.map(b => b.id === billId ? { ...b, amount: parsed } : b));
+    setQuickEditBillAmountId(null);
   }
 
   async function markIncomeReceived(incomeId, periodStart) {
@@ -2039,39 +2049,7 @@ function Dashboard() {
                       </div>
                     </div>
 
-                    {/* Carry-over bills from previous period */}
-                    {item.isCurrent && carryOverBills.length > 0 && (
-                      <div style={{ marginTop: "12px", borderTop: "1px solid rgba(255,255,255,0.05)", paddingTop: "12px" }}>
-                        <div style={{ fontSize: "9px", color: "#FBBF24", letterSpacing: "0.12em", textTransform: "uppercase", fontWeight: "600", marginBottom: "8px" }}>
-                          ⚠ Carried Over
-                        </div>
-                        {carryOverBills.map((bill, j) => (
-                          <div key={bill.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "7px 0", borderBottom: j < carryOverBills.length - 1 ? "1px solid rgba(255,255,255,0.04)" : "none" }}>
-                            <div>
-                              <div style={{ fontSize: "13px", color: "#FBBF24", fontWeight: "500" }}>{bill.name}</div>
-                              <div style={{ fontSize: "11px", color: "#8B8FA8", marginTop: "2px" }}>Not cleared from last period</div>
-                            </div>
-                            <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                              <span style={{ fontFamily: "'DM Mono', monospace", fontSize: "13px", color: "#FBBF24" }}>${fmt(bill.amount)}</span>
-                              <button
-                                onClick={() => markBillPaid(bill, bill.amount, prevPeriod.start_date, prevPeriod.end_date)}
-                                style={{ background: "rgba(74,222,128,0.1)", border: "1px solid rgba(74,222,128,0.3)", color: "#4ADE80", padding: "3px 10px", borderRadius: "5px", cursor: "pointer", fontSize: "11px", fontFamily: "'Inter', sans-serif", fontWeight: "500" }}
-                              >
-                                Paid
-                              </button>
-                              <button
-                                onClick={() => skipBill(bill.id, prevPeriod.start_date)}
-                                style={{ background: "rgba(248,113,113,0.06)", border: "1px solid rgba(248,113,113,0.25)", color: "#F87171", padding: "3px 7px", borderRadius: "5px", cursor: "pointer", fontSize: "11px", fontFamily: "'Inter', sans-serif", lineHeight: 1 }}
-                              >
-                                ✕
-                              </button>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-
-                    {/* Income list — show in current period with Mark Received for future items */}
+                    {/* Income list */}
                     {item.incomeItems.length > 0 && (
                       <div style={{ marginTop: "12px", borderTop: "1px solid rgba(255,255,255,0.05)", paddingTop: "12px" }}>
                         <div style={{ fontSize: "9px", color: "#8B8FA8", letterSpacing: "0.12em", textTransform: "uppercase", fontWeight: "600", marginBottom: "8px" }}>Income</div>
@@ -2103,6 +2081,38 @@ function Dashboard() {
                             </div>
                           );
                         })}
+                      </div>
+                    )}
+
+                    {/* Carry-over bills from previous period */}
+                    {item.isCurrent && carryOverBills.length > 0 && (
+                      <div style={{ marginTop: "12px", borderTop: "1px solid rgba(255,255,255,0.05)", paddingTop: "12px" }}>
+                        <div style={{ fontSize: "9px", color: "#FBBF24", letterSpacing: "0.12em", textTransform: "uppercase", fontWeight: "600", marginBottom: "8px" }}>
+                          ⚠ Carried Over
+                        </div>
+                        {carryOverBills.map((bill, j) => (
+                          <div key={bill.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "7px 0", borderBottom: j < carryOverBills.length - 1 ? "1px solid rgba(255,255,255,0.04)" : "none" }}>
+                            <div>
+                              <div style={{ fontSize: "13px", color: "#FBBF24", fontWeight: "500" }}>{bill.name}</div>
+                              <div style={{ fontSize: "11px", color: "#8B8FA8", marginTop: "2px" }}>Not cleared from last period</div>
+                            </div>
+                            <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                              <span style={{ fontFamily: "'DM Mono', monospace", fontSize: "13px", color: "#FBBF24" }}>${fmt(bill.amount)}</span>
+                              <button
+                                onClick={() => markBillPaid(bill, bill.amount, prevPeriod.start_date, prevPeriod.end_date)}
+                                style={{ background: "rgba(74,222,128,0.1)", border: "1px solid rgba(74,222,128,0.3)", color: "#4ADE80", padding: "3px 10px", borderRadius: "5px", cursor: "pointer", fontSize: "11px", fontFamily: "'Inter', sans-serif", fontWeight: "500" }}
+                              >
+                                Paid
+                              </button>
+                              <button
+                                onClick={() => skipBill(bill.id, prevPeriod.start_date)}
+                                style={{ background: "rgba(248,113,113,0.06)", border: "1px solid rgba(248,113,113,0.25)", color: "#F87171", padding: "3px 7px", borderRadius: "5px", cursor: "pointer", fontSize: "11px", fontFamily: "'Inter', sans-serif", lineHeight: 1 }}
+                              >
+                                ✕
+                              </button>
+                            </div>
+                          </div>
+                        ))}
                       </div>
                     )}
 
@@ -2140,7 +2150,29 @@ function Dashboard() {
                               </div>
                             </div>
                             <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                              <span style={{ fontFamily: "'DM Mono', monospace", fontSize: "13px", color: isPartial ? "#FBBF24" : "#8B8FA8" }}>${fmt(isPartial ? remaining : bill.amount)}</span>
+                              {quickEditBillAmountId === bill.id ? (
+                                <input
+                                  type="number"
+                                  value={quickEditBillAmountVal}
+                                  onChange={(e) => setQuickEditBillAmountVal(e.target.value)}
+                                  onBlur={() => saveBillAmount(bill.id, quickEditBillAmountVal)}
+                                  onKeyDown={(e) => {
+                                    if (e.key === "Enter") saveBillAmount(bill.id, quickEditBillAmountVal);
+                                    if (e.key === "Escape") setQuickEditBillAmountId(null);
+                                  }}
+                                  autoFocus
+                                  onFocus={(e) => e.target.select()}
+                                  style={{ background: "#2D2B45", border: "1px solid #6C63FF", color: "#F0F6FC", padding: "3px 6px", borderRadius: "5px", fontSize: "13px", fontFamily: "'DM Mono', monospace", width: "80px", textAlign: "right" }}
+                                />
+                              ) : (
+                                <span
+                                  onClick={() => { setQuickEditBillAmountId(bill.id); setQuickEditBillAmountVal(bill.amount); }}
+                                  title="Click to edit amount"
+                                  style={{ fontFamily: "'DM Mono', monospace", fontSize: "13px", color: isPartial ? "#FBBF24" : "#8B8FA8", cursor: "pointer" }}
+                                >
+                                  ${fmt(isPartial ? remaining : bill.amount)}
+                                </span>
+                              )}
                               {pendingPaidBill?._key === `${bill.id}-${periodKey}` ? (
                                 <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
                                   <input type="text" inputMode="decimal" value={pendingPaidAmount} onChange={(e) => setPendingPaidAmount(e.target.value)} autoFocus placeholder="Amt paid" style={{ width: "90px", background: "#13111F", border: "1px solid rgba(108,99,255,0.4)", borderRadius: "5px", color: "#F0F6FC", padding: "3px 6px", fontSize: "11px", fontFamily: "'DM Mono', monospace", outline: "none" }} />
