@@ -1905,35 +1905,27 @@ function Dashboard() {
         })
         .reduce((sum, inc) => sum + (inc.fixed_amount || 0), 0);
 
-      // Bills remaining: unpaid, non-skipped bills due in the current calendar month.
-      // Only periods starting in the current month are considered. Monthly bills are only
-      // counted if their due date (in the period's start month) falls within the period —
-      // this correctly excludes e.g. June 1 bills inside the May 21–Jun 3 period.
-      const monthBills = breakdown
-        .filter((item) => {
-          const pStart = new Date(item.period.start_date + "T00:00:00");
-          return pStart.getFullYear() === currentYear && pStart.getMonth() === currentMonth;
-        })
-        .reduce((sum, item) => {
-          const pStart = new Date(item.period.start_date + "T00:00:00");
-          const pEnd = new Date(item.period.end_date + "T23:59:59");
-          const periodKey = item.period.start_date;
-          const calMonthBills = item.bills.filter((b) => {
-            if (skippedBillPeriods.has(`${b.id}-${periodKey}`)) return false;
-            if (isBillPaidInPeriod(b, pStart, pEnd)) return false;
+      // Bills remaining: all unpaid bills due in the current calendar month
+      // regardless of pay period, plus any carried over from the previous period.
+      const monthBills = (() => {
+        const unpaidThisMonth = bills
+          .filter(b => b.is_active !== false)
+          .reduce((sum, b) => {
+            if (!isBillDue(b)) return sum; // already paid this cycle
             const freq = b.frequency || "monthly";
-            if (freq === "biweekly" || freq === "payday") return true;
-            if (freq === "quarterly" || freq === "annually") return false;
-            if (freq === "semi-monthly") {
-              const d1 = new Date(pStart.getFullYear(), pStart.getMonth(), b.due_day);
-              const d2 = b.due_day_2 ? new Date(pStart.getFullYear(), pStart.getMonth(), b.due_day_2) : null;
-              return (d1 >= pStart && d1 <= pEnd) || (d2 && d2 >= pStart && d2 <= pEnd);
+            if (freq === "quarterly") {
+              if (!b.due_month) return sum;
+              const startM = b.due_month - 1;
+              const dueMonths = [startM, (startM+3)%12, (startM+6)%12, (startM+9)%12];
+              if (!dueMonths.includes(currentMonth)) return sum;
+            } else if (freq === "annually") {
+              if (!b.due_month || b.due_month - 1 !== currentMonth) return sum;
             }
-            const dueThisMonth = new Date(pStart.getFullYear(), pStart.getMonth(), b.due_day);
-            return dueThisMonth >= pStart && dueThisMonth <= pEnd;
-          });
-          return sum + calMonthBills.reduce((s, b) => s + (b.amount || 0), 0);
-        }, 0);
+            return sum + (b.amount || 0);
+          }, 0);
+        const carryTotal = carryOverBills.reduce((sum, b) => sum + (b.amount || 0), 0);
+        return unpaidThisMonth + carryTotal;
+      })();
 
       const availableThisMonth = primaryBalance + monthIncome - monthBills;
 
