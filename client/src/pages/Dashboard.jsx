@@ -1736,6 +1736,36 @@ function Dashboard() {
       const breakdown = getPayPeriodBreakdown();
       const today = new Date();
 
+      // Carry-over: unpaid bills from the previous pay period
+      const sortedAllPeriods = [...payPeriods].sort((a, b) => new Date(a.start_date) - new Date(b.start_date));
+      const todayStr = localDateStr();
+      const currentPeriodIdx = sortedAllPeriods.findIndex(p => p.start_date <= todayStr && p.end_date >= todayStr);
+      const prevPeriod = currentPeriodIdx > 0 ? sortedAllPeriods[currentPeriodIdx - 1] : null;
+      let carryOverBills = [];
+      if (prevPeriod) {
+        const prevStart = new Date(prevPeriod.start_date + "T00:00:00");
+        const prevEnd = new Date(prevPeriod.end_date + "T23:59:59");
+        const prevKey = prevPeriod.start_date;
+        const dueInPrev = (day) => {
+          if (!day) return false;
+          const d1 = new Date(prevStart.getFullYear(), prevStart.getMonth(), day, 23, 59, 59);
+          const d2 = new Date(prevStart.getFullYear(), prevStart.getMonth() + 1, day, 23, 59, 59);
+          return (d1 >= prevStart && d1 <= prevEnd) || (d2 >= prevStart && d2 <= prevEnd);
+        };
+        carryOverBills = bills.filter(bill => {
+          const freq = bill.frequency || "monthly";
+          let due = false;
+          if (freq === "biweekly" || freq === "payday") due = true;
+          else if (freq === "quarterly" || freq === "annually") due = false;
+          else if (freq === "semi-monthly") due = dueInPrev(bill.due_day) || dueInPrev(bill.due_day_2);
+          else due = dueInPrev(bill.due_day);
+          if (!due) return false;
+          if (skippedBillPeriods.has(`${bill.id}-${prevKey}`)) return false;
+          if (isBillPaidInPeriod(bill, prevStart, prevEnd)) return false;
+          return true;
+        });
+      }
+
       let runningBalance = primaryBalance;
       const rows = breakdown.map((item) => {
         const isCurrent = item.isCurrentPeriod;
@@ -1936,6 +1966,38 @@ function Dashboard() {
                         </div>
                       </div>
                     </div>
+
+                    {/* Carry-over bills from previous period */}
+                    {item.isCurrent && carryOverBills.length > 0 && (
+                      <div style={{ marginTop: "12px", borderTop: "1px solid rgba(255,255,255,0.05)", paddingTop: "12px" }}>
+                        <div style={{ fontSize: "9px", color: "#FBBF24", letterSpacing: "0.12em", textTransform: "uppercase", fontWeight: "600", marginBottom: "8px" }}>
+                          ⚠ Carried Over
+                        </div>
+                        {carryOverBills.map((bill, j) => (
+                          <div key={bill.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "7px 0", borderBottom: j < carryOverBills.length - 1 ? "1px solid rgba(255,255,255,0.04)" : "none" }}>
+                            <div>
+                              <div style={{ fontSize: "13px", color: "#FBBF24", fontWeight: "500" }}>{bill.name}</div>
+                              <div style={{ fontSize: "11px", color: "#8B8FA8", marginTop: "2px" }}>Not cleared from last period</div>
+                            </div>
+                            <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                              <span style={{ fontFamily: "'DM Mono', monospace", fontSize: "13px", color: "#FBBF24" }}>${fmt(bill.amount)}</span>
+                              <button
+                                onClick={() => markBillPaid(bill, bill.amount, prevPeriod.start_date, prevPeriod.end_date)}
+                                style={{ background: "rgba(74,222,128,0.1)", border: "1px solid rgba(74,222,128,0.3)", color: "#4ADE80", padding: "3px 10px", borderRadius: "5px", cursor: "pointer", fontSize: "11px", fontFamily: "'Inter', sans-serif", fontWeight: "500" }}
+                              >
+                                Paid
+                              </button>
+                              <button
+                                onClick={() => skipBill(bill.id, prevPeriod.start_date)}
+                                style={{ background: "rgba(248,113,113,0.06)", border: "1px solid rgba(248,113,113,0.25)", color: "#F87171", padding: "3px 7px", borderRadius: "5px", cursor: "pointer", fontSize: "11px", fontFamily: "'Inter', sans-serif", lineHeight: 1 }}
+                              >
+                                ✕
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
 
                     {/* Income list — show in current period with Mark Received for future items */}
                     {item.incomeItems.length > 0 && (
