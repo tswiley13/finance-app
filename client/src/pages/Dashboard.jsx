@@ -4899,9 +4899,11 @@ function Dashboard() {
                   <div style={{ fontSize: "11px", color: "#8B8FA8", fontFamily: "'Inter', sans-serif", marginTop: "4px" }}>est. total per month</div>
                 </div>
                 <div className="panel" style={{ flex: "1", minWidth: "160px", margin: 0 }}>
-                  <div style={{ fontSize: "11px", color: "#8B8FA8", fontFamily: "'Inter', sans-serif", marginBottom: "4px", textTransform: "uppercase", letterSpacing: "0.06em" }}>Total Bills</div>
-                  <div style={{ fontSize: "22px", fontFamily: "'DM Mono', monospace", color: "#F0F6FC", fontWeight: "600" }}>{bills.filter(b => b.is_active !== false).length}</div>
-                  <div style={{ fontSize: "11px", color: "#8B8FA8", fontFamily: "'Inter', sans-serif", marginTop: "4px" }}>active bills tracked</div>
+                  <div style={{ fontSize: "11px", color: "#8B8FA8", fontFamily: "'Inter', sans-serif", marginBottom: "4px", textTransform: "uppercase", letterSpacing: "0.06em" }}>Bills Remaining</div>
+                  <div style={{ fontSize: "22px", fontFamily: "'DM Mono', monospace", color: "#F87171", fontWeight: "600" }}>
+                    ${fmt(bills.filter(b => b.is_active !== false && isBillDue(b)).reduce((sum, b) => sum + (b.amount || 0), 0))}
+                  </div>
+                  <div style={{ fontSize: "11px", color: "#8B8FA8", fontFamily: "'Inter', sans-serif", marginTop: "4px" }}>still owed this month</div>
                 </div>
               </div>
             );
@@ -4934,22 +4936,22 @@ function Dashboard() {
                           }}
                         >
                           {bill.name}
-                          {isBillDue(bill) && bill.paid_amount > 0 && (
-                            <span style={{ fontSize: "9px", background: "rgba(251,191,36,0.15)", color: "#FBBF24", border: "1px solid rgba(251,191,36,0.3)", borderRadius: "4px", padding: "1px 6px", marginLeft: "7px", fontWeight: "600", letterSpacing: "0.06em", textTransform: "uppercase" }}>Partial</span>
-                          )}
                         </div>
                         <div className="row-sub">
-                          {isBillDue(bill) && bill.paid_amount > 0
-                            ? `$${fmt(bill.paid_amount)} paid · $${fmt((bill.amount || 0) - bill.paid_amount)} remaining`
-                            : `${bill.frequency === "payday" ? "Every Pay Day" :
-                               bill.frequency === "biweekly" ? "Biweekly" :
-                               bill.frequency === "quarterly" ? "Quarterly" :
-                               bill.frequency === "annually" ? "Annually" :
-                               bill.frequency === "semi-monthly" && bill.due_day_2
-                                 ? `Due the ${bill.due_day}${getSuffix(bill.due_day)} & ${bill.due_day_2}${getSuffix(bill.due_day_2)}`
-                                 : `Due the ${bill.due_day}${getSuffix(bill.due_day)}`
-                              } · ${bill.category} · ${bill.payment_method}${!isBillDue(bill) ? " · PAID" : ""}`
-                          }
+                          {(() => {
+                            const remaining = (bill.amount || 0) - (bill.paid_amount || 0);
+                            const hasPartial = isBillDue(bill) && (bill.paid_amount || 0) > 0 && remaining > 0;
+                            if (hasPartial) return `$${fmt(bill.paid_amount)} paid · $${fmt(remaining)} remaining`;
+                            const freq = bill.frequency || "monthly";
+                            const dueStr = freq === "payday" ? "Every Pay Day"
+                              : freq === "biweekly" ? "Biweekly"
+                              : freq === "quarterly" ? "Quarterly"
+                              : freq === "annually" ? "Annually"
+                              : freq === "semi-monthly" && bill.due_day_2
+                                ? `Due the ${bill.due_day}${getSuffix(bill.due_day)} & ${bill.due_day_2}${getSuffix(bill.due_day_2)}`
+                                : `Due the ${bill.due_day}${getSuffix(bill.due_day)}`;
+                            return `${dueStr} · ${bill.category} · ${bill.payment_method}${!isBillDue(bill) ? " · PAID" : ""}`;
+                          })()}
                         </div>
                       </div>
                       <div style={{ display: "flex", alignItems: "center", gap: "8px", flexShrink: 0 }}>
