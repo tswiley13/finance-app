@@ -1657,9 +1657,11 @@ function Dashboard() {
       const daysUntilNext = Math.ceil((baseDate - today) / (1000 * 60 * 60 * 24));
       const periodsBack = Math.ceil(daysUntilNext / interval) + 1;
       const startOffset = -periodsBack;
-      for (let i = startOffset; i < 8; i++) {
+      const endOfYear = new Date(today.getFullYear(), 11, 31); // Dec 31 of current year
+      for (let i = startOffset; ; i++) {
         const date = new Date(baseDate);
         date.setDate(baseDate.getDate() + i * interval);
+        if (date > endOfYear) break;
         allDates.push(date);
       }
     });
