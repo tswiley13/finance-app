@@ -1915,13 +1915,17 @@ function Dashboard() {
         })
         .reduce((sum, inc) => sum + (inc.fixed_amount || 0), 0);
 
-      // Bills remaining: all unpaid bills due in the current calendar month
-      // regardless of pay period, plus any carried over from the previous period.
+      // Bills remaining: all unpaid bills due in the current calendar month.
+      // Carry-over bills are already captured here (they're unpaid → isBillDue = true).
+      // Adding carryTotal separately would double-count them, so we don't.
+      const currentPeriodKey = currentPeriodIdx >= 0 ? sortedAllPeriods[currentPeriodIdx]?.start_date : null;
       const monthBills = (() => {
-        const unpaidThisMonth = bills
+        return bills
           .filter(b => b.is_active !== false)
           .reduce((sum, b) => {
             if (!isBillDue(b)) return sum; // already paid this cycle
+            // Exclude bills the user skipped in the current pay period
+            if (currentPeriodKey && skippedBillPeriods.has(`${b.id}-${currentPeriodKey}`)) return sum;
             const freq = b.frequency || "monthly";
             if (freq === "quarterly") {
               if (!b.due_month) return sum;
@@ -1933,8 +1937,6 @@ function Dashboard() {
             }
             return sum + (b.amount || 0);
           }, 0);
-        const carryTotal = carryOverBills.reduce((sum, b) => sum + (b.amount || 0), 0);
-        return unpaidThisMonth + carryTotal;
       })();
 
       const availableThisMonth = primaryBalance + monthIncome - monthBills;
