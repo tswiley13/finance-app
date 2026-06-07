@@ -1941,7 +1941,8 @@ function Dashboard() {
       };
 
       const monthBills = (() => {
-        return bills
+        const counted = [];
+        const total = bills
           .filter(b => b.is_active !== false)
           .reduce((sum, b) => {
             const freq = b.frequency || "monthly";
@@ -1954,39 +1955,41 @@ function Dashboard() {
                 if (b.paid_date) {
                   const pd = new Date(b.paid_date + "T12:00:00");
                   const ps = new Date(period.start_date + "T00:00:00");
-                  if (pd >= ps) continue; // paid on/after this period start = done for this period
+                  if (pd >= ps) continue;
                 }
                 billTotal += (b.amount || 0);
               }
+              if (billTotal > 0) counted.push({ name: b.name, freq, amount: billTotal, paid_date: b.paid_date });
               return sum + billTotal;
             }
 
-            // For non-payday bills, check skip against current period or any period this month
             if (isSkippedThisMonth(b)) return sum;
 
-            // --- Quarterly ---
             if (freq === "quarterly") {
               if (!b.due_month) return sum;
               const startM = b.due_month - 1;
               const dueMonths = [startM, (startM+3)%12, (startM+6)%12, (startM+9)%12];
               if (!dueMonths.includes(currentMonth)) return sum;
               if (paidThisMonth(b)) return sum;
+              counted.push({ name: b.name, freq, amount: b.amount, paid_date: b.paid_date });
               return sum + (b.amount || 0);
             }
 
-            // --- Annually ---
             if (freq === "annually") {
               if (!b.due_month || b.due_month - 1 !== currentMonth) return sum;
               if (paidThisMonth(b)) return sum;
+              counted.push({ name: b.name, freq, amount: b.amount, paid_date: b.paid_date });
               return sum + (b.amount || 0);
             }
 
             // --- Monthly (default) ---
             if (paidThisMonth(b)) return sum;
-            // If due_day is set, only count if it falls within this month's day range
             if (b.due_day && b.due_day > daysInCurrentMonth) return sum;
+            counted.push({ name: b.name, freq, due_day: b.due_day, amount: b.amount, paid_date: b.paid_date });
             return sum + (b.amount || 0);
           }, 0);
+        console.log("[monthBills] total:", total, "counted bills:", counted);
+        return total;
       })();
 
       const availableThisMonth = primaryBalance + monthIncome - monthBills;
