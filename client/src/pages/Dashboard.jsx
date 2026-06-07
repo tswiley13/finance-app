@@ -308,17 +308,7 @@ function Dashboard() {
   const [quickEditBillAmount, setQuickEditBillAmount] = useState("");
   const [transferringId, setTransferringId] = useState(null);
   const [transferAmount, setTransferAmount] = useState("");
-  const [transfers, setTransfers] = useState(() => {
-    try {
-      const saved = localStorage.getItem("wtmgTransfers");
-      if (!saved) return {};
-      const { periodKey, data } = JSON.parse(saved);
-      const today = localDateStr();
-      // Only restore if the saved data is from the current period
-      if (periodKey && today >= periodKey) return data || {};
-      return {};
-    } catch { return {}; }
-  });
+  const [transfers, setTransfers] = useState({});
   const [setAsideDone, setSetAsideDone] = useState({});
   const [quickEditIncomeId, setQuickEditIncomeId] = useState(null);
   const [quickEditIncomeAmount, setQuickEditIncomeAmount] = useState("");
@@ -545,6 +535,24 @@ function Dashboard() {
           .eq("user_id", user.id);
         if (earlyRows) {
           setEarlyPayments(new Set(earlyRows.map(r => `${r.income_id}-${r.period_start}`)));
+        }
+
+        const today2 = localDateStr();
+        const { data: transferRows } = await supabase
+          .from("period_transfers")
+          .select("row_key, amount, period_start")
+          .eq("user_id", user.id);
+        if (transferRows && transferRows.length > 0) {
+          // Find the current period from the already-loaded pay periods
+          const periodsData2 = periodsRes.data || [];
+          const curPeriod = periodsData2.find(p => p.start_date <= today2 && p.end_date >= today2);
+          const curPeriodKey = curPeriod?.start_date;
+          if (curPeriodKey) {
+            const currentTransfers = transferRows
+              .filter(r => r.period_start === curPeriodKey)
+              .reduce((acc, r) => ({ ...acc, [r.row_key]: r.amount }), {});
+            setTransfers(currentTransfers);
+          }
         }
 
         setLoading(false);
@@ -1315,21 +1323,24 @@ function Dashboard() {
     setAccounts(accounts.filter((a) => a.id !== accountId));
   }
 
-  function confirmTransfer(rowKey, amount, targetAccountId = null) {
+  async function confirmTransfer(rowKey, amount, targetAccountId = null) {
     const parsed = parseFloat(amount);
     if (!parsed || parsed <= 0) return;
 
-    setTransfers((prev) => {
-      const next = { ...prev, [rowKey]: (prev[rowKey] || 0) + parsed };
-      try {
-        const today = localDateStr();
-        const currentPeriod = payPeriods.find(p => p.start_date <= today && p.end_date >= today);
-        const periodKey = currentPeriod?.start_date || today;
-        localStorage.setItem("wtmgTransfers", JSON.stringify({ periodKey, data: next }));
-      } catch {}
-      return next;
-    });
+    const today = localDateStr();
+    const currentPeriod = payPeriods.find(p => p.start_date <= today && p.end_date >= today);
+    const periodKey = currentPeriod?.start_date || today;
 
+    const newAmount = (transfers[rowKey] || 0) + parsed;
+
+    await supabase.from("period_transfers").upsert({
+      user_id: userId,
+      period_start: periodKey,
+      row_key: rowKey,
+      amount: newAmount,
+    }, { onConflict: "user_id,period_start,row_key" });
+
+    setTransfers(prev => ({ ...prev, [rowKey]: newAmount }));
     setTransferringId(null);
     setTransferAmount("");
   }
@@ -5569,16 +5580,18 @@ function Dashboard() {
                     const remaining = Math.max(0, suggestedAmount - transferred);
                     const done = transferred >= suggestedAmount;
 
-                    const undoTransfer = () => {
+                    const undoTransfer = async () => {
+                      const today = localDateStr();
+                      const currentPeriod = payPeriods.find(p => p.start_date <= today && p.end_date >= today);
+                      const periodKey = currentPeriod?.start_date || today;
+                      await supabase.from("period_transfers")
+                        .delete()
+                        .eq("user_id", userId)
+                        .eq("period_start", periodKey)
+                        .eq("row_key", rowKey);
                       setTransfers(prev => {
                         const next = { ...prev };
                         delete next[rowKey];
-                        try {
-                          const today = localDateStr();
-                          const currentPeriod = payPeriods.find(p => p.start_date <= today && p.end_date >= today);
-                          const periodKey = currentPeriod?.start_date || today;
-                          localStorage.setItem("wtmgTransfers", JSON.stringify({ periodKey, data: next }));
-                        } catch {}
                         return next;
                       });
                     };
