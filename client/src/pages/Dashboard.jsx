@@ -1916,10 +1916,6 @@ function Dashboard() {
         .reduce((sum, inc) => sum + (inc.fixed_amount || 0), 0);
 
       // Bills remaining: period-aware calculation for the current calendar month.
-      // - Monthly bills: count if due_day falls in this month AND not paid in this month
-      // - Payday/biweekly: count once per pay period starting in this month that isn't paid
-      // - Quarterly/annually: count if due_month matches and not paid this month
-      // - Skips are checked per-period, not just current period
       const daysInCurrentMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
 
       // Pay periods whose start_date is within the current calendar month
@@ -1935,9 +1931,14 @@ function Dashboard() {
         return pd.getMonth() === currentMonth && pd.getFullYear() === currentYear;
       };
 
-      // Is this bill skipped for a given period key?
-      const isSkippedInPeriod = (bill, periodKey) =>
-        periodKey && skippedBillPeriods.has(`${bill.id}-${periodKey}`);
+      // Is this bill skipped in the current period OR any period starting this month?
+      // We check both because a skip is recorded against whichever period the user
+      // clicked skip in — which may differ from the period containing the due date.
+      const currentPKey = currentPeriodIdx >= 0 ? sortedAllPeriods[currentPeriodIdx]?.start_date : null;
+      const isSkippedThisMonth = (bill) => {
+        if (currentPKey && skippedBillPeriods.has(`${bill.id}-${currentPKey}`)) return true;
+        return periodsStartingThisMonth.some(p => skippedBillPeriods.has(`${bill.id}-${p.start_date}`));
+      };
 
       const monthBills = (() => {
         return bills
@@ -1945,21 +1946,23 @@ function Dashboard() {
           .reduce((sum, b) => {
             const freq = b.frequency || "monthly";
 
-            // --- Payday / Biweekly: count per period starting in this month ---
+            // --- Payday / Biweekly: count once per pay period starting in this month ---
             if (freq === "payday" || freq === "biweekly") {
               let billTotal = 0;
               for (const period of periodsStartingThisMonth) {
-                if (isSkippedInPeriod(b, period.start_date)) continue;
-                // Paid on or after this period's start = counts as paid for this period
+                if (skippedBillPeriods.has(`${b.id}-${period.start_date}`)) continue;
                 if (b.paid_date) {
                   const pd = new Date(b.paid_date + "T12:00:00");
                   const ps = new Date(period.start_date + "T00:00:00");
-                  if (pd >= ps) continue;
+                  if (pd >= ps) continue; // paid on/after this period start = done for this period
                 }
                 billTotal += (b.amount || 0);
               }
               return sum + billTotal;
             }
+
+            // For non-payday bills, check skip against current period or any period this month
+            if (isSkippedThisMonth(b)) return sum;
 
             // --- Quarterly ---
             if (freq === "quarterly") {
@@ -1968,7 +1971,6 @@ function Dashboard() {
               const dueMonths = [startM, (startM+3)%12, (startM+6)%12, (startM+9)%12];
               if (!dueMonths.includes(currentMonth)) return sum;
               if (paidThisMonth(b)) return sum;
-              if (periodsStartingThisMonth.some(p => isSkippedInPeriod(b, p.start_date))) return sum;
               return sum + (b.amount || 0);
             }
 
@@ -1976,22 +1978,13 @@ function Dashboard() {
             if (freq === "annually") {
               if (!b.due_month || b.due_month - 1 !== currentMonth) return sum;
               if (paidThisMonth(b)) return sum;
-              if (periodsStartingThisMonth.some(p => isSkippedInPeriod(b, p.start_date))) return sum;
               return sum + (b.amount || 0);
             }
 
             // --- Monthly (default) ---
-            // Only count if due_day exists and falls within this month's days
-            if (!b.due_day || b.due_day > daysInCurrentMonth) return sum;
             if (paidThisMonth(b)) return sum;
-            // Find the pay period that contains this bill's due date, check skip
-            const dueDateThisMonth = new Date(currentYear, currentMonth, b.due_day);
-            const relevantPeriod = sortedAllPeriods.find(p => {
-              const ps = new Date(p.start_date + "T00:00:00");
-              const pe = new Date(p.end_date + "T23:59:59");
-              return dueDateThisMonth >= ps && dueDateThisMonth <= pe;
-            });
-            if (relevantPeriod && isSkippedInPeriod(b, relevantPeriod.start_date)) return sum;
+            // If due_day is set, only count if it falls within this month's day range
+            if (b.due_day && b.due_day > daysInCurrentMonth) return sum;
             return sum + (b.amount || 0);
           }, 0);
       })();
