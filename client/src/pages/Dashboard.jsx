@@ -1983,8 +1983,29 @@ function Dashboard() {
             }
 
             // --- Monthly (default) ---
-            if (paidThisMonth(b)) return sum;
             if (b.due_day && b.due_day > daysInCurrentMonth) return sum;
+
+            if (b.due_day) {
+              // Find the pay period that contains this bill's due date in the current month.
+              // Bills due on the 1st fall in the PREVIOUS period (e.g. May 21–Jun 3), so
+              // we must check if they were paid within THAT period — not just "paid in June."
+              const dueDateThisMonth = new Date(currentYear, currentMonth, b.due_day);
+              const relPeriod = sortedAllPeriods.find(p => {
+                const ps = new Date(p.start_date + "T00:00:00");
+                const pe = new Date(p.end_date + "T23:59:59");
+                return dueDateThisMonth >= ps && dueDateThisMonth <= pe;
+              });
+              if (relPeriod) {
+                const ps = new Date(relPeriod.start_date + "T00:00:00");
+                const pe = new Date(relPeriod.end_date + "T23:59:59");
+                if (isBillPaidInPeriod(b, ps, pe)) return sum;
+              } else {
+                if (paidThisMonth(b)) return sum;
+              }
+            } else {
+              if (paidThisMonth(b)) return sum;
+            }
+
             counted.push({ name: b.name, freq, due_day: b.due_day, amount: b.amount, paid_date: b.paid_date });
             return sum + (b.amount || 0);
           }, 0);
