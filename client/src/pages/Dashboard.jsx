@@ -1941,7 +1941,6 @@ function Dashboard() {
       };
 
       const monthBills = (() => {
-        const counted = [];
         const total = bills
           .filter(b => b.is_active !== false)
           .reduce((sum, b) => {
@@ -1959,7 +1958,6 @@ function Dashboard() {
                 }
                 billTotal += (b.amount || 0);
               }
-              if (billTotal > 0) counted.push({ name: b.name, freq, amount: billTotal, paid_date: b.paid_date });
               return sum + billTotal;
             }
 
@@ -1971,14 +1969,12 @@ function Dashboard() {
               const dueMonths = [startM, (startM+3)%12, (startM+6)%12, (startM+9)%12];
               if (!dueMonths.includes(currentMonth)) return sum;
               if (paidThisMonth(b)) return sum;
-              counted.push({ name: b.name, freq, amount: b.amount, paid_date: b.paid_date });
               return sum + (b.amount || 0);
             }
 
             if (freq === "annually") {
               if (!b.due_month || b.due_month - 1 !== currentMonth) return sum;
               if (paidThisMonth(b)) return sum;
-              counted.push({ name: b.name, freq, amount: b.amount, paid_date: b.paid_date });
               return sum + (b.amount || 0);
             }
 
@@ -2006,10 +2002,8 @@ function Dashboard() {
               if (paidThisMonth(b)) return sum;
             }
 
-            counted.push({ name: b.name, freq, due_day: b.due_day, amount: b.amount, paid_date: b.paid_date });
             return sum + (b.amount || 0);
           }, 0);
-        console.log("[monthBills] total:", total, "counted bills:", counted);
         return total;
       })();
 
