@@ -1952,6 +1952,7 @@ function Dashboard() {
       };
 
       const monthBills = (() => {
+        const counted = [];
         const total = bills
           .filter(b => b.is_active !== false)
           .reduce((sum, b) => {
@@ -2013,8 +2014,10 @@ function Dashboard() {
               if (paidThisMonth(b)) return sum;
             }
 
+            counted.push({ name: b.name, freq, due_day: b.due_day, amount: b.amount, paid_date: b.paid_date });
             return sum + (b.amount || 0);
           }, 0);
+        console.log("[monthBills] total:", total, "counted bills:", counted);
         return total;
       })();
 
