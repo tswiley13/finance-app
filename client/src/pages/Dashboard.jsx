@@ -1969,6 +1969,7 @@ function Dashboard() {
                   if (pd >= ps) continue;
                 }
                 billTotal += (b.amount || 0);
+                counted.push({ name: b.name, freq, period: period.start_date, amount: b.amount, paid_date: b.paid_date });
               }
               return sum + billTotal;
             }
