@@ -1929,7 +1929,11 @@ function Dashboard() {
               })
               .reduce((sum, b) => sum + (b.amount || 0), 0)
           : item.bills
-              .filter(b => !skippedBillPeriods.has(`${b.id}-${periodKey}`))
+              .filter(b => {
+                if (skippedBillPeriods.has(`${b.id}-${periodKey}`)) return false;
+                if (isBillPaidInPeriod(b.id, periodKey)) return false;
+                return true;
+              })
               .reduce((sum, b) => sum + (b.amount || 0), 0);
 
         const endBalance = startBalance + pendingIncome - billsForEndBalance;
