@@ -2,33 +2,33 @@ import { useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
 import "./Landing.css";
 
-// ── Demo data (matches real app structure) ────────────────────────────────────
-const D_INCOME_AMT   = 2977.00;
-const D_AVAIL_BEFORE = 1870.22;                    // before income deposited
-const D_AVAIL_AFTER  = D_AVAIL_BEFORE + D_INCOME_AMT; // 4847.22
+// ── Demo data (fictional — no real user info) ─────────────────────────────────
+const D_INCOME_AMT   = 3100.00;
+const D_AVAIL_BEFORE = 1924.50;                    // before income deposited
+const D_AVAIL_AFTER  = D_AVAIL_BEFORE + D_INCOME_AMT; // 5024.50
 
 const D_BILLS = [
-  { name: "Southwest Gas",  sub: "Due the 15th",  amount: 45   },
-  { name: "Lawyer",         sub: "Every Pay Day", amount: 200  },
-  { name: "AT&T",           sub: "Due the 16th",  amount: 163  },
-  { name: "Netflix",        sub: "Due the 29th",  amount: 25   },
-  { name: "Gym Membership", sub: "Due the 1st",   amount: 79   },
+  { name: "City Gas & Electric", sub: "Due the 15th",  amount: 112  },
+  { name: "Car Insurance",       sub: "Due the 16th",  amount: 189  },
+  { name: "Phone",               sub: "Due the 18th",  amount: 85   },
+  { name: "Netflix",             sub: "Due the 22nd",  amount: 22   },
+  { name: "Gym Membership",      sub: "Due the 1st",   amount: 49   },
 ];
-const D_BILLS_TOTAL = D_BILLS.reduce((s, b) => s + b.amount, 0); // 512
+const D_BILLS_TOTAL = D_BILLS.reduce((s, b) => s + b.amount, 0); // 457
 
 const D_FUTURE = [
-  { dates: "Jun 18 — Jul 1",   inc: "Airgas (Jun 18) · VA Disability (Jul 1)", end: 3879.04 },
-  { dates: "Jul 2 — Jul 15",   inc: "Airgas (Jul 2)",                           end: 4399.80 },
-  { dates: "Jul 16 — Jul 29",  inc: "Airgas (Jul 16)",                          end: 6166.91 },
-  { dates: "Jul 30 — Aug 12",  inc: "Airgas (Jul 30) · VA Disability (Aug 1)",  end: 10689.90 },
+  { dates: "Jun 18 — Jul 1",   inc: "Payroll (Jun 18) · Side Income (Jul 1)", end: 4218.75 },
+  { dates: "Jul 2 — Jul 15",   inc: "Payroll (Jul 2)",                         end: 4876.20 },
+  { dates: "Jul 16 — Jul 29",  inc: "Payroll (Jul 16)",                        end: 6340.00 },
+  { dates: "Jul 30 — Aug 12",  inc: "Payroll (Jul 30) · Side Income (Aug 1)",  end: 9105.50 },
 ];
 
 const D_ACCOUNTS = [
-  { name: "Groceries & Gas",   bank: "USAA", last4: "9779", bal: 1246.16, primary: false, accum: false },
-  { name: "Mortgage",          bank: "USAA", last4: "7899", bal: 24.04,   primary: false, accum: true  },
-  { name: "Travis Savings",    bank: "USAA", last4: "5656", bal: 10.00,   primary: false, accum: false },
-  { name: "Wiley Bills",       bank: "USAA", last4: "0689", bal: 469.32,  primary: false, accum: false },
-  { name: "Wiley Spending",    bank: "USAA", last4: "0596", bal: D_AVAIL_AFTER, primary: true, accum: false },
+  { name: "Everyday Spending",  bank: "Chase", last4: "4821", bal: 1312.40, primary: false, accum: false },
+  { name: "Mortgage Escrow",    bank: "Chase", last4: "3307", bal: 28.00,   primary: false, accum: true  },
+  { name: "Emergency Fund",     bank: "Chase", last4: "7714", bal: 500.00,  primary: false, accum: false },
+  { name: "Bills Account",      bank: "Chase", last4: "6052", bal: 512.00,  primary: false, accum: false },
+  { name: "Main Checking",      bank: "Chase", last4: "1193", bal: D_AVAIL_AFTER, primary: true, accum: false },
 ];
 
 const PHASES = [
@@ -160,7 +160,7 @@ function DashboardPreview() {
                 <div style={{ display: "flex", alignItems: "center", gap: "14px" }}>
                   <div style={{ width: "38px", height: "38px", borderRadius: "50%", background: "linear-gradient(135deg, #6C63FF, #948cf2)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "14px", fontWeight: "700", color: "#0D1117", flexShrink: 0 }}>T</div>
                   <div>
-                    <div style={{ fontSize: "20px", fontWeight: "700", color: "#F0F6FC", letterSpacing: "-0.02em" }}>Good afternoon, Travis</div>
+                    <div style={{ fontSize: "20px", fontWeight: "700", color: "#F0F6FC", letterSpacing: "-0.02em" }}>Good afternoon, Jordan</div>
                     <div style={{ fontSize: "12px", color: "#8B8FA8", marginTop: "1px" }}>Wednesday, June 17, 2026</div>
                   </div>
                 </div>
@@ -210,7 +210,7 @@ function DashboardPreview() {
                             Jun 4 — Jun 17
                             <span style={{ fontSize: "9px", background: "#6C63FF", color: "#fff", padding: "2px 8px", borderRadius: "4px", letterSpacing: "0.08em", textTransform: "uppercase", fontWeight: "700" }}>Current</span>
                           </div>
-                          <div style={{ fontSize: "11px", color: "#8B8FA8", marginTop: "3px" }}>Airgas (Jun 4)</div>
+                          <div style={{ fontSize: "11px", color: "#8B8FA8", marginTop: "3px" }}>Payroll (Jun 4)</div>
                         </div>
                         <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
                           <div style={{ textAlign: "right" }}>
@@ -243,7 +243,7 @@ function DashboardPreview() {
                         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                           <div>
                             <div style={{ fontSize: "13px", fontWeight: "600", color: incomeReceived ? "#4ADE80" : "#F0F6FC", transition: "color 0.5s ease" }}>
-                              {incomeReceived ? "✓ Airgas" : "Airgas"}
+                              {incomeReceived ? "✓ Payroll" : "Payroll"}
                             </div>
                             <div style={{ fontSize: "10px", color: "#8B8FA8", marginTop: "2px" }}>
                               {incomeReceived ? "Jun 4 · Received early" : "Jun 4"}
@@ -350,11 +350,11 @@ function DashboardPreview() {
                       </div>
                       <div style={{ fontSize: "9px", color: "#8B8FA8", letterSpacing: "0.1em", textTransform: "uppercase", fontWeight: "600", marginBottom: "10px" }}>Bills</div>
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 0", borderBottom: DBORD }}>
-                        <div style={{ fontSize: "13px", color: "#4ADE80" }}>✓ Transfer to Wiley Bills</div>
+                        <div style={{ fontSize: "13px", color: "#4ADE80" }}>✓ Transfer to Bills Account</div>
                         <div style={{ fontSize: "11px", color: "#4A5568" }}>Undo</div>
                       </div>
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 0" }}>
-                        <div style={{ fontSize: "13px", color: "#F0F6FC" }}>Southwest Gas</div>
+                        <div style={{ fontSize: "13px", color: "#F0F6FC" }}>City Gas & Electric</div>
                         <div style={{ fontFamily: "'DM Mono', monospace", fontSize: "13px", color: "#8B8FA8" }}>$45.00</div>
                       </div>
                     </div>
