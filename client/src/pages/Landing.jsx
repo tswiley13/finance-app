@@ -1,6 +1,195 @@
 import { useNavigate } from "react-router-dom";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import "./Landing.css";
+
+const demoBills = [
+  { name: "Rent",          amount: 1200, due: "Due the 1st" },
+  { name: "APS Electric",  amount: 145,  due: "Due the 1st" },
+  { name: "Car Insurance", amount: 320,  due: "Due the 1st" },
+  { name: "Cox Internet",  amount: 89,   due: "Due the 26th" },
+  { name: "Groceries",     amount: 400,  due: "Due the 29th" },
+];
+const DEMO_START   = 1284.50;
+const DEMO_INCOME  = 2800.00;
+const DEMO_TOTAL_BILLS = demoBills.reduce((s, b) => s + b.amount, 0); // 2154
+const DEMO_END     = DEMO_START + DEMO_INCOME - DEMO_TOTAL_BILLS;     // 1930.50
+
+const DEMO_CAPTIONS = [
+  "Every pay period, Stryde maps your bills automatically.",
+  "Your paycheck arrives — mark it received with one tap.",
+  "Start checking off bills as you pay them.",
+  "Each payment updates your remaining balance instantly.",
+  "More bills down, more clarity on where you stand.",
+  "All bills accounted for — nothing slips through.",
+  "Know your exact end-of-period balance before it arrives.",
+];
+
+const DEMO_PHASE_DURATIONS = [2200, 2000, 1600, 1600, 1600, 1600, 2800];
+
+function fmt(n) {
+  return n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+function AnimatedDemo() {
+  const [phase, setPhase] = useState(0);
+
+  useEffect(() => {
+    const t = setTimeout(
+      () => setPhase(p => (p >= DEMO_CAPTIONS.length - 1 ? 0 : p + 1)),
+      DEMO_PHASE_DURATIONS[phase] ?? 2000
+    );
+    return () => clearTimeout(t);
+  }, [phase]);
+
+  const incomeReceived = phase >= 1;
+  const paidCount     = Math.max(0, phase - 1); // phases 2-6 pay bill[0..3]
+  const paidAmount    = demoBills.slice(0, paidCount).reduce((s, b) => s + b.amount, 0);
+  const billsRemaining = DEMO_TOTAL_BILLS - paidAmount;
+  const allPaid       = paidCount >= demoBills.length;
+
+  return (
+    <section style={{ padding: "100px 24px", background: "#0E0C1A" }}>
+      <div style={{ maxWidth: "720px", margin: "0 auto" }}>
+
+        {/* Heading */}
+        <div style={{ textAlign: "center", marginBottom: "48px" }}>
+          <div style={{ fontSize: "11px", fontWeight: "700", letterSpacing: "0.2em", textTransform: "uppercase", color: "#6C63FF", marginBottom: "16px" }}>See It In Action</div>
+          <h2 style={{ fontSize: "38px", fontWeight: "800", letterSpacing: "-0.02em", margin: 0 }}>Your money, planned to the penny</h2>
+        </div>
+
+        {/* Card */}
+        <div style={{ background: "#161B22", border: "1px solid rgba(255,255,255,0.08)", borderRadius: "20px", overflow: "hidden", boxShadow: "0 32px 80px rgba(0,0,0,0.55)" }}>
+
+          {/* Period header */}
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", padding: "22px 28px 18px", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+            <div>
+              <div style={{ fontSize: "15px", fontWeight: "700" }}>Jul 2 — Jul 15</div>
+              <div style={{ fontSize: "11px", color: "#8B8FA8", marginTop: "3px" }}>
+                {incomeReceived ? "✓ Paycheck received" : "Paycheck (Jul 2)"}
+              </div>
+            </div>
+            <div style={{ textAlign: "right" }}>
+              <div style={{ fontSize: "9px", color: "#8B8FA8", letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: "4px" }}>End Balance</div>
+              <div style={{
+                fontFamily: "'DM Mono', monospace",
+                fontSize: "24px",
+                fontWeight: "700",
+                color: allPaid ? "#4ADE80" : "#F0F6FC",
+                transition: "color 0.6s ease",
+                filter: allPaid ? "drop-shadow(0 0 14px rgba(74,222,128,0.45))" : "none",
+              }}>
+                ${fmt(DEMO_END)}
+              </div>
+            </div>
+          </div>
+
+          {/* Stats bar */}
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+            {[
+              { label: "START",  value: `$${fmt(DEMO_START)}`,   color: "#F0F6FC" },
+              { label: "INCOME", value: `+$${fmt(DEMO_INCOME)}`, color: incomeReceived ? "#4ADE80" : "#8B8FA8" },
+              { label: "BILLS",  value: `$${fmt(billsRemaining)}`, color: "#F0F6FC" },
+            ].map((s, i) => (
+              <div key={i} style={{ padding: "14px 20px", borderRight: i < 2 ? "1px solid rgba(255,255,255,0.06)" : "none" }}>
+                <div style={{ fontSize: "9px", color: "#8B8FA8", fontWeight: "700", letterSpacing: "0.14em", textTransform: "uppercase", marginBottom: "5px" }}>{s.label}</div>
+                <div style={{ fontFamily: "'DM Mono', monospace", fontSize: "15px", fontWeight: "600", color: s.color, transition: "color 0.5s ease" }}>{s.value}</div>
+              </div>
+            ))}
+          </div>
+
+          {/* Income row */}
+          <div style={{ padding: "14px 28px", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+            <div style={{ fontSize: "9px", color: "#8B8FA8", fontWeight: "700", letterSpacing: "0.14em", textTransform: "uppercase", marginBottom: "10px" }}>INCOME</div>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <div>
+                <div style={{ fontSize: "14px", fontWeight: "600", color: incomeReceived ? "#4ADE80" : "#F0F6FC", transition: "color 0.5s ease", display: "flex", alignItems: "center", gap: "6px" }}>
+                  {incomeReceived && <span style={{ fontSize: "11px" }}>✓</span>}
+                  Paycheck
+                </div>
+                <div style={{ fontSize: "11px", color: "#8B8FA8", marginTop: "2px" }}>
+                  {incomeReceived ? "Jul 2 · Received" : "Jul 2"}
+                </div>
+              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                <div style={{ fontFamily: "'DM Mono', monospace", fontSize: "14px", color: "#4ADE80" }}>+${fmt(DEMO_INCOME)}</div>
+                {!incomeReceived && (
+                  <div style={{ background: "rgba(108,99,255,0.15)", border: "1px solid rgba(108,99,255,0.3)", color: "#6C63FF", borderRadius: "6px", padding: "4px 10px", fontSize: "11px", fontWeight: "600" }}>
+                    Got Paid
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Bills list */}
+          <div style={{ padding: "14px 28px 22px" }}>
+            <div style={{ fontSize: "9px", color: "#8B8FA8", fontWeight: "700", letterSpacing: "0.14em", textTransform: "uppercase", marginBottom: "10px" }}>BILLS</div>
+            {demoBills.map((bill, i) => {
+              const paid = i < paidCount;
+              return (
+                <div key={i} style={{
+                  display: "flex", justifyContent: "space-between", alignItems: "center",
+                  padding: "10px 0",
+                  borderBottom: i < demoBills.length - 1 ? "1px solid rgba(255,255,255,0.04)" : "none",
+                  opacity: paid ? 0.45 : 1,
+                  transition: "opacity 0.5s ease",
+                }}>
+                  <div>
+                    <div style={{
+                      fontSize: "14px", fontWeight: "500",
+                      color: paid ? "#8B8FA8" : "#F0F6FC",
+                      textDecoration: paid ? "line-through" : "none",
+                      transition: "all 0.5s ease",
+                    }}>{bill.name}</div>
+                    <div style={{ fontSize: "11px", color: "#4A4F5C", marginTop: "1px" }}>{bill.due}</div>
+                  </div>
+                  <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                    <div style={{
+                      fontFamily: "'DM Mono', monospace", fontSize: "14px",
+                      color: paid ? "#4A4F5C" : "#8B8FA8",
+                      textDecoration: paid ? "line-through" : "none",
+                      transition: "all 0.5s ease",
+                    }}>${fmt(bill.amount)}</div>
+                    <div style={{
+                      width: "32px", height: "28px", borderRadius: "6px",
+                      background: paid ? "rgba(74,222,128,0.1)" : "rgba(108,99,255,0.08)",
+                      border: `1px solid ${paid ? "rgba(74,222,128,0.3)" : "rgba(108,99,255,0.2)"}`,
+                      display: "flex", alignItems: "center", justifyContent: "center",
+                      color: paid ? "#4ADE80" : "#6C63FF",
+                      fontSize: paid ? "13px" : "10px",
+                      fontWeight: "600",
+                      transition: "all 0.5s ease",
+                    }}>
+                      {paid ? "✓" : "Paid"}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Caption + dots */}
+        <div style={{ textAlign: "center", marginTop: "32px" }}>
+          <p style={{ fontSize: "16px", color: "#8B8FA8", minHeight: "24px", transition: "opacity 0.4s ease", margin: "0 0 20px" }}>
+            {DEMO_CAPTIONS[phase]}
+          </p>
+          <div style={{ display: "flex", justifyContent: "center", gap: "6px" }}>
+            {DEMO_CAPTIONS.map((_, i) => (
+              <div key={i} style={{
+                width: phase === i ? "22px" : "6px",
+                height: "6px", borderRadius: "3px",
+                background: phase === i ? "#6C63FF" : "rgba(255,255,255,0.12)",
+                transition: "all 0.4s ease",
+              }} />
+            ))}
+          </div>
+        </div>
+
+      </div>
+    </section>
+  );
+}
 
 function Landing() {
   const navigate = useNavigate();
@@ -100,6 +289,9 @@ function Landing() {
           </div>
         </div>
       </section>
+
+      {/* Animated demo */}
+      <AnimatedDemo />
 
       {/* Features */}
       <section id="features" className="landing-section" style={{ background: "rgba(255,255,255,0.01)", borderTop: "1px solid rgba(255,255,255,0.04)" }}>
