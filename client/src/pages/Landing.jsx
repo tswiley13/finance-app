@@ -2,39 +2,43 @@ import { useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
 import "./Landing.css";
 
-// ── Demo data ─────────────────────────────────────────────────────────────────
-const CURR_BILLS = [
-  { name: "Gas",       amount: 300,  paid: true  },
-  { name: "Groceries", amount: 500,  paid: true  },
-  { name: "Lawyer",    amount: 200,  paid: false },
-  { name: "Internet",  amount: 105,  paid: false },
+// ── Demo data (matches real app structure) ────────────────────────────────────
+const D_INCOME_AMT   = 2977.00;
+const D_AVAIL_BEFORE = 1870.22;                    // before income deposited
+const D_AVAIL_AFTER  = D_AVAIL_BEFORE + D_INCOME_AMT; // 4847.22
+
+const D_BILLS = [
+  { name: "Southwest Gas",  sub: "Due the 15th",  amount: 45   },
+  { name: "Lawyer",         sub: "Every Pay Day", amount: 200  },
+  { name: "AT&T",           sub: "Due the 16th",  amount: 163  },
+  { name: "Netflix",        sub: "Due the 29th",  amount: 25   },
+  { name: "Gym Membership", sub: "Due the 1st",   amount: 79   },
 ];
-const NEXT_BILLS = [
-  { name: "Mortgage",      amount: 1150,   due: "Due the 1st"  },
-  { name: "Car Insurance", amount: 490,    due: "Due the 1st"  },
-  { name: "APS Electric",  amount: 245,    due: "Due the 1st"  },
-  { name: "Cox Internet",  amount: 105,    due: "Due the 26th" },
-  { name: "HOA",           amount: 143.69, due: "Due the 1st"  },
+const D_BILLS_TOTAL = D_BILLS.reduce((s, b) => s + b.amount, 0); // 512
+
+const D_FUTURE = [
+  { dates: "Jun 18 — Jul 1",   inc: "Airgas (Jun 18) · VA Disability (Jul 1)", end: 3879.04 },
+  { dates: "Jul 2 — Jul 15",   inc: "Airgas (Jul 2)",                           end: 4399.80 },
+  { dates: "Jul 16 — Jul 29",  inc: "Airgas (Jul 16)",                          end: 6166.91 },
+  { dates: "Jul 30 — Aug 12",  inc: "Airgas (Jul 30) · VA Disability (Aug 1)",  end: 10689.90 },
 ];
-const NEXT_TOTAL  = NEXT_BILLS.reduce((s, b) => s + b.amount, 0); // 2133.69
-const CURR_UNPAID = CURR_BILLS.filter(b => !b.paid).reduce((s, b) => s + b.amount, 0); // 305
-const AVAIL_NOW   = 4847.22;
-const NEXT_INC    = 4537.21;
-const NEXT_START  = 1562.79;
-const NEXT_END    = +(NEXT_START + NEXT_INC - NEXT_TOTAL).toFixed(2); // 3966.31
-const FUT_START   = NEXT_END;
-const FUT_INC     = 2977.00;
-const FUT_BILLS   = 1843.50;
-const FUT_END     = +(FUT_START + FUT_INC - FUT_BILLS).toFixed(2);
+
+const D_ACCOUNTS = [
+  { name: "Groceries & Gas",   bank: "USAA", last4: "9779", bal: 1246.16, primary: false, accum: false },
+  { name: "Mortgage",          bank: "USAA", last4: "7899", bal: 24.04,   primary: false, accum: true  },
+  { name: "Travis Savings",    bank: "USAA", last4: "5656", bal: 10.00,   primary: false, accum: false },
+  { name: "Wiley Bills",       bank: "USAA", last4: "0689", bal: 469.32,  primary: false, accum: false },
+  { name: "Wiley Spending",    bank: "USAA", last4: "0596", bal: D_AVAIL_AFTER, primary: true, accum: false },
+];
 
 const PHASES = [
-  { dur: 4000, caption: "Your complete financial picture — every account, every period, every dollar. At a glance." },
-  { dur: 3200, caption: "Paycheck lands early? One tap marks it received. Every balance updates in real time." },
-  { dur: 2400, caption: "Check off bills the moment you pay them. Nothing gets lost or forgotten." },
-  { dur: 2400, caption: "Each payment is locked to its own period — changes here never affect another." },
-  { dur: 2400, caption: "Watch your Available This Month climb as bills clear. That's your actual breathing room." },
-  { dur: 2400, caption: "Future pay periods project forward automatically. Always know what's coming." },
-  { dur: 4500, caption: "See your end balance weeks before it arrives. Total control. Zero surprises." },
+  { dur: 4000, caption: "Your complete financial picture — accounts synced, every pay period mapped out ahead of you." },
+  { dur: 3200, caption: "Paycheck arrives early? One tap. Income marked received, Available Now updates instantly." },
+  { dur: 2400, caption: "Pay a bill, check it off. Locked to this period only — nothing bleeds into other periods." },
+  { dur: 2400, caption: "Bills Remaining shrinks in real time. Watch Available This Month climb as you clear them." },
+  { dur: 2400, caption: "Every future pay period projects forward automatically. See where you'll stand weeks from now." },
+  { dur: 2400, caption: "Every dollar accounted for. Nothing slips through the cracks." },
+  { dur: 4500, caption: "That's Stryde. Total control. Zero surprises. This is what financial confidence feels like." },
 ];
 
 function fmt(n) {
@@ -55,278 +59,316 @@ function DashboardPreview() {
 
   const incomeReceived = phase >= 1;
   const paidCount      = Math.max(0, phase - 1);
-  const nextPaidAmt    = NEXT_BILLS.slice(0, paidCount).reduce((s, b) => s + b.amount, 0);
-  const nextRemaining  = NEXT_TOTAL - nextPaidAmt;
-  const allPaid        = paidCount >= NEXT_BILLS.length;
+  const paidAmt        = D_BILLS.slice(0, paidCount).reduce((s, b) => s + b.amount, 0);
+  const billsRemaining = D_BILLS_TOTAL - paidAmt;
+  const allPaid        = paidCount >= D_BILLS.length;
 
-  const incomeThisMonth    = incomeReceived ? 0 : NEXT_INC;
-  const totalBillsRem      = nextRemaining + CURR_UNPAID;
-  const availableThisMonth = AVAIL_NOW + incomeThisMonth - totalBillsRem;
+  const availNow         = incomeReceived ? D_AVAIL_AFTER : D_AVAIL_BEFORE;
+  const incomeThisMonth  = incomeReceived ? 0 : D_INCOME_AMT;
+  const availThisMonth   = availNow + incomeThisMonth - billsRemaining;
+  const periodEndBalance = availNow - billsRemaining; // start + 0 pending income - unpaid bills
 
-  const D = "1px solid rgba(255,255,255,0.05)";
+  // Shared inline style helpers matching real CSS classes
+  const panel  = (extra = {}) => ({ background: "#1A1826", border: "1px solid rgba(255,255,255,0.06)", borderRadius: "12px", padding: "20px", ...extra });
+  const D      = "1px solid rgba(255,255,255,0.06)";
+  const DBORD  = "1px solid rgba(255,255,255,0.04)";
+
+  const navLabel = { fontSize: "9px", color: "#5C6080", letterSpacing: "0.15em", textTransform: "uppercase", padding: "0 8px", margin: "18px 0 4px", fontWeight: "600" };
+  const navItem  = (active) => ({ display: "flex", alignItems: "center", gap: "10px", padding: "8px 10px", borderRadius: "7px", fontSize: "13px", color: active ? "#6C63FF" : "#8B8FA8", fontWeight: active ? "500" : "400", background: active ? "rgba(108,99,255,0.15)" : "transparent", margin: "1px 0", cursor: "pointer" });
 
   return (
     <section style={{ padding: "80px 20px", background: "#08070F" }}>
-      <div style={{ maxWidth: "1200px", margin: "0 auto" }}>
+      <div style={{ maxWidth: "1280px", margin: "0 auto" }}>
 
         {/* Heading */}
         <div style={{ textAlign: "center", marginBottom: "52px" }}>
           <div style={{ fontSize: "11px", fontWeight: "700", letterSpacing: "0.22em", textTransform: "uppercase", color: "#6C63FF", marginBottom: "14px" }}>See It In Action</div>
           <h2 style={{ fontSize: "44px", fontWeight: "800", letterSpacing: "-0.025em", margin: 0, lineHeight: 1.15 }}>
-            Everything you need,<br />
-            <span style={{ color: "#6C63FF" }}>in one view.</span>
+            Everything you need,<br /><span style={{ color: "#6C63FF" }}>in one view.</span>
           </h2>
         </div>
 
         {/* Browser chrome wrapper */}
         <div style={{ background: "#1A1729", border: "1px solid rgba(255,255,255,0.09)", borderRadius: "16px", overflow: "hidden", boxShadow: "0 40px 120px rgba(0,0,0,0.75)" }}>
-
-          {/* Chrome bar */}
           <div style={{ background: "#131122", padding: "11px 16px", display: "flex", alignItems: "center", gap: "8px", borderBottom: D }}>
             <div style={{ display: "flex", gap: "6px" }}>
-              {["#FF5F57","#FEBC2E","#28C840"].map(c => (
-                <div key={c} style={{ width: "10px", height: "10px", borderRadius: "50%", background: c }} />
-              ))}
+              {["#FF5F57","#FEBC2E","#28C840"].map(c => <div key={c} style={{ width: "10px", height: "10px", borderRadius: "50%", background: c }} />)}
             </div>
             <div style={{ flex: 1, background: "rgba(255,255,255,0.05)", borderRadius: "6px", padding: "4px 12px", fontSize: "11px", color: "#4A4F5C", textAlign: "center" }}>
               app.stryde.money
             </div>
           </div>
 
-          {/* App layout: sidebar + main */}
-          <div style={{ display: "flex", background: "#0F0E1A", minHeight: "580px" }}>
+          {/* ── App shell ── */}
+          <div style={{ display: "flex", background: "#13111F" }}>
 
-            {/* ── Sidebar ──────────────────────────────────────────────────── */}
-            <div style={{ width: "185px", minWidth: "185px", borderRight: D, display: "flex", flexDirection: "column", background: "#0C0B17" }}>
+            {/* ── Sidebar (matches real: 260px, bg #13111F) ── */}
+            <aside style={{ width: "230px", minWidth: "230px", background: "#13111F", borderRight: D, display: "flex", flexDirection: "column", flexShrink: 0 }}>
 
-              {/* Logo */}
-              <div style={{ padding: "16px 18px 14px", borderBottom: D }}>
-                <div style={{ fontSize: "15px", fontWeight: "900", letterSpacing: "0.14em", textTransform: "uppercase", color: "#6C63FF" }}>STRYDE</div>
-                <div style={{ fontSize: "9px", color: "#4A4F5C", marginTop: "2px", letterSpacing: "0.06em" }}>Personal Finance</div>
-              </div>
-
-              {/* Accounts */}
-              <div style={{ padding: "12px 14px", borderBottom: D }}>
-                <div style={{ fontSize: "8px", color: "#8B8FA8", fontWeight: "700", letterSpacing: "0.14em", textTransform: "uppercase", marginBottom: "10px" }}>Accounts</div>
-                {[
-                  { name: "Wiley Spending", bal: AVAIL_NOW,  tag: "Primary", tagColor: "#6C63FF" },
-                  { name: "Wiley Bills",    bal: 2133.69,    tag: "Bills",   tagColor: "#F59E0B" },
-                ].map((acc, i) => (
-                  <div key={i} style={{ marginBottom: i === 0 ? "10px" : 0 }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "2px" }}>
-                      <div style={{ fontSize: "10px", color: "#F0F6FC", fontWeight: "500" }}>{acc.name}</div>
-                      <div style={{ fontSize: "7px", fontWeight: "700", color: acc.tagColor, background: `${acc.tagColor}18`, borderRadius: "4px", padding: "1px 5px", letterSpacing: "0.06em" }}>{acc.tag}</div>
-                    </div>
-                    <div style={{ fontFamily: "'DM Mono', monospace", fontSize: "14px", fontWeight: "700", color: "#4ADE80" }}>${fmt(acc.bal)}</div>
-                  </div>
-                ))}
+              {/* Logo — height 88px, padding 0 20px */}
+              <div style={{ height: "88px", padding: "0 20px", display: "flex", flexDirection: "column", justifyContent: "center", borderBottom: D, flexShrink: 0 }}>
+                <div style={{ fontSize: "22px", fontWeight: "800", letterSpacing: "0.06em", color: "#F0F6FC", textTransform: "uppercase" }}>Stryde</div>
+                <div style={{ fontSize: "10px", color: "#6C63FF", letterSpacing: "0.18em", textTransform: "uppercase", marginTop: "3px", fontWeight: "500" }}>Stop hoping. Start knowing.</div>
               </div>
 
               {/* Nav */}
-              <div style={{ padding: "10px 10px", display: "flex", flexDirection: "column", gap: "2px" }}>
+              <nav style={{ flex: 1, padding: "0 12px" }}>
+                <div style={navLabel}>Main</div>
                 {[
-                  { label: "Dashboard",  active: true,  icon: "▦" },
-                  { label: "Bills",      active: false, icon: "≡" },
-                  { label: "Accounts",   active: false, icon: "⬡" },
-                  { label: "Debts",      active: false, icon: "↗" },
-                  { label: "Categories", active: false, icon: "◎" },
-                  { label: "Settings",   active: false, icon: "⚙" },
+                  { label: "Dashboard",  active: true  },
+                  { label: "Bills",      active: false },
+                  { label: "Income",     active: false },
+                  { label: "Accounts",   active: false },
+                  { label: "Categories", active: false },
                 ].map((item, i) => (
-                  <div key={i} style={{ padding: "7px 10px", borderRadius: "7px", background: item.active ? "rgba(108,99,255,0.13)" : "transparent", display: "flex", alignItems: "center", gap: "8px" }}>
-                    <span style={{ fontSize: "11px", color: item.active ? "#6C63FF" : "#4A4F5C" }}>{item.icon}</span>
-                    <span style={{ fontSize: "11px", fontWeight: item.active ? "600" : "400", color: item.active ? "#F0F6FC" : "#8B8FA8" }}>{item.label}</span>
+                  <div key={i} style={navItem(item.active)}>
+                    <span style={{ fontSize: "13px", opacity: 0.8 }}>
+                      {["▦","≡","◈","⬡","◎"][i]}
+                    </span>
+                    {item.label}
                   </div>
                 ))}
-              </div>
-
-              {/* Next paycheck */}
-              <div style={{ marginTop: "auto", padding: "12px 14px", borderTop: D }}>
-                <div style={{ fontSize: "8px", color: "#8B8FA8", fontWeight: "700", letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: "6px" }}>Next Paycheck</div>
-                <div style={{ fontSize: "10px", color: "#F0F6FC", fontWeight: "500" }}>{incomeReceived ? "✓ VA Disability received" : "VA Disability · Jul 1"}</div>
-                <div style={{ fontFamily: "'DM Mono', monospace", fontSize: "12px", color: "#4ADE80", marginTop: "2px" }}>+${fmt(NEXT_INC)}</div>
-              </div>
-            </div>
-
-            {/* ── Main content ─────────────────────────────────────────────── */}
-            <div style={{ flex: 1, padding: "16px 20px 20px", overflow: "hidden", minWidth: 0 }}>
-
-              {/* Header row */}
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
-                <div>
-                  <div style={{ fontSize: "14px", fontWeight: "700" }}>Good morning, Travis ☀️</div>
-                  <div style={{ fontSize: "10px", color: "#8B8FA8", marginTop: "1px" }}>Wednesday, June 17, 2026</div>
-                </div>
-                <div style={{ background: "rgba(108,99,255,0.12)", border: "1px solid rgba(108,99,255,0.25)", borderRadius: "8px", padding: "5px 12px", fontSize: "10px", color: "#6C63FF", fontWeight: "600" }}>
-                  ● Current: Jun 4 – Jun 17
-                </div>
-              </div>
-
-              {/* Monthly projection */}
-              <div style={{ fontSize: "8px", color: "#8B8FA8", fontWeight: "700", letterSpacing: "0.14em", textTransform: "uppercase", marginBottom: "8px" }}>Monthly Projection</div>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: "8px", marginBottom: "16px" }}>
-                {[
-                  { label: "Available Now",        val: `$${fmt(AVAIL_NOW)}`,                                                         color: "#4ADE80" },
-                  { label: "Income This Month",    val: incomeReceived ? "Received ✓" : `+$${fmt(incomeThisMonth)}`,                  color: incomeReceived ? "#4A5568" : "#4ADE80" },
-                  { label: "Bills Remaining",      val: `$${fmt(totalBillsRem)}`,                                                     color: "#F0F6FC" },
-                  { label: "Available This Month", val: `$${fmt(availableThisMonth)}`,                                                color: availableThisMonth >= 0 ? "#4ADE80" : "#F87171" },
-                ].map((t, i) => (
-                  <div key={i} style={{ background: "#161B22", border: D, borderRadius: "10px", padding: "12px 13px" }}>
-                    <div style={{ fontSize: "7px", color: "#8B8FA8", fontWeight: "700", letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: "6px" }}>{t.label}</div>
-                    <div style={{ fontFamily: "'DM Mono', monospace", fontSize: "16px", fontWeight: "700", color: t.color, transition: "color 0.5s ease" }}>{t.val}</div>
+                <div style={navLabel}>Planning</div>
+                {[{ label: "Pay Periods" }, { label: "Debts" }].map((item, i) => (
+                  <div key={i} style={navItem(false)}>
+                    <span style={{ fontSize: "13px", opacity: 0.6 }}>{["📅","↗"][i]}</span>
+                    {item.label}
                   </div>
                 ))}
+                <div style={navLabel}>Account</div>
+                {[{ label: "Invite Member" }, { label: "Settings" }].map((item, i) => (
+                  <div key={i} style={navItem(false)}>
+                    <span style={{ fontSize: "13px", opacity: 0.6 }}>{["👤","⚙"][i]}</span>
+                    {item.label}
+                  </div>
+                ))}
+              </nav>
+
+              {/* Footer — Sign Out */}
+              <div style={{ padding: "12px", borderTop: D, flexShrink: 0 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "8px", padding: "8px 10px", fontSize: "13px", color: "#8B8FA8", cursor: "pointer" }}>
+                  <span style={{ fontSize: "13px" }}>→</span> Sign Out
+                </div>
               </div>
+            </aside>
 
-              {/* Pay periods label */}
-              <div style={{ fontSize: "8px", color: "#8B8FA8", fontWeight: "700", letterSpacing: "0.14em", textTransform: "uppercase", marginBottom: "10px" }}>Pay Periods</div>
+            {/* ── Main ── */}
+            <div style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0 }}>
 
-              {/* Period cards — 2 columns */}
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1.4fr", gap: "12px", marginBottom: "10px" }}>
-
-                {/* ── Current period Jun 4-17 (static) ── */}
-                <div style={{ background: "#161B22", border: D, borderRadius: "12px", overflow: "hidden" }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", padding: "13px 15px 11px", borderBottom: D }}>
-                    <div>
-                      <div style={{ fontSize: "12px", fontWeight: "700" }}>Jun 4 — Jun 17</div>
-                      <div style={{ fontSize: "9px", color: "#6C63FF", fontWeight: "600", marginTop: "2px" }}>● Current</div>
-                    </div>
-                    <div style={{ textAlign: "right" }}>
-                      <div style={{ fontSize: "7px", color: "#8B8FA8", letterSpacing: "0.1em", textTransform: "uppercase" }}>End Balance</div>
-                      <div style={{ fontFamily: "'DM Mono', monospace", fontSize: "16px", fontWeight: "700", color: "#4ADE80" }}>${fmt(NEXT_START)}</div>
-                    </div>
-                  </div>
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", borderBottom: D }}>
-                    {[["START","$4,847.22"],["INCOME","+$2,977"],["BILLS","$305"]].map(([l,v],i) => (
-                      <div key={i} style={{ padding: "8px 11px", borderRight: i < 2 ? D : "none" }}>
-                        <div style={{ fontSize: "7px", color: "#8B8FA8", fontWeight: "700", letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: "3px" }}>{l}</div>
-                        <div style={{ fontFamily: "'DM Mono', monospace", fontSize: "11px", fontWeight: "600", color: "#F0F6FC" }}>{v}</div>
-                      </div>
-                    ))}
-                  </div>
-                  {/* Income */}
-                  <div style={{ padding: "9px 15px", borderBottom: D }}>
-                    <div style={{ fontSize: "7px", color: "#8B8FA8", fontWeight: "700", letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: "6px" }}>INCOME</div>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                      <div style={{ fontSize: "11px", color: "#4ADE80", fontWeight: "600" }}>✓ Airgas <span style={{ color: "#8B8FA8", fontWeight: "400", fontSize: "9px" }}>Received</span></div>
-                      <div style={{ fontFamily: "'DM Mono', monospace", fontSize: "11px", color: "#4ADE80" }}>+$2,977.00</div>
-                    </div>
-                  </div>
-                  {/* Bills */}
-                  <div style={{ padding: "9px 15px" }}>
-                    <div style={{ fontSize: "7px", color: "#8B8FA8", fontWeight: "700", letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: "6px" }}>BILLS</div>
-                    {CURR_BILLS.map((b, i) => (
-                      <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "4px 0", opacity: b.paid ? 0.38 : 1, borderBottom: i < CURR_BILLS.length - 1 ? "1px solid rgba(255,255,255,0.03)" : "none" }}>
-                        <div style={{ fontSize: "11px", color: b.paid ? "#8B8FA8" : "#F0F6FC", textDecoration: b.paid ? "line-through" : "none" }}>{b.name}</div>
-                        <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                          <div style={{ fontFamily: "'DM Mono', monospace", fontSize: "10px", color: "#8B8FA8", textDecoration: b.paid ? "line-through" : "none" }}>${fmt(b.amount)}</div>
-                          <div style={{ width: "24px", height: "20px", borderRadius: "4px", background: b.paid ? "rgba(74,222,128,0.1)" : "rgba(108,99,255,0.08)", border: `1px solid ${b.paid ? "rgba(74,222,128,0.3)" : "rgba(108,99,255,0.2)"}`, display: "flex", alignItems: "center", justifyContent: "center", color: b.paid ? "#4ADE80" : "#6C63FF", fontSize: b.paid ? "9px" : "7px", fontWeight: "600" }}>
-                            {b.paid ? "✓" : "Paid"}
-                          </div>
-                        </div>
-                      </div>
-                    ))}
+              {/* Topbar — height 88px */}
+              <div style={{ height: "88px", padding: "0 32px", borderBottom: "1px solid rgba(255,255,255,0.05)", display: "flex", justifyContent: "space-between", alignItems: "center", flexShrink: 0 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "14px" }}>
+                  <div style={{ width: "38px", height: "38px", borderRadius: "50%", background: "linear-gradient(135deg, #6C63FF, #948cf2)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "14px", fontWeight: "700", color: "#0D1117", flexShrink: 0 }}>T</div>
+                  <div>
+                    <div style={{ fontSize: "20px", fontWeight: "700", color: "#F0F6FC", letterSpacing: "-0.02em" }}>Good afternoon, Travis</div>
+                    <div style={{ fontSize: "12px", color: "#8B8FA8", marginTop: "1px" }}>Wednesday, June 17, 2026</div>
                   </div>
                 </div>
-
-                {/* ── Next period Jun 18-Jul 1 (animated) ── */}
-                <div style={{ background: "#161B22", border: allPaid ? "1px solid rgba(74,222,128,0.25)" : D, borderRadius: "12px", overflow: "hidden", transition: "border-color 0.8s ease", boxShadow: allPaid ? "0 0 30px rgba(74,222,128,0.08)" : "none" }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", padding: "13px 15px 11px", borderBottom: D }}>
-                    <div>
-                      <div style={{ fontSize: "12px", fontWeight: "700" }}>Jun 18 — Jul 1</div>
-                      <div style={{ fontSize: "9px", color: "#8B8FA8", marginTop: "2px" }}>
-                        {incomeReceived ? "✓ Airgas received · VA Disability (Jul 1)" : "Airgas (Jun 18) · VA Disability (Jul 1)"}
-                      </div>
-                    </div>
-                    <div style={{ textAlign: "right" }}>
-                      <div style={{ fontSize: "7px", color: "#8B8FA8", letterSpacing: "0.1em", textTransform: "uppercase" }}>End Balance</div>
-                      <div style={{ fontFamily: "'DM Mono', monospace", fontSize: "16px", fontWeight: "700", color: allPaid ? "#4ADE80" : "#F0F6FC", transition: "color 0.7s ease", filter: allPaid ? "drop-shadow(0 0 8px rgba(74,222,128,0.5))" : "none" }}>
-                        ${fmt(NEXT_END)}
-                      </div>
-                    </div>
-                  </div>
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", borderBottom: D }}>
-                    {[
-                      ["START",  `$${fmt(NEXT_START)}`,  "#F0F6FC"],
-                      ["INCOME", `+$${fmt(NEXT_INC)}`,   incomeReceived ? "#4ADE80" : "#8B8FA8"],
-                      ["BILLS",  `$${fmt(nextRemaining)}`, "#F0F6FC"],
-                    ].map(([l,v,c],i) => (
-                      <div key={i} style={{ padding: "8px 11px", borderRight: i < 2 ? D : "none" }}>
-                        <div style={{ fontSize: "7px", color: "#8B8FA8", fontWeight: "700", letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: "3px" }}>{l}</div>
-                        <div style={{ fontFamily: "'DM Mono', monospace", fontSize: "11px", fontWeight: "600", color: c, transition: "color 0.5s ease" }}>{v}</div>
-                      </div>
-                    ))}
-                  </div>
-                  {/* Income */}
-                  <div style={{ padding: "9px 15px", borderBottom: D }}>
-                    <div style={{ fontSize: "7px", color: "#8B8FA8", fontWeight: "700", letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: "6px" }}>INCOME</div>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                      <div style={{ fontSize: "11px", fontWeight: "600", color: incomeReceived ? "#4ADE80" : "#F0F6FC", transition: "color 0.5s ease", display: "flex", alignItems: "center", gap: "4px" }}>
-                        {incomeReceived ? "✓ " : ""}VA Disability
-                        <span style={{ fontSize: "9px", color: "#8B8FA8", fontWeight: "400" }}>{incomeReceived ? "Received" : "Jul 1"}</span>
-                      </div>
-                      <div style={{ display: "flex", alignItems: "center", gap: "7px" }}>
-                        <div style={{ fontFamily: "'DM Mono', monospace", fontSize: "11px", color: "#4ADE80" }}>+${fmt(NEXT_INC)}</div>
-                        {!incomeReceived && (
-                          <div style={{ background: "rgba(108,99,255,0.15)", border: "1px solid rgba(108,99,255,0.35)", color: "#6C63FF", borderRadius: "5px", padding: "3px 8px", fontSize: "9px", fontWeight: "700", letterSpacing: "0.04em" }}>Got Paid</div>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                  {/* Bills */}
-                  <div style={{ padding: "9px 15px" }}>
-                    <div style={{ fontSize: "7px", color: "#8B8FA8", fontWeight: "700", letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: "6px" }}>BILLS</div>
-                    {NEXT_BILLS.map((b, i) => {
-                      const paid = i < paidCount;
-                      return (
-                        <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "5px 0", opacity: paid ? 0.35 : 1, transition: "opacity 0.6s ease", borderBottom: i < NEXT_BILLS.length - 1 ? "1px solid rgba(255,255,255,0.03)" : "none" }}>
-                          <div>
-                            <div style={{ fontSize: "11px", color: paid ? "#8B8FA8" : "#F0F6FC", textDecoration: paid ? "line-through" : "none", transition: "all 0.5s ease" }}>{b.name}</div>
-                            <div style={{ fontSize: "8px", color: "#4A4F5C" }}>{b.due}</div>
-                          </div>
-                          <div style={{ display: "flex", alignItems: "center", gap: "7px" }}>
-                            <div style={{ fontFamily: "'DM Mono', monospace", fontSize: "10px", color: "#8B8FA8", textDecoration: paid ? "line-through" : "none", transition: "all 0.5s ease" }}>${fmt(b.amount)}</div>
-                            <div style={{ width: "26px", height: "21px", borderRadius: "4px", background: paid ? "rgba(74,222,128,0.1)" : "rgba(108,99,255,0.08)", border: `1px solid ${paid ? "rgba(74,222,128,0.3)" : "rgba(108,99,255,0.2)"}`, display: "flex", alignItems: "center", justifyContent: "center", color: paid ? "#4ADE80" : "#6C63FF", fontSize: paid ? "9px" : "7px", fontWeight: "700", transition: "all 0.5s ease" }}>
-                              {paid ? "✓" : "Paid"}
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
+                <div style={{ background: "rgba(108,99,255,0.08)", border: "1px solid rgba(108,99,255,0.2)", borderRadius: "10px", padding: "10px 16px", textAlign: "center" }}>
+                  <div style={{ fontSize: "9px", color: "#8B8FA8", letterSpacing: "0.1em", textTransform: "uppercase", fontWeight: "600" }}>Current Pay Period</div>
+                  <div style={{ fontSize: "13px", fontWeight: "600", color: "#F0F6FC", marginTop: "3px" }}>Jun 4 — Jun 17</div>
                 </div>
               </div>
 
-              {/* ── Future period preview row ── */}
-              <div style={{ background: "#13121E", border: D, borderRadius: "10px", padding: "10px 15px", display: "flex", alignItems: "center", justifyContent: "space-between", opacity: 0.75 }}>
-                <div>
-                  <div style={{ fontSize: "11px", fontWeight: "600", color: "#8B8FA8" }}>Jul 2 — Jul 15</div>
-                  <div style={{ fontSize: "9px", color: "#4A4F5C", marginTop: "1px" }}>Airgas (Jul 2)</div>
-                </div>
-                <div style={{ display: "flex", gap: "24px", alignItems: "center" }}>
+              {/* Content area — padding 28px 32px */}
+              <div style={{ padding: "28px 32px 32px", overflow: "hidden" }}>
+
+                {/* Monthly Projection heading */}
+                <h2 style={{ fontFamily: "'Syne', sans-serif", fontSize: "24px", margin: "0 0 20px", fontWeight: "700", color: "#F0F6FC" }}>Monthly Projection</h2>
+
+                {/* stat-row-4 */}
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: "12px", marginBottom: "28px" }}>
                   {[
-                    ["START",  `$${fmt(FUT_START)}`],
-                    ["INCOME", `+$${fmt(FUT_INC)}`],
-                    ["BILLS",  `$${fmt(FUT_BILLS)}`],
-                  ].map(([l,v],i) => (
-                    <div key={i} style={{ textAlign: "center" }}>
-                      <div style={{ fontSize: "7px", color: "#4A4F5C", fontWeight: "700", letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: "2px" }}>{l}</div>
-                      <div style={{ fontFamily: "'DM Mono', monospace", fontSize: "11px", color: "#8B8FA8" }}>{v}</div>
+                    { label: "Available Now",        val: availNow,        neg: false },
+                    { label: "Income This Month",    val: incomeThisMonth, neg: false },
+                    { label: "Bills Remaining",      val: billsRemaining,  neg: true  },
+                    { label: "Available This Month", val: availThisMonth,  neg: false },
+                  ].map((t, i) => (
+                    <div key={i} style={{ background: "#1A1826", border: D, borderRadius: "12px", padding: "20px 22px", position: "relative", overflow: "hidden" }}>
+                      <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: "1px", background: "linear-gradient(90deg, rgba(0,212,170,0.8), transparent)" }} />
+                      <div style={{ fontSize: "10px", color: "#8B8FA8", letterSpacing: "0.1em", textTransform: "uppercase", fontWeight: "600", marginBottom: "10px" }}>{t.label}</div>
+                      <div style={{ fontFamily: "'DM Mono', monospace", fontSize: "26px", fontWeight: "500", color: t.neg ? "#F87171" : "#00D4AA", lineHeight: 1, transition: "color 0.5s ease" }}>
+                        ${fmt(t.val)}
+                      </div>
                     </div>
                   ))}
                 </div>
-                <div style={{ textAlign: "right" }}>
-                  <div style={{ fontSize: "7px", color: "#4A4F5C", letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: "2px" }}>Projected End</div>
-                  <div style={{ fontFamily: "'DM Mono', monospace", fontSize: "14px", fontWeight: "700", color: "#4ADE80" }}>${fmt(FUT_END)}</div>
+
+                {/* dashboard-grid: 58% / 40% */}
+                <div style={{ display: "grid", gridTemplateColumns: "58% 40%", gap: "12px", alignItems: "start" }}>
+
+                  {/* ── Left: period cards ── */}
+                  <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+
+                    {/* Current period — EXPANDED + ANIMATED */}
+                    <div style={{ ...panel({ borderLeft: "3px solid #6C63FF", boxShadow: allPaid ? "0 0 30px rgba(74,222,128,0.07)" : "none", transition: "box-shadow 0.8s ease" }) }}>
+
+                      {/* Card header */}
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "16px" }}>
+                        <div>
+                          <div style={{ fontSize: "14px", fontWeight: "600", color: "#F0F6FC", display: "flex", alignItems: "center", gap: "8px" }}>
+                            Jun 4 — Jun 17
+                            <span style={{ fontSize: "9px", background: "#6C63FF", color: "#fff", padding: "2px 8px", borderRadius: "4px", letterSpacing: "0.08em", textTransform: "uppercase", fontWeight: "700" }}>Current</span>
+                          </div>
+                          <div style={{ fontSize: "11px", color: "#8B8FA8", marginTop: "3px" }}>Airgas (Jun 4)</div>
+                        </div>
+                        <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+                          <div style={{ textAlign: "right" }}>
+                            <div style={{ fontSize: "9px", color: "#8B8FA8", letterSpacing: "0.1em", textTransform: "uppercase", fontWeight: "600", marginBottom: "3px" }}>End Balance</div>
+                            <div style={{ fontFamily: "'DM Mono', monospace", fontSize: "22px", fontWeight: "500", color: "#4ADE80", filter: allPaid ? "drop-shadow(0 0 10px rgba(74,222,128,0.6))" : "none", transition: "filter 0.8s ease" }}>
+                              ${fmt(periodEndBalance)}
+                            </div>
+                          </div>
+                          <span style={{ fontSize: "12px", color: "#6E7681" }}>▲</span>
+                        </div>
+                      </div>
+
+                      {/* 3 sub-tiles: Start | Pending Income | Bills */}
+                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "8px", marginBottom: "16px" }}>
+                        {[
+                          { label: "Start",          val: `$${fmt(D_AVAIL_BEFORE)}`,                                                  color: "#8B8FA8" },
+                          { label: "Pending Income", val: incomeReceived ? "+$0.00" : `+$${fmt(D_INCOME_AMT)}`,                       color: "#4ADE80" },
+                          { label: "Bills",          val: billsRemaining > 0 ? `$${fmt(billsRemaining)}` : "—",                       color: billsRemaining > 0 ? "#F87171" : "#8B8FA8" },
+                        ].map((t, i) => (
+                          <div key={i} style={{ background: "rgba(255,255,255,0.03)", borderRadius: "8px", padding: "10px 12px" }}>
+                            <div style={{ fontSize: "9px", color: "#8B8FA8", letterSpacing: "0.1em", textTransform: "uppercase", fontWeight: "600", marginBottom: "4px" }}>{t.label}</div>
+                            <div style={{ fontFamily: "'DM Mono', monospace", fontSize: "14px", color: t.color, transition: "color 0.5s ease" }}>{t.val}</div>
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* Income section */}
+                      <div style={{ marginTop: "12px", borderTop: "1px solid rgba(255,255,255,0.05)", paddingTop: "12px" }}>
+                        <div style={{ fontSize: "9px", color: "#8B8FA8", letterSpacing: "0.12em", textTransform: "uppercase", fontWeight: "600", marginBottom: "10px" }}>Income</div>
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                          <div>
+                            <div style={{ fontSize: "13px", fontWeight: "600", color: incomeReceived ? "#4ADE80" : "#F0F6FC", transition: "color 0.5s ease" }}>
+                              {incomeReceived ? "✓ Airgas" : "Airgas"}
+                            </div>
+                            <div style={{ fontSize: "10px", color: "#8B8FA8", marginTop: "2px" }}>
+                              {incomeReceived ? "Jun 4 · Received early" : "Jun 4"}
+                            </div>
+                          </div>
+                          <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                            <div style={{ fontFamily: "'DM Mono', monospace", fontSize: "13px", color: "#4ADE80" }}>+$2,977.00</div>
+                            {!incomeReceived ? (
+                              <div style={{ background: "rgba(108,99,255,0.15)", border: "1px solid rgba(108,99,255,0.35)", color: "#6C63FF", borderRadius: "6px", padding: "4px 12px", fontSize: "11px", fontWeight: "700", letterSpacing: "0.04em" }}>
+                                Got Paid
+                              </div>
+                            ) : (
+                              <div style={{ fontSize: "11px", color: "#4A5568" }}>Undo</div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Bills section */}
+                      <div style={{ marginTop: "12px", borderTop: "1px solid rgba(255,255,255,0.05)", paddingTop: "4px" }}>
+                        {D_BILLS.map((b, i) => {
+                          const paid = i < paidCount;
+                          return (
+                            <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 0", opacity: paid ? 0.38 : 1, transition: "opacity 0.6s ease", borderBottom: i < D_BILLS.length - 1 ? DBORD : "none" }}>
+                              <div>
+                                <div style={{ fontSize: "13px", fontWeight: paid ? "400" : "500", color: paid ? "#8B8FA8" : "#F0F6FC", textDecoration: paid ? "line-through" : "none", transition: "all 0.5s ease" }}>
+                                  {b.name}
+                                </div>
+                                <div style={{ fontSize: "10px", color: paid ? "#4A4F5C" : "#8B8FA8", marginTop: "1px" }}>{paid ? "Paid" : b.sub}</div>
+                              </div>
+                              <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                                <div style={{ fontFamily: "'DM Mono', monospace", fontSize: "13px", color: "#8B8FA8", textDecoration: paid ? "line-through" : "none", transition: "all 0.5s ease" }}>${fmt(b.amount)}</div>
+                                {paid ? (
+                                  <div style={{ fontSize: "11px", color: "#4A5568" }}>Undo</div>
+                                ) : (
+                                  <div style={{ display: "flex", gap: "4px" }}>
+                                    <div style={{ background: "rgba(108,99,255,0.12)", border: "1px solid rgba(108,99,255,0.25)", color: "#6C63FF", borderRadius: "5px", padding: "3px 9px", fontSize: "10px", fontWeight: "600" }}>Paid</div>
+                                    <div style={{ background: "rgba(251,191,36,0.08)", border: "1px solid rgba(251,191,36,0.2)", color: "#FBBF24", borderRadius: "5px", padding: "3px 8px", fontSize: "10px", fontWeight: "600" }}>Partial</div>
+                                    <div style={{ background: "rgba(248,113,113,0.08)", border: "1px solid rgba(248,113,113,0.2)", color: "#F87171", borderRadius: "5px", padding: "3px 7px", fontSize: "10px", fontWeight: "600" }}>✕</div>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* Future period rows — collapsed */}
+                    {D_FUTURE.map((row, i) => (
+                      <div key={i} style={{ ...panel({ borderLeft: "3px solid transparent" }) }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+                          <div>
+                            <div style={{ fontSize: "14px", fontWeight: "600", color: "#F0F6FC" }}>{row.dates}</div>
+                            <div style={{ fontSize: "11px", color: "#8B8FA8", marginTop: "3px" }}>{row.inc}</div>
+                          </div>
+                          <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+                            <div style={{ textAlign: "right" }}>
+                              <div style={{ fontSize: "9px", color: "#8B8FA8", letterSpacing: "0.1em", textTransform: "uppercase", fontWeight: "600", marginBottom: "3px" }}>End Balance</div>
+                              <div style={{ fontFamily: "'DM Mono', monospace", fontSize: "22px", fontWeight: "500", color: "#4ADE80" }}>${fmt(row.end)}</div>
+                            </div>
+                            <span style={{ fontSize: "12px", color: "#6E7681" }}>▼</span>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* ── Right: Accounts + WTMG ── */}
+                  <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+
+                    {/* Accounts panel */}
+                    <div style={panel()}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
+                        <div style={{ fontSize: "11px", color: "#8B8FA8", letterSpacing: "0.1em", textTransform: "uppercase", fontWeight: "600" }}>Accounts</div>
+                        <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                          <div style={{ fontSize: "12px", color: "#6C63FF", fontWeight: "600" }}>Synced 10:54 AM</div>
+                          <div style={{ fontFamily: "'DM Mono', monospace", fontSize: "11px", color: "#8B8FA8" }}>6 total</div>
+                        </div>
+                      </div>
+                      {D_ACCOUNTS.map((acct, i) => (
+                        <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", padding: "10px 0", borderBottom: i < D_ACCOUNTS.length - 1 ? DBORD : "none" }}>
+                          <div>
+                            <div style={{ fontSize: "13px", color: "#F0F6FC", fontWeight: "500", display: "flex", alignItems: "center", gap: "6px", flexWrap: "wrap" }}>
+                              {acct.name}
+                              {acct.primary && <span style={{ fontSize: "8px", background: "rgba(108,99,255,0.15)", border: "1px solid rgba(108,99,255,0.3)", color: "#6C63FF", borderRadius: "4px", padding: "1px 6px", fontWeight: "700", letterSpacing: "0.06em", textTransform: "uppercase" }}>Primary</span>}
+                              {acct.accum && <span style={{ fontSize: "8px", background: "rgba(0,212,170,0.1)", border: "1px solid rgba(0,212,170,0.25)", color: "#00D4AA", borderRadius: "4px", padding: "1px 6px", fontWeight: "700", letterSpacing: "0.06em", textTransform: "uppercase" }}>Accumulating</span>}
+                            </div>
+                            <div style={{ fontSize: "11px", color: "#8B8FA8", marginTop: "2px" }}>{acct.bank} ···{acct.last4}</div>
+                          </div>
+                          <div style={{ textAlign: "right", flexShrink: 0 }}>
+                            <div style={{ fontFamily: "'DM Mono', monospace", fontSize: "14px", color: "#F0F6FC", fontWeight: "500" }}>${fmt(acct.bal)}</div>
+                            <div style={{ fontSize: "10px", color: "#6C63FF", marginTop: "2px" }}>via Plaid</div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* WHERE THE MONEY GOES */}
+                    <div style={panel()}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
+                        <div style={{ fontSize: "11px", color: "#8B8FA8", letterSpacing: "0.1em", textTransform: "uppercase", fontWeight: "600" }}>Where the Money Goes</div>
+                        <div style={{ fontSize: "11px", color: "#8B8FA8" }}>This pay period</div>
+                      </div>
+                      <div style={{ fontSize: "9px", color: "#8B8FA8", letterSpacing: "0.1em", textTransform: "uppercase", fontWeight: "600", marginBottom: "10px" }}>Bills</div>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 0", borderBottom: DBORD }}>
+                        <div style={{ fontSize: "13px", color: "#4ADE80" }}>✓ Transfer to Wiley Bills</div>
+                        <div style={{ fontSize: "11px", color: "#4A5568" }}>Undo</div>
+                      </div>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 0" }}>
+                        <div style={{ fontSize: "13px", color: "#F0F6FC" }}>Southwest Gas</div>
+                        <div style={{ fontFamily: "'DM Mono', monospace", fontSize: "13px", color: "#8B8FA8" }}>$45.00</div>
+                      </div>
+                    </div>
+                  </div>
+
                 </div>
               </div>
-
             </div>
           </div>
         </div>
 
         {/* Caption + dots */}
         <div style={{ textAlign: "center", marginTop: "40px" }}>
-          <p style={{ fontSize: "17px", color: "#8B8FA8", margin: "0 0 22px", minHeight: "26px", lineHeight: 1.5, maxWidth: "640px", marginLeft: "auto", marginRight: "auto" }}>
+          <p style={{ fontSize: "17px", color: "#8B8FA8", margin: "0 0 22px", minHeight: "26px", lineHeight: 1.55, maxWidth: "660px", marginLeft: "auto", marginRight: "auto" }}>
             {PHASES[phase].caption}
           </p>
           <div style={{ display: "flex", justifyContent: "center", gap: "6px" }}>
@@ -355,16 +397,12 @@ function Landing() {
       {/* Nav */}
       <nav className="landing-nav">
         <div style={{ fontSize: "22px", fontWeight: "900", letterSpacing: "0.12em", textTransform: "uppercase" }}>Stryde</div>
-
-        {/* Desktop links */}
         <div className="landing-nav-links">
           <a href="#features" style={{ fontSize: "14px", color: "#8B8FA8", textDecoration: "none" }}>Features</a>
           <a href="#pricing" style={{ fontSize: "14px", color: "#8B8FA8", textDecoration: "none" }}>Pricing</a>
           <button onClick={goToSignIn} style={{ fontSize: "14px", color: "#8B8FA8", background: "none", border: "none", cursor: "pointer", fontFamily: "'Inter', sans-serif" }}>Sign In</button>
           <button onClick={goToSignUp} style={{ fontSize: "14px", fontWeight: "700", color: "#13111F", background: "linear-gradient(135deg, #6C63FF, #948cf2)", border: "none", borderRadius: "8px", padding: "10px 20px", cursor: "pointer", fontFamily: "'Inter', sans-serif" }}>Get Started Free</button>
         </div>
-
-        {/* Mobile hamburger */}
         <button className="landing-hamburger" onClick={() => setMenuOpen(!menuOpen)} aria-label="Menu">
           {menuOpen ? (
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#F0F6FC" strokeWidth="2" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
@@ -387,18 +425,13 @@ function Landing() {
         <div style={{ display: "inline-block", fontSize: "11px", fontWeight: "700", letterSpacing: "0.2em", textTransform: "uppercase", color: "#6C63FF", background: "rgba(108,99,255,0.1)", border: "1px solid rgba(108,99,255,0.2)", borderRadius: "20px", padding: "6px 16px", marginBottom: "32px" }}>
           Now in Beta
         </div>
-        <h1>
-          Stop hoping.<br />
-          <span style={{ color: "#6C63FF" }}>Start knowing.</span>
-        </h1>
+        <h1>Stop hoping.<br /><span style={{ color: "#6C63FF" }}>Start knowing.</span></h1>
         <p>Real financial planning for every household. Know exactly where every dollar is going — before the bills hit.</p>
         <div className="landing-hero-cta">
           <button onClick={goToSignUp} style={{ fontSize: "16px", fontWeight: "700", color: "#13111F", background: "linear-gradient(135deg, #6C63FF, #948cf2)", border: "none", borderRadius: "10px", padding: "16px 36px", cursor: "pointer", fontFamily: "'Inter', sans-serif" }}>
             Start Free Trial
           </button>
-          <a href="#demo" style={{ fontSize: "15px", color: "#6E7681", textDecoration: "none", fontWeight: "500" }}>
-            See how it works →
-          </a>
+          <a href="#demo" style={{ fontSize: "15px", color: "#6E7681", textDecoration: "none", fontWeight: "500" }}>See how it works →</a>
         </div>
         <p style={{ fontSize: "12px", color: "#4A4F5C", marginTop: "20px" }}>No credit card required · 14-day free trial</p>
         <p className="landing-mobile-signin">
@@ -407,10 +440,8 @@ function Landing() {
         </p>
       </section>
 
-      {/* Animated dashboard demo */}
-      <div id="demo">
-        <DashboardPreview />
-      </div>
+      {/* Dashboard demo */}
+      <div id="demo"><DashboardPreview /></div>
 
       {/* Features */}
       <section id="features" className="landing-section" style={{ background: "rgba(255,255,255,0.01)", borderTop: "1px solid rgba(255,255,255,0.04)" }}>
@@ -428,9 +459,7 @@ function Landing() {
               { icon: "🤖", title: "AI Financial Advisor",    desc: "Get personalized budgeting advice and answers to your money questions — powered by AI, built into your dashboard.", badge: "Coming Soon" },
             ].map((f, i) => (
               <div key={i} style={{ background: "#161B22", border: "1px solid #30363D", borderRadius: "16px", padding: "32px", position: "relative" }}>
-                {f.badge && (
-                  <div style={{ position: "absolute", top: "20px", right: "20px", fontSize: "9px", fontWeight: "700", letterSpacing: "0.1em", textTransform: "uppercase", color: "#6C63FF", background: "rgba(108,99,255,0.1)", border: "1px solid rgba(108,99,255,0.2)", borderRadius: "20px", padding: "4px 10px" }}>{f.badge}</div>
-                )}
+                {f.badge && <div style={{ position: "absolute", top: "20px", right: "20px", fontSize: "9px", fontWeight: "700", letterSpacing: "0.1em", textTransform: "uppercase", color: "#6C63FF", background: "rgba(108,99,255,0.1)", border: "1px solid rgba(108,99,255,0.2)", borderRadius: "20px", padding: "4px 10px" }}>{f.badge}</div>}
                 <div style={{ fontSize: "32px", marginBottom: "16px" }}>{f.icon}</div>
                 <div style={{ fontSize: "18px", fontWeight: "700", marginBottom: "10px" }}>{f.title}</div>
                 <div style={{ fontSize: "14px", color: "#8B8FA8", lineHeight: "1.6" }}>{f.desc}</div>
@@ -472,8 +501,6 @@ function Landing() {
             <p style={{ fontSize: "17px", color: "#8B8FA8" }}>Start free. No credit card required.</p>
           </div>
           <div className="landing-pricing-grid">
-
-            {/* Free trial */}
             <div style={{ background: "#161B22", border: "1px solid #30363D", borderRadius: "16px", padding: "36px" }}>
               <div style={{ fontSize: "14px", fontWeight: "600", color: "#8B8FA8", marginBottom: "8px" }}>Free Trial</div>
               <div style={{ fontFamily: "'DM Mono', monospace", fontSize: "42px", fontWeight: "700", color: "#F0F6FC", marginBottom: "4px" }}>$0</div>
@@ -481,42 +508,28 @@ function Landing() {
               <div style={{ display: "flex", flexDirection: "column", gap: "12px", marginBottom: "32px" }}>
                 {["Full access to all features", "Up to 2 household members", "Unlimited pay periods"].map((f, i) => (
                   <div key={i} style={{ display: "flex", alignItems: "center", gap: "10px", fontSize: "14px", color: "#8B8FA8" }}>
-                    <div style={{ width: "16px", height: "16px", borderRadius: "50%", background: "rgba(0,212,170,0.15)", border: "1px solid rgba(0,212,170,0.3)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                      <div style={{ width: "5px", height: "5px", borderRadius: "50%", background: "#00D4AA" }} />
-                    </div>
+                    <div style={{ width: "16px", height: "16px", borderRadius: "50%", background: "rgba(0,212,170,0.15)", border: "1px solid rgba(0,212,170,0.3)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><div style={{ width: "5px", height: "5px", borderRadius: "50%", background: "#00D4AA" }} /></div>
                     {f}
                   </div>
                 ))}
               </div>
-              <button onClick={goToSignUp} style={{ width: "100%", padding: "13px", background: "none", border: "1px solid #30363D", borderRadius: "8px", color: "#F0F6FC", fontSize: "14px", fontWeight: "600", fontFamily: "'Inter', sans-serif", cursor: "pointer" }}>
-                Start Free Trial
-              </button>
+              <button onClick={goToSignUp} style={{ width: "100%", padding: "13px", background: "none", border: "1px solid #30363D", borderRadius: "8px", color: "#F0F6FC", fontSize: "14px", fontWeight: "600", fontFamily: "'Inter', sans-serif", cursor: "pointer" }}>Start Free Trial</button>
             </div>
-
-            {/* Monthly */}
             <div style={{ background: "#161B22", border: "1px solid #6C63FF", borderRadius: "16px", padding: "36px", position: "relative" }}>
-              <div style={{ position: "absolute", top: "-12px", left: "50%", transform: "translateX(-50%)", fontSize: "10px", fontWeight: "700", letterSpacing: "0.1em", textTransform: "uppercase", color: "#13111F", background: "linear-gradient(135deg, #6C63FF, #948cf2)", borderRadius: "20px", padding: "4px 14px" }}>
-                Most Popular
-              </div>
+              <div style={{ position: "absolute", top: "-12px", left: "50%", transform: "translateX(-50%)", fontSize: "10px", fontWeight: "700", letterSpacing: "0.1em", textTransform: "uppercase", color: "#13111F", background: "linear-gradient(135deg, #6C63FF, #948cf2)", borderRadius: "20px", padding: "4px 14px" }}>Most Popular</div>
               <div style={{ fontSize: "14px", fontWeight: "600", color: "#8B8FA8", marginBottom: "8px" }}>Monthly</div>
               <div style={{ fontFamily: "'DM Mono', monospace", fontSize: "42px", fontWeight: "700", color: "#F0F6FC", marginBottom: "4px" }}>$9.99<span style={{ fontSize: "18px", color: "#8B8FA8" }}>/mo</span></div>
               <div style={{ fontSize: "13px", color: "#4A4F5C", marginBottom: "28px" }}>Billed monthly, cancel anytime</div>
               <div style={{ display: "flex", flexDirection: "column", gap: "12px", marginBottom: "32px" }}>
                 {["Everything in free trial", "Unlimited household members", "Real-time bank balances (Plaid)", "AI financial advisor", "Priority support"].map((f, i) => (
                   <div key={i} style={{ display: "flex", alignItems: "center", gap: "10px", fontSize: "14px", color: "#8B8FA8" }}>
-                    <div style={{ width: "16px", height: "16px", borderRadius: "50%", background: "rgba(108,99,255,0.15)", border: "1px solid rgba(108,99,255,0.3)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                      <div style={{ width: "5px", height: "5px", borderRadius: "50%", background: "#6C63FF" }} />
-                    </div>
+                    <div style={{ width: "16px", height: "16px", borderRadius: "50%", background: "rgba(108,99,255,0.15)", border: "1px solid rgba(108,99,255,0.3)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><div style={{ width: "5px", height: "5px", borderRadius: "50%", background: "#6C63FF" }} /></div>
                     {f}
                   </div>
                 ))}
               </div>
-              <button onClick={goToSignUp} style={{ width: "100%", padding: "13px", background: "linear-gradient(135deg, #6C63FF, #948cf2)", border: "none", borderRadius: "8px", color: "#13111F", fontSize: "14px", fontWeight: "700", fontFamily: "'Inter', sans-serif", cursor: "pointer" }}>
-                Get Started
-              </button>
+              <button onClick={goToSignUp} style={{ width: "100%", padding: "13px", background: "linear-gradient(135deg, #6C63FF, #948cf2)", border: "none", borderRadius: "8px", color: "#13111F", fontSize: "14px", fontWeight: "700", fontFamily: "'Inter', sans-serif", cursor: "pointer" }}>Get Started</button>
             </div>
-
-            {/* Military */}
             <div style={{ background: "#161B22", border: "1px solid #30363D", borderRadius: "16px", padding: "36px" }}>
               <div style={{ fontSize: "14px", fontWeight: "600", color: "#8B8FA8", marginBottom: "8px" }}>Military & First Responders</div>
               <div style={{ fontFamily: "'DM Mono', monospace", fontSize: "42px", fontWeight: "700", color: "#F0F6FC", marginBottom: "4px" }}>$7.99<span style={{ fontSize: "18px", color: "#8B8FA8" }}>/mo</span></div>
@@ -524,18 +537,13 @@ function Landing() {
               <div style={{ display: "flex", flexDirection: "column", gap: "12px", marginBottom: "32px" }}>
                 {["Everything in Monthly plan", "20% lifetime discount", "Military, police, fire & EMS eligible", "Verification required"].map((f, i) => (
                   <div key={i} style={{ display: "flex", alignItems: "center", gap: "10px", fontSize: "14px", color: "#8B8FA8" }}>
-                    <div style={{ width: "16px", height: "16px", borderRadius: "50%", background: "rgba(0,212,170,0.15)", border: "1px solid rgba(0,212,170,0.3)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                      <div style={{ width: "5px", height: "5px", borderRadius: "50%", background: "#00D4AA" }} />
-                    </div>
+                    <div style={{ width: "16px", height: "16px", borderRadius: "50%", background: "rgba(0,212,170,0.15)", border: "1px solid rgba(0,212,170,0.3)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><div style={{ width: "5px", height: "5px", borderRadius: "50%", background: "#00D4AA" }} /></div>
                     {f}
                   </div>
                 ))}
               </div>
-              <button onClick={goToSignUp} style={{ width: "100%", padding: "13px", background: "none", border: "1px solid #30363D", borderRadius: "8px", color: "#F0F6FC", fontSize: "14px", fontWeight: "600", fontFamily: "'Inter', sans-serif", cursor: "pointer" }}>
-                Verify & Get Discount
-              </button>
+              <button onClick={goToSignUp} style={{ width: "100%", padding: "13px", background: "none", border: "1px solid #30363D", borderRadius: "8px", color: "#F0F6FC", fontSize: "14px", fontWeight: "600", fontFamily: "'Inter', sans-serif", cursor: "pointer" }}>Verify & Get Discount</button>
             </div>
-
           </div>
         </div>
       </section>
@@ -543,9 +551,7 @@ function Landing() {
       {/* CTA */}
       <section className="landing-cta-section" style={{ borderTop: "1px solid rgba(255,255,255,0.04)" }}>
         <h2>Ready to stop hoping?</h2>
-        <p style={{ fontSize: "18px", color: "#8B8FA8", marginBottom: "40px" }}>
-          Join households already planning ahead with Stryde.
-        </p>
+        <p style={{ fontSize: "18px", color: "#8B8FA8", marginBottom: "40px" }}>Join households already planning ahead with Stryde.</p>
         <button onClick={goToSignUp} style={{ fontSize: "16px", fontWeight: "700", color: "#13111F", background: "linear-gradient(135deg, #6C63FF, #948cf2)", border: "none", borderRadius: "10px", padding: "16px 40px", cursor: "pointer", fontFamily: "'Inter', sans-serif" }}>
           Start Free Trial
         </button>
