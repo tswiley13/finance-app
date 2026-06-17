@@ -1893,7 +1893,11 @@ function Dashboard() {
                 return inc.actualPayDate && new Date(inc.actualPayDate + "T12:00:00") > today;
               })
               .reduce((sum, inc) => sum + (inc.fixed_amount || 0), 0)
-          : item.income;
+          : item.incomeItems
+              // For future periods, exclude income already received early so it isn't
+              // double-counted (it's already in the current balance).
+              .filter(inc => !earlyPayments.has(`${inc.id}-${item.period.start_date}`))
+              .reduce((sum, inc) => sum + (inc.fixed_amount || 0), 0);
 
         const pStart = new Date(item.period.start_date + "T00:00:00");
         const pEnd = new Date(item.period.end_date + "T23:59:59");
@@ -2039,7 +2043,59 @@ function Dashboard() {
           return sum + (b.amount || 0);
         }, 0);
 
-      const availableThisMonth = primaryBalance + monthIncome - monthBills;
+      // Available This Month: only subtract bills assigned directly to the primary account.
+      // Bills from other accounts (e.g. Wiley Bills) are pre-funded via transfers and
+      // don't reduce the primary spending account balance further.
+      const primaryAccountIdsForMonth = new Set(
+        accounts.filter(a => a.is_primary && !a.is_accumulating).map(a => a.id)
+      );
+      const monthBillsPrimary = bills
+        .filter(b => b.is_active !== false && primaryAccountIdsForMonth.has(b.account_id))
+        .reduce((sum, b) => {
+          const freq = b.frequency || "monthly";
+          if (freq === "payday" || freq === "biweekly") {
+            let t = 0;
+            for (const period of periodsStartingThisMonth) {
+              if (skippedBillPeriods.has(`${b.id}-${period.start_date}`)) continue;
+              if (isBillPaidInPeriod(b.id, period.start_date)) continue;
+              t += (b.amount || 0);
+            }
+            return sum + t;
+          }
+          if (isSkippedThisMonth(b)) return sum;
+          if (freq === "quarterly") {
+            if (!b.due_month) return sum;
+            const startM = b.due_month - 1;
+            const dueMonths = [startM, (startM+3)%12, (startM+6)%12, (startM+9)%12];
+            if (!dueMonths.includes(currentMonth)) return sum;
+            if (paidThisMonth(b)) return sum;
+            return sum + (b.amount || 0);
+          }
+          if (freq === "annually") {
+            if (!b.due_month || b.due_month - 1 !== currentMonth) return sum;
+            if (paidThisMonth(b)) return sum;
+            return sum + (b.amount || 0);
+          }
+          if (b.due_day && b.due_day > daysInCurrentMonth) return sum;
+          if (b.due_day) {
+            const dueDateThisMonth = new Date(currentYear, currentMonth, b.due_day);
+            const relPeriod = sortedAllPeriods.find(p => {
+              const ps = new Date(p.start_date + "T00:00:00");
+              const pe = new Date(p.end_date + "T23:59:59");
+              return dueDateThisMonth >= ps && dueDateThisMonth <= pe;
+            });
+            if (relPeriod) {
+              if (isBillPaidInPeriod(b.id, relPeriod.start_date)) return sum;
+            } else {
+              if (paidThisMonth(b)) return sum;
+            }
+          } else {
+            if (paidThisMonth(b)) return sum;
+          }
+          return sum + (b.amount || 0);
+        }, 0);
+
+      const availableThisMonth = primaryBalance + monthIncome - monthBillsPrimary;
 
       return (
         <div className="content-area">
