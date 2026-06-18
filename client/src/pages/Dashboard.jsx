@@ -1912,29 +1912,41 @@ function Dashboard() {
           }, 0);
         const billsDeducted = item.billsTotal - skippedUnpaidTotal;
 
-        // End balance:
-        // Current period — primary balance already reflects transfers made to bill accounts.
-        // Only subtract bills assigned directly to the primary account that are still unpaid.
-        // Bills assigned to other accounts (e.g. Wiley Bills) have already been funded via transfers.
-        // Future periods — full projection at face value regardless of paid status.
-        const primaryAccountIds = new Set(
-          accounts.filter(a => a.is_primary && !a.is_accumulating).map(a => a.id)
-        );
-        const billsForEndBalance = isCurrent
-          ? item.bills
-              .filter(b => {
-                if (skippedBillPeriods.has(`${b.id}-${periodKey}`)) return false;
-                if (isBillPaidInPeriod(b.id, periodKey)) return false;
-                return primaryAccountIds.has(b.account_id);
-              })
-              .reduce((sum, b) => sum + (b.amount || 0), 0)
-          : item.bills
-              .filter(b => {
-                if (skippedBillPeriods.has(`${b.id}-${periodKey}`)) return false;
-                if (isBillPaidInPeriod(b.id, periodKey)) return false;
-                return true;
-              })
-              .reduce((sum, b) => sum + (b.amount || 0), 0);
+        // End balance: subtract all unpaid, unskipped bills.
+        // Current period special case: if the user has confirmed a WTMG transfer to a
+        // non-primary account (transfers[accountId] >= total bills for that account),
+        // the money has already left the primary balance — don't double-subtract.
+        // For future periods, always subtract all bills (full projection).
+
+        // Pre-compute unpaid bill totals per account for the transfer-done check.
+        const unpaidTotalByAcct = {};
+        if (isCurrent) {
+          item.bills.forEach(b => {
+            if (skippedBillPeriods.has(`${b.id}-${periodKey}`)) return;
+            if (isBillPaidInPeriod(b.id, periodKey)) return;
+            if (!b.account_id) return;
+            unpaidTotalByAcct[b.account_id] = (unpaidTotalByAcct[b.account_id] || 0) + (b.amount || 0);
+          });
+        }
+
+        const billsForEndBalance = item.bills
+          .filter(b => {
+            if (skippedBillPeriods.has(`${b.id}-${periodKey}`)) return false;
+            if (isBillPaidInPeriod(b.id, periodKey)) return false;
+            // Current period: if this bill's account transfer is confirmed, skip it
+            // (money already left primary when the WTMG transfer was checked off).
+            if (isCurrent && b.account_id) {
+              const acct = accounts.find(a => a.id === b.account_id);
+              const isPrimary = acct?.is_primary && !acct?.is_accumulating;
+              if (!isPrimary) {
+                const transferred = transfers[b.account_id] || 0;
+                const totalForAcct = unpaidTotalByAcct[b.account_id] || 0;
+                if (transferred >= totalForAcct) return false;
+              }
+            }
+            return true;
+          })
+          .reduce((sum, b) => sum + (b.amount || 0), 0);
 
         const endBalance = startBalance + pendingIncome - billsForEndBalance;
         runningBalance = endBalance;
