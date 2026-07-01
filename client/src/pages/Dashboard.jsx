@@ -337,6 +337,7 @@ function Dashboard() {
   const [debtPayoffOrder, setDebtPayoffOrder] = useState("");
   const [confirmDeleteDebtId, setConfirmDeleteDebtId] = useState(null);
   const [confirmPayoffDebtId, setConfirmPayoffDebtId] = useState(null);
+  const [nextTransfers, setNextTransfers] = useState({});
   const [whatIfMode, setWhatIfMode] = useState(false);
   const [whatIfBills, setWhatIfBills] = useState({});      // { [id]: { amount, enabled } }
   const [whatIfIncome, setWhatIfIncome] = useState({});    // { [id]: { amount, enabled } }
@@ -561,15 +562,20 @@ function Dashboard() {
           .select("row_key, amount, period_start")
           .eq("user_id", user.id);
         if (transferRows && transferRows.length > 0) {
-          // Find the current period from the already-loaded pay periods
           const periodsData2 = periodsRes.data || [];
-          const curPeriod = periodsData2.find(p => p.start_date <= today2 && p.end_date >= today2);
-          const curPeriodKey = curPeriod?.start_date;
-          if (curPeriodKey) {
-            const currentTransfers = transferRows
-              .filter(r => r.period_start === curPeriodKey)
-              .reduce((acc, r) => ({ ...acc, [r.row_key]: r.amount }), {});
-            setTransfers(currentTransfers);
+          const sortedPeriods = [...periodsData2].sort((a, b) => new Date(a.start_date) - new Date(b.start_date));
+          const curPeriod = sortedPeriods.find(p => p.start_date <= today2 && p.end_date >= today2);
+          const curIdx = sortedPeriods.indexOf(curPeriod);
+          const nextPeriod = curIdx >= 0 ? sortedPeriods[curIdx + 1] : null;
+          if (curPeriod) {
+            setTransfers(transferRows
+              .filter(r => r.period_start === curPeriod.start_date)
+              .reduce((acc, r) => ({ ...acc, [r.row_key]: r.amount }), {}));
+          }
+          if (nextPeriod) {
+            setNextTransfers(transferRows
+              .filter(r => r.period_start === nextPeriod.start_date)
+              .reduce((acc, r) => ({ ...acc, [r.row_key]: r.amount }), {}));
           }
         }
 
@@ -1375,6 +1381,38 @@ function Dashboard() {
     setTransferAmount("");
   }
 
+  async function confirmNextTransfer(rowKey, amount, nextPeriodKey) {
+    const parsed = parseFloat(amount);
+    if (!parsed || parsed <= 0 || !nextPeriodKey) return;
+
+    const newAmount = (nextTransfers[rowKey] || 0) + parsed;
+
+    await supabase.from("period_transfers").upsert({
+      user_id: userId,
+      period_start: nextPeriodKey,
+      row_key: rowKey,
+      amount: newAmount,
+    }, { onConflict: "user_id,period_start,row_key" });
+
+    setNextTransfers(prev => ({ ...prev, [rowKey]: newAmount }));
+    setTransferringId(null);
+    setTransferAmount("");
+  }
+
+  async function undoNextTransfer(rowKey, nextPeriodKey) {
+    if (!nextPeriodKey) return;
+    await supabase.from("period_transfers")
+      .delete()
+      .eq("user_id", userId)
+      .eq("period_start", nextPeriodKey)
+      .eq("row_key", rowKey);
+    setNextTransfers(prev => {
+      const next = { ...prev };
+      delete next[rowKey];
+      return next;
+    });
+  }
+
   async function updateAccountBalance(accountId, newBalance) {
     const { error } = await supabase
       .from("accounts")
@@ -1919,13 +1957,19 @@ function Dashboard() {
           }, 0);
         const billsDeducted = item.billsTotal - skippedUnpaidTotal;
 
-        // End balance: subtract all unpaid, unskipped bills.
-        // Current period special case: if the user has confirmed a WTMG transfer to a
-        // non-primary account (transfers[accountId] >= total bills for that account),
-        // the money has already left the primary balance — don't double-subtract.
-        // For future periods, always subtract all bills (full projection).
+        // End balance: only subtract bills that will be paid directly from the primary account.
+        // Bills assigned to non-primary, non-accumulating accounts (e.g. Wiley Bills) are
+        // funded by a WTMG transfer FROM primary — so the transfer itself is what reduces
+        // the primary balance, not the individual bills.
+        //
+        // Current period: additionally check if the WTMG transfer is confirmed. If not yet
+        // confirmed, include those bills so the projection stays conservative until the
+        // transfer is recorded.
+        //
+        // This prevents double-subtracting when the user pre-funds their bills account
+        // before the new period starts (the primary balance is already lower from the transfer).
 
-        // Pre-compute unpaid bill totals per account for the transfer-done check.
+        // Pre-compute unpaid bill totals per account for the current-period transfer check.
         const unpaidTotalByAcct = {};
         if (isCurrent) {
           item.bills.forEach(b => {
@@ -1940,12 +1984,13 @@ function Dashboard() {
           .filter(b => {
             if (skippedBillPeriods.has(`${b.id}-${periodKey}`)) return false;
             if (isBillPaidInPeriod(b.id, periodKey)) return false;
-            // Current period: if this bill's account transfer is confirmed, skip it
-            // (money already left primary when the WTMG transfer was checked off).
-            if (isCurrent && b.account_id) {
+            if (b.account_id) {
               const acct = accounts.find(a => a.id === b.account_id);
               const isPrimary = acct?.is_primary && !acct?.is_accumulating;
               if (!isPrimary) {
+                // Future periods: always exclude — bills account is funded by a separate transfer.
+                if (!isCurrent) return false;
+                // Current period: only exclude once the WTMG transfer is confirmed.
                 const transferred = transfers[b.account_id] || 0;
                 const totalForAcct = unpaidTotalByAcct[b.account_id] || 0;
                 if (transferred >= totalForAcct) return false;
@@ -6231,6 +6276,85 @@ function Dashboard() {
                         </>
                       )}
                     </>
+                  );
+                })()}
+
+                {/* Next period transfers — lets users record pre-funded transfers early */}
+                {(() => {
+                  const allBreakdown = getPayPeriodBreakdown();
+                  const curIdx = allBreakdown.findIndex(i => i.isCurrentPeriod);
+                  const nextBreakdown = curIdx >= 0 ? allBreakdown[curIdx + 1] : null;
+                  if (!nextBreakdown) return null;
+
+                  const nextPeriodKey = nextBreakdown.period.start_date;
+                  const nextPeriodBills = nextBreakdown.bills || [];
+
+                  // Group bills by account (same logic as current period)
+                  const nextGrouped = {};
+                  nextPeriodBills.forEach(bill => {
+                    if (bill.transfer_to_account_id) return;
+                    const acct = accounts.find(a => a.id === bill.account_id);
+                    if (!acct || acct.is_accumulating || acct.is_primary) return;
+                    const key = acct.id;
+                    if (!nextGrouped[key]) nextGrouped[key] = { acctName: acct.name, total: 0, buffer: acct.minimum_buffer || 0 };
+                    nextGrouped[key].total += bill.amount || 0;
+                  });
+
+                  if (Object.keys(nextGrouped).length === 0) return null;
+
+                  return (
+                    <div style={{ marginTop: "20px", paddingTop: "16px", borderTop: "1px solid rgba(255,255,255,0.06)" }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px" }}>
+                        <div style={{ fontSize: "10px", color: "#8B8FA8", letterSpacing: "0.08em", textTransform: "uppercase" }}>
+                          Next Period — {nextBreakdown.period.start_date.replace(/-/g, "/").slice(5)} to {nextBreakdown.period.end_date.replace(/-/g, "/").slice(5)}
+                        </div>
+                        <div style={{ fontSize: "10px", color: "#6C63FF", fontWeight: "600" }}>Pre-fund</div>
+                      </div>
+                      {Object.entries(nextGrouped).map(([acctId, data]) => {
+                        const needed = data.total + data.buffer;
+                        const transferred = nextTransfers[acctId] || 0;
+                        const remaining = Math.max(0, needed - transferred);
+                        const done = transferred >= needed;
+                        return (
+                          <div key={acctId} style={{ padding: "8px 0", borderBottom: "1px solid rgba(255,255,255,0.04)" }}>
+                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                              <div className="row-name" style={{ color: done ? "#4ADE80" : "#F0F6FC" }}>
+                                {done ? "✓ " : ""}Transfer to {data.acctName}
+                              </div>
+                              <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                                {!done && transferringId === `next-${acctId}` ? (
+                                  <>
+                                    <input
+                                      type="number"
+                                      value={transferAmount}
+                                      onChange={e => setTransferAmount(e.target.value)}
+                                      onKeyDown={e => {
+                                        if (e.key === "Enter") confirmNextTransfer(acctId, transferAmount, nextPeriodKey);
+                                        if (e.key === "Escape") { setTransferringId(null); setTransferAmount(""); }
+                                      }}
+                                      placeholder={fmt(remaining)}
+                                      autoFocus
+                                      style={{ width: "80px", background: "rgba(255,255,255,0.06)", border: "1px solid rgba(108,99,255,0.4)", borderRadius: "6px", color: "#F0F6FC", fontFamily: "'DM Mono', monospace", fontSize: "12px", padding: "4px 8px", textAlign: "right" }}
+                                    />
+                                    <button onClick={() => confirmNextTransfer(acctId, transferAmount, nextPeriodKey)} style={{ background: "rgba(108,99,255,0.15)", border: "1px solid rgba(108,99,255,0.3)", color: "#6C63FF", borderRadius: "6px", padding: "4px 10px", fontSize: "11px", fontWeight: "700", cursor: "pointer", fontFamily: "'Inter', sans-serif" }}>✓</button>
+                                    <button onClick={() => confirmNextTransfer(acctId, remaining, nextPeriodKey)} style={{ background: "rgba(108,99,255,0.08)", border: "1px solid rgba(108,99,255,0.2)", color: "#6C63FF", borderRadius: "6px", padding: "4px 10px", fontSize: "11px", cursor: "pointer", fontFamily: "'Inter', sans-serif" }}>Full ${fmt(remaining)}</button>
+                                  </>
+                                ) : done ? (
+                                  <button onClick={() => undoNextTransfer(acctId, nextPeriodKey)} style={{ background: "none", border: "none", color: "#8B8FA8", cursor: "pointer", fontSize: "10px", fontFamily: "'Inter', sans-serif", textDecoration: "underline" }}>Undo</button>
+                                ) : (
+                                  <button onClick={() => { setTransferringId(`next-${acctId}`); setTransferAmount(""); }} style={{ background: "rgba(108,99,255,0.12)", border: "1px solid rgba(108,99,255,0.25)", color: "#6C63FF", borderRadius: "6px", padding: "4px 12px", fontSize: "11px", fontWeight: "600", cursor: "pointer", fontFamily: "'Inter', sans-serif" }}>
+                                    Transfer ${fmt(remaining)}
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                            {transferred > 0 && !done && (
+                              <div style={{ fontSize: "10px", color: "#8B8FA8", marginTop: "4px" }}>${fmt(transferred)} transferred so far</div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
                   );
                 })()}
               </div>
