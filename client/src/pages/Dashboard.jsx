@@ -337,6 +337,12 @@ function Dashboard() {
   const [debtPayoffOrder, setDebtPayoffOrder] = useState("");
   const [confirmDeleteDebtId, setConfirmDeleteDebtId] = useState(null);
   const [confirmPayoffDebtId, setConfirmPayoffDebtId] = useState(null);
+  const [whatIfMode, setWhatIfMode] = useState(false);
+  const [whatIfBills, setWhatIfBills] = useState({});      // { [id]: { amount, enabled } }
+  const [whatIfIncome, setWhatIfIncome] = useState({});    // { [id]: { amount, enabled } }
+  const [whatIfExtraBills, setWhatIfExtraBills] = useState([]);   // [{id,name,amount,frequency,due_day}]
+  const [whatIfExtraIncome, setWhatIfExtraIncome] = useState([]); // [{id,name,amount,frequency}]
+  const [whatIfNextId, setWhatIfNextId] = useState(1);
   const [editingHouseholdName, setEditingHouseholdName] = useState(false);
   const [newHouseholdName, setNewHouseholdName] = useState("");
   const [newMemberName, setNewMemberName] = useState("");
@@ -2406,72 +2412,145 @@ function Dashboard() {
     }
 
     if (activeNav === "monthly") {
-      // ── Monthly amounts ──────────────────────────────────────────────────────
-      const monthlyIncome = income.reduce((sum, i) => {
-        const amt = i.fixed_amount || 0;
-        if (i.frequency === "biweekly") return sum + amt * 2;
-        if (i.frequency === "weekly")   return sum + amt * 4;
-        return sum + amt;
-      }, 0);
+      // ── Helpers ──────────────────────────────────────────────────────────────
+      const billMultiplier = (freq) => (freq === "payday" || freq === "biweekly") ? 2 : 1;
+      const incMultiplier  = (freq) => freq === "biweekly" ? 2 : freq === "weekly" ? 4 : 1;
 
-      const monthlyBills = bills.reduce((sum, b) => {
-        const amt = b.amount || 0;
-        const freq = b.frequency || "monthly";
-        if (freq === "payday" || freq === "biweekly") return sum + amt * 2;
-        return sum + amt;
-      }, 0);
+      // ── Real (baseline) totals ───────────────────────────────────────────────
+      const realMonthlyIncome = income.reduce((s, i) => s + (i.fixed_amount || 0) * incMultiplier(i.frequency), 0);
+      const realMonthlyBills  = bills.reduce((s, b) => s + (b.amount || 0) * billMultiplier(b.frequency || "monthly"), 0);
 
-      const monthlyRemaining = monthlyIncome - monthlyBills;
-      const annualRemaining  = monthlyRemaining * 12;
+      // ── What-if effective values ─────────────────────────────────────────────
+      const wiAmt = (b) => {
+        const ov = whatIfBills[b.id];
+        return ov ? parseFloat(ov.amount) || 0 : (b.amount || 0);
+      };
+      const wiEnabled = (b) => whatIfBills[b.id]?.enabled ?? true;
+      const wiIncAmt  = (i) => {
+        const ov = whatIfIncome[i.id];
+        return ov ? parseFloat(ov.amount) || 0 : (i.fixed_amount || 0);
+      };
+      const wiIncEnabled = (i) => whatIfIncome[i.id]?.enabled ?? true;
 
-      // ── Bill groups ──────────────────────────────────────────────────────────
-      const everyPaycheck = bills.filter(b => (b.frequency || "monthly") === "payday");
-      const firstHalf     = bills.filter(b => (b.frequency || "monthly") === "monthly" && b.due_day >= 1  && b.due_day <= 15);
-      const secondHalf    = bills.filter(b => (b.frequency || "monthly") === "monthly" && b.due_day >= 16 && b.due_day <= 31);
-      const noDueDay      = bills.filter(b => (b.frequency || "monthly") === "monthly" && !b.due_day);
+      const wiMonthlyIncome = whatIfMode
+        ? income.reduce((s, i) => wiIncEnabled(i) ? s + wiIncAmt(i) * incMultiplier(i.frequency) : s, 0)
+          + whatIfExtraIncome.filter(i => i.enabled !== false).reduce((s, i) => s + (parseFloat(i.amount) || 0) * incMultiplier(i.frequency || "biweekly"), 0)
+        : realMonthlyIncome;
 
-      const billGroupTotal = (group, multiplier = 1) =>
-        group.reduce((s, b) => s + (b.amount || 0) * multiplier, 0);
+      const wiMonthlyBills = whatIfMode
+        ? bills.reduce((s, b) => wiEnabled(b) ? s + wiAmt(b) * billMultiplier(b.frequency || "monthly") : s, 0)
+          + whatIfExtraBills.filter(b => b.enabled !== false).reduce((s, b) => s + (parseFloat(b.amount) || 0) * billMultiplier(b.frequency || "monthly"), 0)
+        : realMonthlyBills;
 
-      const statTile = (label, value, negative = false, prefix = "$") => (
-        <div style={{ background: "#1A1826", border: "1px solid rgba(255,255,255,0.06)", borderRadius: "12px", padding: "20px 22px", position: "relative", overflow: "hidden" }}>
-          <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: "1px", background: "linear-gradient(90deg, rgba(0,212,170,0.8), transparent)" }} />
+      const wiRemaining = wiMonthlyIncome - wiMonthlyBills;
+      const wiAnnual    = wiRemaining * 12;
+
+      const realRemaining = realMonthlyIncome - realMonthlyBills;
+      const deltaRemaining = wiRemaining - realRemaining;
+
+      // ── Bill groups (uses what-if amounts when active) ───────────────────────
+      const allBillsForView = [
+        ...bills.map(b => ({ ...b, _extra: false })),
+        ...(whatIfMode ? whatIfExtraBills.map(b => ({ ...b, _extra: true })) : []),
+      ];
+      const everyPaycheck = allBillsForView.filter(b => (b.frequency || "monthly") === "payday");
+      const firstHalf     = allBillsForView.filter(b => (b.frequency || "monthly") === "monthly" && b.due_day >= 1  && b.due_day <= 15);
+      const secondHalf    = allBillsForView.filter(b => (b.frequency || "monthly") === "monthly" && b.due_day >= 16 && b.due_day <= 31);
+      const noDueDay      = allBillsForView.filter(b => (b.frequency || "monthly") === "monthly" && !b.due_day);
+
+      // ── UI helpers ───────────────────────────────────────────────────────────
+      const panelBorder = "1px solid rgba(255,255,255,0.06)";
+      const rowBorder   = "1px solid rgba(255,255,255,0.04)";
+
+      const statTile = (label, value, negative, delta = null) => (
+        <div style={{ background: "#1A1826", border: whatIfMode ? "1px solid rgba(251,191,36,0.25)" : panelBorder, borderRadius: "12px", padding: "20px 22px", position: "relative", overflow: "hidden" }}>
+          <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: "1px", background: whatIfMode ? "linear-gradient(90deg, rgba(251,191,36,0.8), transparent)" : "linear-gradient(90deg, rgba(0,212,170,0.8), transparent)" }} />
           <div style={{ fontSize: "10px", color: "#8B8FA8", letterSpacing: "0.1em", textTransform: "uppercase", fontWeight: "600", marginBottom: "10px" }}>{label}</div>
           <div style={{ fontFamily: "'DM Mono', monospace", fontSize: "26px", fontWeight: "500", color: negative ? "#F87171" : "#00D4AA", lineHeight: 1 }}>
-            {prefix}{fmt(Math.abs(value))}
+            {value < 0 ? "-" : ""}${fmt(Math.abs(value))}
           </div>
+          {whatIfMode && delta !== null && delta !== 0 && (
+            <div style={{ fontSize: "11px", color: delta > 0 ? "#4ADE80" : "#F87171", marginTop: "6px", fontFamily: "'DM Mono', monospace" }}>
+              {delta > 0 ? "▲" : "▼"} ${fmt(Math.abs(delta))}/mo vs real
+            </div>
+          )}
         </div>
       );
 
-      const billRow = (b, multiplier = 1) => {
-        const monthly = (b.amount || 0) * multiplier;
-        const annual  = monthly * 12;
+      const setBillOverride = (id, field, val) =>
+        setWhatIfBills(prev => ({ ...prev, [id]: { ...(prev[id] || {}), [field]: val } }));
+      const setIncOverride = (id, field, val) =>
+        setWhatIfIncome(prev => ({ ...prev, [id]: { ...(prev[id] || {}), [field]: val } }));
+
+      const billRow = (b, multiplier) => {
+        const isExtra   = b._extra;
+        const enabled   = isExtra ? b.enabled !== false : wiEnabled(b);
+        const amount    = isExtra ? (parseFloat(b.amount) || 0) : wiAmt(b);
+        const monthly   = enabled ? amount * multiplier : 0;
+        const realAmt   = b._extra ? 0 : (b.amount || 0);
+        const changed   = whatIfMode && !isExtra && (parseFloat(whatIfBills[b.id]?.amount) !== undefined && parseFloat(whatIfBills[b.id]?.amount) !== realAmt);
+
         return (
-          <div key={b.id} style={{ display: "grid", gridTemplateColumns: "1fr 100px 110px 110px", gap: "8px", padding: "10px 0", borderBottom: "1px solid rgba(255,255,255,0.04)", alignItems: "center" }}>
+          <div key={b.id} style={{ display: "grid", gridTemplateColumns: whatIfMode ? "24px 1fr 110px 110px 110px" : "1fr 100px 110px 110px", gap: "8px", padding: "10px 0", borderBottom: rowBorder, alignItems: "center", opacity: (!whatIfMode || enabled) ? 1 : 0.35, transition: "opacity 0.2s" }}>
+            {whatIfMode && (
+              <button onClick={() => {
+                if (isExtra) {
+                  setWhatIfExtraBills(prev => prev.map(x => x.id === b.id ? { ...x, enabled: !x.enabled } : x));
+                } else {
+                  setBillOverride(b.id, "enabled", !enabled);
+                }
+              }} style={{ width: "20px", height: "20px", borderRadius: "4px", border: `1px solid ${enabled ? "#6C63FF" : "rgba(255,255,255,0.15)"}`, background: enabled ? "rgba(108,99,255,0.2)" : "transparent", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", padding: 0, flexShrink: 0 }}>
+                {enabled && <span style={{ fontSize: "10px", color: "#6C63FF" }}>✓</span>}
+              </button>
+            )}
             <div>
-              <div style={{ fontSize: "13px", color: "#F0F6FC", fontWeight: "500" }}>{b.name}</div>
+              <div style={{ fontSize: "13px", color: enabled ? "#F0F6FC" : "#8B8FA8", fontWeight: "500", textDecoration: (!whatIfMode || enabled) ? "none" : "line-through" }}>
+                {b.name}
+                {isExtra && <span style={{ fontSize: "9px", background: "rgba(251,191,36,0.15)", border: "1px solid rgba(251,191,36,0.3)", color: "#FBBF24", borderRadius: "4px", padding: "1px 6px", marginLeft: "6px", fontWeight: "700", letterSpacing: "0.06em", textTransform: "uppercase" }}>hypothetical</span>}
+              </div>
               {b.due_day && <div style={{ fontSize: "11px", color: "#8B8FA8", marginTop: "1px" }}>Due the {b.due_day}{["st","nd","rd"][((b.due_day % 10) - 1)] || "th"}</div>}
             </div>
-            <div style={{ fontFamily: "'DM Mono', monospace", fontSize: "13px", color: "#8B8FA8", textAlign: "right" }}>${fmt(b.amount || 0)}</div>
-            <div style={{ fontFamily: "'DM Mono', monospace", fontSize: "13px", color: "#F87171", textAlign: "right" }}>${fmt(monthly)}</div>
-            <div style={{ fontFamily: "'DM Mono', monospace", fontSize: "13px", color: "#8B8FA8", textAlign: "right" }}>${fmt(annual)}</div>
+            {/* Per check — editable in what-if mode */}
+            <div style={{ textAlign: "right" }}>
+              {whatIfMode && !isExtra ? (
+                <input
+                  type="number"
+                  value={whatIfBills[b.id]?.amount ?? (b.amount || 0)}
+                  onChange={e => setBillOverride(b.id, "amount", e.target.value)}
+                  style={{ width: "90px", background: changed ? "rgba(251,191,36,0.08)" : "rgba(255,255,255,0.04)", border: changed ? "1px solid rgba(251,191,36,0.4)" : "1px solid rgba(255,255,255,0.1)", borderRadius: "6px", color: "#F0F6FC", fontFamily: "'DM Mono', monospace", fontSize: "12px", padding: "4px 8px", textAlign: "right" }}
+                />
+              ) : (
+                <span style={{ fontFamily: "'DM Mono', monospace", fontSize: "13px", color: "#8B8FA8" }}>${fmt(amount)}</span>
+              )}
+            </div>
+            <div style={{ fontFamily: "'DM Mono', monospace", fontSize: "13px", color: enabled ? "#F87171" : "#4A4F5C", textAlign: "right" }}>{enabled ? `$${fmt(monthly)}` : "—"}</div>
+            <div style={{ fontFamily: "'DM Mono', monospace", fontSize: "13px", color: "#8B8FA8", textAlign: "right" }}>{enabled ? `$${fmt(monthly * 12)}` : "—"}</div>
           </div>
         );
       };
 
-      const groupPanel = (title, group, multiplier = 1) => {
+      const groupPanel = (title, group, multiplier) => {
+        const visibleGroup = group.filter(b => !whatIfMode || b._extra || wiEnabled(b));
+        const groupMonthly = group.reduce((s, b) => {
+          const en = b._extra ? b.enabled !== false : wiEnabled(b);
+          if (!en) return s;
+          return s + (b._extra ? parseFloat(b.amount) || 0 : wiAmt(b)) * multiplier;
+        }, 0);
+        if (group.length === 0 && (!whatIfMode || !whatIfExtraBills.some(b => group.includes(b)))) return null;
         if (group.length === 0) return null;
-        const groupMonthly = billGroupTotal(group, multiplier);
+        const cols = whatIfMode ? "24px 1fr 110px 110px 110px" : "1fr 100px 110px 110px";
         return (
-          <div style={{ background: "#1A1826", border: "1px solid rgba(255,255,255,0.06)", borderRadius: "12px", padding: "20px", marginBottom: "12px" }}>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 100px 110px 110px", gap: "8px", marginBottom: "8px" }}>
+          <div style={{ background: "#1A1826", border: panelBorder, borderRadius: "12px", padding: "20px", marginBottom: "12px" }}>
+            <div style={{ display: "grid", gridTemplateColumns: cols, gap: "8px", marginBottom: "8px" }}>
+              {whatIfMode && <div />}
               <div style={{ fontSize: "11px", color: "#8B8FA8", letterSpacing: "0.1em", textTransform: "uppercase", fontWeight: "600" }}>{title}</div>
               <div style={{ fontSize: "10px", color: "#8B8FA8", textAlign: "right", letterSpacing: "0.08em", textTransform: "uppercase" }}>Per Check</div>
               <div style={{ fontSize: "10px", color: "#8B8FA8", textAlign: "right", letterSpacing: "0.08em", textTransform: "uppercase" }}>Monthly</div>
               <div style={{ fontSize: "10px", color: "#8B8FA8", textAlign: "right", letterSpacing: "0.08em", textTransform: "uppercase" }}>Annual</div>
             </div>
             {group.map(b => billRow(b, multiplier))}
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 100px 110px 110px", gap: "8px", paddingTop: "12px", marginTop: "4px", borderTop: "1px solid rgba(255,255,255,0.08)" }}>
+            <div style={{ display: "grid", gridTemplateColumns: cols, gap: "8px", paddingTop: "12px", marginTop: "4px", borderTop: "1px solid rgba(255,255,255,0.08)" }}>
+              {whatIfMode && <div />}
               <div style={{ fontSize: "12px", color: "#8B8FA8", fontWeight: "600" }}>Subtotal</div>
               <div />
               <div style={{ fontFamily: "'DM Mono', monospace", fontSize: "13px", color: "#F87171", textAlign: "right", fontWeight: "600" }}>${fmt(groupMonthly)}</div>
@@ -2481,23 +2560,58 @@ function Dashboard() {
         );
       };
 
+      const addExtraBill = () => {
+        const id = `extra-bill-${whatIfNextId}`;
+        setWhatIfNextId(n => n + 1);
+        setWhatIfExtraBills(prev => [...prev, { id, name: "", amount: "", frequency: "monthly", due_day: "", enabled: true }]);
+      };
+      const addExtraIncome = () => {
+        const id = `extra-inc-${whatIfNextId}`;
+        setWhatIfNextId(n => n + 1);
+        setWhatIfExtraIncome(prev => [...prev, { id, name: "", amount: "", frequency: "biweekly", enabled: true }]);
+      };
+
+      const inputStyle = { background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "6px", color: "#F0F6FC", fontFamily: "'Inter', sans-serif", fontSize: "12px", padding: "5px 8px" };
+
       return (
         <div className="content-area">
-          <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "28px" }}>
+          {/* Header */}
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "20px" }}>
             <h1 className="page-title" style={{ margin: 0 }}>Monthly Overview</h1>
+            <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+              {whatIfMode && (
+                <button onClick={() => { setWhatIfBills({}); setWhatIfIncome({}); setWhatIfExtraBills([]); setWhatIfExtraIncome([]); }} style={{ fontSize: "12px", color: "#8B8FA8", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "7px", padding: "7px 14px", cursor: "pointer", fontFamily: "'Inter', sans-serif" }}>
+                  Reset
+                </button>
+              )}
+              <button onClick={() => { setWhatIfMode(m => !m); if (whatIfMode) { setWhatIfBills({}); setWhatIfIncome({}); setWhatIfExtraBills([]); setWhatIfExtraIncome([]); } }} style={{ fontSize: "12px", fontWeight: "600", color: whatIfMode ? "#13111F" : "#FBBF24", background: whatIfMode ? "#FBBF24" : "rgba(251,191,36,0.1)", border: "1px solid rgba(251,191,36,0.4)", borderRadius: "7px", padding: "7px 16px", cursor: "pointer", fontFamily: "'Inter', sans-serif" }}>
+                {whatIfMode ? "✕  Exit What-If" : "⚡ What-If Mode"}
+              </button>
+            </div>
           </div>
 
-          {/* Summary stat tiles */}
+          {/* What-if banner */}
+          {whatIfMode && (
+            <div style={{ background: "rgba(251,191,36,0.07)", border: "1px solid rgba(251,191,36,0.25)", borderRadius: "10px", padding: "10px 16px", marginBottom: "20px", display: "flex", alignItems: "center", gap: "10px" }}>
+              <span style={{ fontSize: "16px" }}>⚡</span>
+              <div>
+                <div style={{ fontSize: "13px", fontWeight: "600", color: "#FBBF24" }}>What-If Mode — nothing is saved</div>
+                <div style={{ fontSize: "11px", color: "#8B8FA8", marginTop: "1px" }}>Toggle bills on/off, edit amounts, add hypotheticals. Your real data is untouched.</div>
+              </div>
+            </div>
+          )}
+
+          {/* Stat tiles */}
           <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: "12px", marginBottom: "28px" }}>
-            {statTile("Monthly Income",    monthlyIncome)}
-            {statTile("Monthly Bills",     monthlyBills,     true)}
-            {statTile("Monthly Remaining", monthlyRemaining, monthlyRemaining < 0)}
-            {statTile("Annual Remaining",  annualRemaining,  annualRemaining < 0)}
+            {statTile("Monthly Income",    wiMonthlyIncome, false, whatIfMode ? wiMonthlyIncome - realMonthlyIncome : null)}
+            {statTile("Monthly Bills",     wiMonthlyBills,  true,  whatIfMode ? -(wiMonthlyBills - realMonthlyBills) : null)}
+            {statTile("Monthly Remaining", wiRemaining,     wiRemaining < 0, whatIfMode ? deltaRemaining : null)}
+            {statTile("Annual Remaining",  wiAnnual,        wiAnnual < 0,    whatIfMode ? deltaRemaining * 12 : null)}
           </div>
 
           <div style={{ display: "grid", gridTemplateColumns: "58% 40%", gap: "12px", alignItems: "start" }}>
 
-            {/* Left: bills grouped */}
+            {/* Left: bills */}
             <div>
               <div style={{ fontSize: "11px", color: "#8B8FA8", letterSpacing: "0.1em", textTransform: "uppercase", fontWeight: "600", marginBottom: "12px" }}>Bills Breakdown</div>
               {groupPanel("Every Paycheck", everyPaycheck, 2)}
@@ -2505,14 +2619,44 @@ function Dashboard() {
               {groupPanel("Due 16th – 31st", secondHalf, 1)}
               {groupPanel("No Due Date", noDueDay, 1)}
 
+              {/* Add hypothetical bill */}
+              {whatIfMode && (
+                <div style={{ marginBottom: "12px" }}>
+                  {whatIfExtraBills.filter(b => !everyPaycheck.includes(b) && !firstHalf.includes(b) && !secondHalf.includes(b) && !noDueDay.includes(b)).map(b => (
+                    <div key={b.id} style={{ background: "rgba(251,191,36,0.05)", border: "1px solid rgba(251,191,36,0.2)", borderRadius: "10px", padding: "12px 16px", marginBottom: "8px", display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
+                      <input placeholder="Bill name" value={b.name} onChange={e => setWhatIfExtraBills(prev => prev.map(x => x.id === b.id ? { ...x, name: e.target.value } : x))} style={{ ...inputStyle, flex: "1 1 120px" }} />
+                      <input placeholder="Amount" type="number" value={b.amount} onChange={e => setWhatIfExtraBills(prev => prev.map(x => x.id === b.id ? { ...x, amount: e.target.value } : x))} style={{ ...inputStyle, width: "90px" }} />
+                      <select value={b.frequency || "monthly"} onChange={e => setWhatIfExtraBills(prev => prev.map(x => x.id === b.id ? { ...x, frequency: e.target.value } : x))} style={{ ...inputStyle }}>
+                        <option value="monthly">Monthly</option>
+                        <option value="payday">Every Payday</option>
+                      </select>
+                      <input placeholder="Due day" type="number" min="1" max="31" value={b.due_day} onChange={e => setWhatIfExtraBills(prev => prev.map(x => x.id === b.id ? { ...x, due_day: parseInt(e.target.value) || "" } : x))} style={{ ...inputStyle, width: "70px" }} />
+                      <button onClick={() => setWhatIfExtraBills(prev => prev.filter(x => x.id !== b.id))} style={{ background: "rgba(248,113,113,0.1)", border: "1px solid rgba(248,113,113,0.25)", color: "#F87171", borderRadius: "6px", padding: "5px 10px", cursor: "pointer", fontSize: "12px", fontFamily: "'Inter', sans-serif" }}>Remove</button>
+                    </div>
+                  ))}
+                  <button onClick={addExtraBill} style={{ fontSize: "12px", color: "#FBBF24", background: "rgba(251,191,36,0.08)", border: "1px dashed rgba(251,191,36,0.35)", borderRadius: "8px", padding: "8px 16px", cursor: "pointer", fontFamily: "'Inter', sans-serif", width: "100%" }}>
+                    + Add Hypothetical Bill
+                  </button>
+                </div>
+              )}
+
               {/* Grand total */}
-              <div style={{ background: "#1A1826", border: "1px solid rgba(255,255,255,0.06)", borderRadius: "12px", padding: "16px 20px" }}>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 100px 110px 110px", gap: "8px" }}>
+              <div style={{ background: "#1A1826", border: whatIfMode ? "1px solid rgba(251,191,36,0.25)" : panelBorder, borderRadius: "12px", padding: "16px 20px" }}>
+                <div style={{ display: "grid", gridTemplateColumns: whatIfMode ? "24px 1fr 110px 110px 110px" : "1fr 100px 110px 110px", gap: "8px", alignItems: "center" }}>
+                  {whatIfMode && <div />}
                   <div style={{ fontSize: "13px", color: "#F0F6FC", fontWeight: "700" }}>Total Bills</div>
                   <div />
-                  <div style={{ fontFamily: "'DM Mono', monospace", fontSize: "15px", color: "#F87171", textAlign: "right", fontWeight: "600" }}>${fmt(monthlyBills)}</div>
-                  <div style={{ fontFamily: "'DM Mono', monospace", fontSize: "15px", color: "#8B8FA8", textAlign: "right" }}>${fmt(monthlyBills * 12)}</div>
+                  <div style={{ fontFamily: "'DM Mono', monospace", fontSize: "15px", color: "#F87171", textAlign: "right", fontWeight: "600" }}>${fmt(wiMonthlyBills)}</div>
+                  <div style={{ fontFamily: "'DM Mono', monospace", fontSize: "15px", color: "#8B8FA8", textAlign: "right" }}>${fmt(wiMonthlyBills * 12)}</div>
                 </div>
+                {whatIfMode && wiMonthlyBills !== realMonthlyBills && (
+                  <div style={{ marginTop: "8px", paddingTop: "8px", borderTop: rowBorder, display: "flex", justifyContent: "flex-end", gap: "8px", alignItems: "center" }}>
+                    <span style={{ fontSize: "11px", color: "#8B8FA8" }}>vs real ${fmt(realMonthlyBills)}/mo</span>
+                    <span style={{ fontSize: "12px", color: wiMonthlyBills < realMonthlyBills ? "#4ADE80" : "#F87171", fontFamily: "'DM Mono', monospace", fontWeight: "600" }}>
+                      {wiMonthlyBills < realMonthlyBills ? "▼" : "▲"} ${fmt(Math.abs(wiMonthlyBills - realMonthlyBills))}/mo
+                    </span>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -2520,42 +2664,87 @@ function Dashboard() {
             <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
 
               {/* Income panel */}
-              <div style={{ background: "#1A1826", border: "1px solid rgba(255,255,255,0.06)", borderRadius: "12px", padding: "20px" }}>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 90px 90px", gap: "8px", marginBottom: "8px" }}>
+              <div style={{ background: "#1A1826", border: panelBorder, borderRadius: "12px", padding: "20px" }}>
+                <div style={{ display: "grid", gridTemplateColumns: whatIfMode ? "24px 1fr 90px 90px" : "1fr 90px 90px", gap: "8px", marginBottom: "8px" }}>
+                  {whatIfMode && <div />}
                   <div style={{ fontSize: "11px", color: "#8B8FA8", letterSpacing: "0.1em", textTransform: "uppercase", fontWeight: "600" }}>Income</div>
                   <div style={{ fontSize: "10px", color: "#8B8FA8", textAlign: "right", letterSpacing: "0.08em", textTransform: "uppercase" }}>Monthly</div>
                   <div style={{ fontSize: "10px", color: "#8B8FA8", textAlign: "right", letterSpacing: "0.08em", textTransform: "uppercase" }}>Annual</div>
                 </div>
-                {income.map(i => {
-                  const amt = i.fixed_amount || 0;
-                  const monthly = i.frequency === "biweekly" ? amt * 2 : i.frequency === "weekly" ? amt * 4 : amt;
+                {[
+                  ...income.map(i => ({ ...i, _extra: false })),
+                  ...(whatIfMode ? whatIfExtraIncome.map(i => ({ ...i, _extra: true })) : []),
+                ].map(i => {
+                  const isExtra  = i._extra;
+                  const enabled  = isExtra ? i.enabled !== false : wiIncEnabled(i);
+                  const amt      = isExtra ? (parseFloat(i.amount) || 0) : wiIncAmt(i);
+                  const freq     = i.frequency || (isExtra ? "biweekly" : "monthly");
+                  const monthly  = enabled ? amt * incMultiplier(freq) : 0;
+                  const realAmt  = i._extra ? 0 : (i.fixed_amount || 0);
+                  const changed  = whatIfMode && !isExtra && parseFloat(whatIfIncome[i.id]?.amount) !== undefined && parseFloat(whatIfIncome[i.id]?.amount) !== realAmt;
                   return (
-                    <div key={i.id} style={{ display: "grid", gridTemplateColumns: "1fr 90px 90px", gap: "8px", padding: "10px 0", borderBottom: "1px solid rgba(255,255,255,0.04)", alignItems: "center" }}>
+                    <div key={i.id} style={{ display: "grid", gridTemplateColumns: whatIfMode ? "24px 1fr 90px 90px" : "1fr 90px 90px", gap: "8px", padding: "10px 0", borderBottom: rowBorder, alignItems: "center", opacity: (!whatIfMode || enabled) ? 1 : 0.35, transition: "opacity 0.2s" }}>
+                      {whatIfMode && (
+                        <button onClick={() => {
+                          if (isExtra) setWhatIfExtraIncome(prev => prev.map(x => x.id === i.id ? { ...x, enabled: !x.enabled } : x));
+                          else setIncOverride(i.id, "enabled", !enabled);
+                        }} style={{ width: "20px", height: "20px", borderRadius: "4px", border: `1px solid ${enabled ? "#6C63FF" : "rgba(255,255,255,0.15)"}`, background: enabled ? "rgba(108,99,255,0.2)" : "transparent", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", padding: 0, flexShrink: 0 }}>
+                          {enabled && <span style={{ fontSize: "10px", color: "#6C63FF" }}>✓</span>}
+                        </button>
+                      )}
                       <div>
-                        <div style={{ fontSize: "13px", color: "#F0F6FC", fontWeight: "500" }}>{i.name}</div>
-                        <div style={{ fontSize: "11px", color: "#8B8FA8", marginTop: "1px", textTransform: "capitalize" }}>{i.frequency || "monthly"} · ${fmt(amt)}/check</div>
+                        {isExtra ? (
+                          <div style={{ display: "flex", gap: "6px", alignItems: "center", flexWrap: "wrap" }}>
+                            <input placeholder="Name" value={i.name} onChange={e => setWhatIfExtraIncome(prev => prev.map(x => x.id === i.id ? { ...x, name: e.target.value } : x))} style={{ ...inputStyle, width: "100px" }} />
+                            <input placeholder="Amount" type="number" value={i.amount} onChange={e => setWhatIfExtraIncome(prev => prev.map(x => x.id === i.id ? { ...x, amount: e.target.value } : x))} style={{ ...inputStyle, width: "80px" }} />
+                            <select value={i.frequency || "biweekly"} onChange={e => setWhatIfExtraIncome(prev => prev.map(x => x.id === i.id ? { ...x, frequency: e.target.value } : x))} style={{ ...inputStyle }}>
+                              <option value="biweekly">Biweekly</option>
+                              <option value="monthly">Monthly</option>
+                              <option value="weekly">Weekly</option>
+                            </select>
+                            <button onClick={() => setWhatIfExtraIncome(prev => prev.filter(x => x.id !== i.id))} style={{ background: "rgba(248,113,113,0.1)", border: "1px solid rgba(248,113,113,0.25)", color: "#F87171", borderRadius: "6px", padding: "4px 8px", cursor: "pointer", fontSize: "11px", fontFamily: "'Inter', sans-serif" }}>✕</button>
+                          </div>
+                        ) : (
+                          <>
+                            <div style={{ fontSize: "13px", color: enabled ? "#F0F6FC" : "#8B8FA8", fontWeight: "500" }}>{i.name}</div>
+                            <div style={{ fontSize: "11px", color: "#8B8FA8", marginTop: "1px", textTransform: "capitalize" }}>{freq} · ${fmt(isExtra ? parseFloat(i.amount)||0 : i.fixed_amount||0)}/check</div>
+                          </>
+                        )}
                       </div>
-                      <div style={{ fontFamily: "'DM Mono', monospace", fontSize: "13px", color: "#00D4AA", textAlign: "right" }}>${fmt(monthly)}</div>
-                      <div style={{ fontFamily: "'DM Mono', monospace", fontSize: "13px", color: "#8B8FA8", textAlign: "right" }}>${fmt(monthly * 12)}</div>
+                      {/* Amount — editable in what-if for real income */}
+                      <div style={{ textAlign: "right" }}>
+                        {whatIfMode && !isExtra ? (
+                          <input type="number" value={whatIfIncome[i.id]?.amount ?? (i.fixed_amount || 0)} onChange={e => setIncOverride(i.id, "amount", e.target.value)} style={{ width: "80px", background: changed ? "rgba(251,191,36,0.08)" : "rgba(255,255,255,0.04)", border: changed ? "1px solid rgba(251,191,36,0.4)" : "1px solid rgba(255,255,255,0.1)", borderRadius: "6px", color: "#F0F6FC", fontFamily: "'DM Mono', monospace", fontSize: "12px", padding: "4px 8px", textAlign: "right" }} />
+                        ) : (
+                          <span style={{ fontFamily: "'DM Mono', monospace", fontSize: "13px", color: enabled ? "#00D4AA" : "#4A4F5C" }}>${fmt(monthly)}</span>
+                        )}
+                      </div>
+                      <div style={{ fontFamily: "'DM Mono', monospace", fontSize: "13px", color: enabled ? "#8B8FA8" : "#4A4F5C", textAlign: "right" }}>{enabled ? `$${fmt(monthly * 12)}` : "—"}</div>
                     </div>
                   );
                 })}
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 90px 90px", gap: "8px", paddingTop: "12px", borderTop: "1px solid rgba(255,255,255,0.08)", marginTop: "4px" }}>
+                {whatIfMode && (
+                  <button onClick={addExtraIncome} style={{ fontSize: "12px", color: "#FBBF24", background: "rgba(251,191,36,0.08)", border: "1px dashed rgba(251,191,36,0.35)", borderRadius: "8px", padding: "7px 14px", cursor: "pointer", fontFamily: "'Inter', sans-serif", width: "100%", marginTop: "10px" }}>
+                    + Add Hypothetical Income
+                  </button>
+                )}
+                <div style={{ display: "grid", gridTemplateColumns: whatIfMode ? "24px 1fr 90px 90px" : "1fr 90px 90px", gap: "8px", paddingTop: "12px", borderTop: "1px solid rgba(255,255,255,0.08)", marginTop: "4px" }}>
+                  {whatIfMode && <div />}
                   <div style={{ fontSize: "12px", color: "#8B8FA8", fontWeight: "600" }}>Total</div>
-                  <div style={{ fontFamily: "'DM Mono', monospace", fontSize: "13px", color: "#00D4AA", textAlign: "right", fontWeight: "600" }}>${fmt(monthlyIncome)}</div>
-                  <div style={{ fontFamily: "'DM Mono', monospace", fontSize: "13px", color: "#8B8FA8", textAlign: "right" }}>${fmt(monthlyIncome * 12)}</div>
+                  <div style={{ fontFamily: "'DM Mono', monospace", fontSize: "13px", color: "#00D4AA", textAlign: "right", fontWeight: "600" }}>${fmt(wiMonthlyIncome)}</div>
+                  <div style={{ fontFamily: "'DM Mono', monospace", fontSize: "13px", color: "#8B8FA8", textAlign: "right" }}>${fmt(wiMonthlyIncome * 12)}</div>
                 </div>
               </div>
 
               {/* Net summary panel */}
-              <div style={{ background: "#1A1826", border: "1px solid rgba(255,255,255,0.06)", borderRadius: "12px", padding: "20px" }}>
+              <div style={{ background: "#1A1826", border: whatIfMode ? "1px solid rgba(251,191,36,0.25)" : panelBorder, borderRadius: "12px", padding: "20px" }}>
                 <div style={{ fontSize: "11px", color: "#8B8FA8", letterSpacing: "0.1em", textTransform: "uppercase", fontWeight: "600", marginBottom: "16px" }}>Net Summary</div>
                 {[
-                  { label: "Monthly Income",    val: monthlyIncome,    color: "#00D4AA" },
-                  { label: "Monthly Bills",      val: -monthlyBills,    color: "#F87171" },
-                  { label: "Monthly Remaining",  val: monthlyRemaining, color: monthlyRemaining >= 0 ? "#4ADE80" : "#F87171" },
-                ].map((row, i) => (
-                  <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 0", borderBottom: i < 2 ? "1px solid rgba(255,255,255,0.04)" : "none" }}>
+                  { label: "Monthly Income",   val: wiMonthlyIncome,  color: "#00D4AA" },
+                  { label: "Monthly Bills",    val: -wiMonthlyBills,  color: "#F87171" },
+                  { label: "Monthly Remaining",val: wiRemaining,      color: wiRemaining >= 0 ? "#4ADE80" : "#F87171" },
+                ].map((row, idx) => (
+                  <div key={idx} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 0", borderBottom: idx < 2 ? rowBorder : "none" }}>
                     <div style={{ fontSize: "13px", color: "#8B8FA8" }}>{row.label}</div>
                     <div style={{ fontFamily: "'DM Mono', monospace", fontSize: "14px", color: row.color, fontWeight: "500" }}>
                       {row.val < 0 ? "-" : ""}${fmt(Math.abs(row.val))}
@@ -2564,10 +2753,18 @@ function Dashboard() {
                 ))}
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "14px 0 0" }}>
                   <div style={{ fontSize: "13px", color: "#8B8FA8" }}>Annual Remaining</div>
-                  <div style={{ fontFamily: "'DM Mono', monospace", fontSize: "18px", color: annualRemaining >= 0 ? "#4ADE80" : "#F87171", fontWeight: "600" }}>
-                    {annualRemaining < 0 ? "-" : ""}${fmt(Math.abs(annualRemaining))}
+                  <div style={{ fontFamily: "'DM Mono', monospace", fontSize: "18px", color: wiAnnual >= 0 ? "#4ADE80" : "#F87171", fontWeight: "600" }}>
+                    {wiAnnual < 0 ? "-" : ""}${fmt(Math.abs(wiAnnual))}
                   </div>
                 </div>
+                {whatIfMode && deltaRemaining !== 0 && (
+                  <div style={{ marginTop: "12px", paddingTop: "12px", borderTop: rowBorder, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <div style={{ fontSize: "12px", color: "#8B8FA8" }}>Annual impact vs real</div>
+                    <div style={{ fontFamily: "'DM Mono', monospace", fontSize: "14px", color: deltaRemaining > 0 ? "#4ADE80" : "#F87171", fontWeight: "600" }}>
+                      {deltaRemaining > 0 ? "+" : "-"}${fmt(Math.abs(deltaRemaining * 12))}/yr
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           </div>
