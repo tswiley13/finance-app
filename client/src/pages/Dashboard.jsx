@@ -2553,7 +2553,10 @@ function Dashboard() {
                 {b.name}
                 {isExtra && <span style={{ fontSize: "9px", background: "rgba(251,191,36,0.15)", border: "1px solid rgba(251,191,36,0.3)", color: "#FBBF24", borderRadius: "4px", padding: "1px 6px", marginLeft: "6px", fontWeight: "700", letterSpacing: "0.06em", textTransform: "uppercase" }}>hypothetical</span>}
               </div>
-              {b.due_day && <div style={{ fontSize: "11px", color: "#8B8FA8", marginTop: "1px" }}>Due the {b.due_day}{["st","nd","rd"][((b.due_day % 10) - 1)] || "th"}</div>}
+              {(b.frequency || "monthly") === "payday"
+                ? <div style={{ fontSize: "11px", color: "#8B8FA8", marginTop: "1px" }}>Every Pay Day</div>
+                : b.due_day > 0 && <div style={{ fontSize: "11px", color: "#8B8FA8", marginTop: "1px" }}>Due the {b.due_day}{["st","nd","rd"][((b.due_day % 10) - 1)] || "th"}</div>
+              }
             </div>
             {/* Per check — editable in what-if mode */}
             <div style={{ textAlign: "right" }}>
