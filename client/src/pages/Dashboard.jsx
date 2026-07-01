@@ -12,6 +12,7 @@ import {
   Calendar,
   TrendingDown,
   TrendingUp,
+  BarChart2,
   Settings,
   LogOut,
   UserPlus,
@@ -2399,6 +2400,176 @@ function Dashboard() {
               </div>
             </div>
             {renderSidePanel()}
+          </div>
+        </div>
+      );
+    }
+
+    if (activeNav === "monthly") {
+      // ── Monthly amounts ──────────────────────────────────────────────────────
+      const monthlyIncome = income.reduce((sum, i) => {
+        const amt = i.fixed_amount || 0;
+        if (i.frequency === "biweekly") return sum + amt * 2;
+        if (i.frequency === "weekly")   return sum + amt * 4;
+        return sum + amt;
+      }, 0);
+
+      const monthlyBills = bills.reduce((sum, b) => {
+        const amt = b.amount || 0;
+        const freq = b.frequency || "monthly";
+        if (freq === "payday" || freq === "biweekly") return sum + amt * 2;
+        return sum + amt;
+      }, 0);
+
+      const monthlyRemaining = monthlyIncome - monthlyBills;
+      const annualRemaining  = monthlyRemaining * 12;
+
+      // ── Bill groups ──────────────────────────────────────────────────────────
+      const everyPaycheck = bills.filter(b => (b.frequency || "monthly") === "payday");
+      const firstHalf     = bills.filter(b => (b.frequency || "monthly") === "monthly" && b.due_day >= 1  && b.due_day <= 15);
+      const secondHalf    = bills.filter(b => (b.frequency || "monthly") === "monthly" && b.due_day >= 16 && b.due_day <= 31);
+      const noDueDay      = bills.filter(b => (b.frequency || "monthly") === "monthly" && !b.due_day);
+
+      const billGroupTotal = (group, multiplier = 1) =>
+        group.reduce((s, b) => s + (b.amount || 0) * multiplier, 0);
+
+      const statTile = (label, value, negative = false, prefix = "$") => (
+        <div style={{ background: "#1A1826", border: "1px solid rgba(255,255,255,0.06)", borderRadius: "12px", padding: "20px 22px", position: "relative", overflow: "hidden" }}>
+          <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: "1px", background: "linear-gradient(90deg, rgba(0,212,170,0.8), transparent)" }} />
+          <div style={{ fontSize: "10px", color: "#8B8FA8", letterSpacing: "0.1em", textTransform: "uppercase", fontWeight: "600", marginBottom: "10px" }}>{label}</div>
+          <div style={{ fontFamily: "'DM Mono', monospace", fontSize: "26px", fontWeight: "500", color: negative ? "#F87171" : "#00D4AA", lineHeight: 1 }}>
+            {prefix}{fmt(Math.abs(value))}
+          </div>
+        </div>
+      );
+
+      const billRow = (b, multiplier = 1) => {
+        const monthly = (b.amount || 0) * multiplier;
+        const annual  = monthly * 12;
+        return (
+          <div key={b.id} style={{ display: "grid", gridTemplateColumns: "1fr 100px 110px 110px", gap: "8px", padding: "10px 0", borderBottom: "1px solid rgba(255,255,255,0.04)", alignItems: "center" }}>
+            <div>
+              <div style={{ fontSize: "13px", color: "#F0F6FC", fontWeight: "500" }}>{b.name}</div>
+              {b.due_day && <div style={{ fontSize: "11px", color: "#8B8FA8", marginTop: "1px" }}>Due the {b.due_day}{["st","nd","rd"][((b.due_day % 10) - 1)] || "th"}</div>}
+            </div>
+            <div style={{ fontFamily: "'DM Mono', monospace", fontSize: "13px", color: "#8B8FA8", textAlign: "right" }}>${fmt(b.amount || 0)}</div>
+            <div style={{ fontFamily: "'DM Mono', monospace", fontSize: "13px", color: "#F87171", textAlign: "right" }}>${fmt(monthly)}</div>
+            <div style={{ fontFamily: "'DM Mono', monospace", fontSize: "13px", color: "#8B8FA8", textAlign: "right" }}>${fmt(annual)}</div>
+          </div>
+        );
+      };
+
+      const groupPanel = (title, group, multiplier = 1) => {
+        if (group.length === 0) return null;
+        const groupMonthly = billGroupTotal(group, multiplier);
+        return (
+          <div style={{ background: "#1A1826", border: "1px solid rgba(255,255,255,0.06)", borderRadius: "12px", padding: "20px", marginBottom: "12px" }}>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 100px 110px 110px", gap: "8px", marginBottom: "8px" }}>
+              <div style={{ fontSize: "11px", color: "#8B8FA8", letterSpacing: "0.1em", textTransform: "uppercase", fontWeight: "600" }}>{title}</div>
+              <div style={{ fontSize: "10px", color: "#8B8FA8", textAlign: "right", letterSpacing: "0.08em", textTransform: "uppercase" }}>Per Check</div>
+              <div style={{ fontSize: "10px", color: "#8B8FA8", textAlign: "right", letterSpacing: "0.08em", textTransform: "uppercase" }}>Monthly</div>
+              <div style={{ fontSize: "10px", color: "#8B8FA8", textAlign: "right", letterSpacing: "0.08em", textTransform: "uppercase" }}>Annual</div>
+            </div>
+            {group.map(b => billRow(b, multiplier))}
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 100px 110px 110px", gap: "8px", paddingTop: "12px", marginTop: "4px", borderTop: "1px solid rgba(255,255,255,0.08)" }}>
+              <div style={{ fontSize: "12px", color: "#8B8FA8", fontWeight: "600" }}>Subtotal</div>
+              <div />
+              <div style={{ fontFamily: "'DM Mono', monospace", fontSize: "13px", color: "#F87171", textAlign: "right", fontWeight: "600" }}>${fmt(groupMonthly)}</div>
+              <div style={{ fontFamily: "'DM Mono', monospace", fontSize: "13px", color: "#8B8FA8", textAlign: "right" }}>${fmt(groupMonthly * 12)}</div>
+            </div>
+          </div>
+        );
+      };
+
+      return (
+        <div className="content-area">
+          <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "28px" }}>
+            <h1 className="page-title" style={{ margin: 0 }}>Monthly Overview</h1>
+          </div>
+
+          {/* Summary stat tiles */}
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: "12px", marginBottom: "28px" }}>
+            {statTile("Monthly Income",    monthlyIncome)}
+            {statTile("Monthly Bills",     monthlyBills,     true)}
+            {statTile("Monthly Remaining", monthlyRemaining, monthlyRemaining < 0)}
+            {statTile("Annual Remaining",  annualRemaining,  annualRemaining < 0)}
+          </div>
+
+          <div style={{ display: "grid", gridTemplateColumns: "58% 40%", gap: "12px", alignItems: "start" }}>
+
+            {/* Left: bills grouped */}
+            <div>
+              <div style={{ fontSize: "11px", color: "#8B8FA8", letterSpacing: "0.1em", textTransform: "uppercase", fontWeight: "600", marginBottom: "12px" }}>Bills Breakdown</div>
+              {groupPanel("Every Paycheck", everyPaycheck, 2)}
+              {groupPanel("Due 1st – 15th", firstHalf, 1)}
+              {groupPanel("Due 16th – 31st", secondHalf, 1)}
+              {groupPanel("No Due Date", noDueDay, 1)}
+
+              {/* Grand total */}
+              <div style={{ background: "#1A1826", border: "1px solid rgba(255,255,255,0.06)", borderRadius: "12px", padding: "16px 20px" }}>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 100px 110px 110px", gap: "8px" }}>
+                  <div style={{ fontSize: "13px", color: "#F0F6FC", fontWeight: "700" }}>Total Bills</div>
+                  <div />
+                  <div style={{ fontFamily: "'DM Mono', monospace", fontSize: "15px", color: "#F87171", textAlign: "right", fontWeight: "600" }}>${fmt(monthlyBills)}</div>
+                  <div style={{ fontFamily: "'DM Mono', monospace", fontSize: "15px", color: "#8B8FA8", textAlign: "right" }}>${fmt(monthlyBills * 12)}</div>
+                </div>
+              </div>
+            </div>
+
+            {/* Right: income + summary */}
+            <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+
+              {/* Income panel */}
+              <div style={{ background: "#1A1826", border: "1px solid rgba(255,255,255,0.06)", borderRadius: "12px", padding: "20px" }}>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 90px 90px", gap: "8px", marginBottom: "8px" }}>
+                  <div style={{ fontSize: "11px", color: "#8B8FA8", letterSpacing: "0.1em", textTransform: "uppercase", fontWeight: "600" }}>Income</div>
+                  <div style={{ fontSize: "10px", color: "#8B8FA8", textAlign: "right", letterSpacing: "0.08em", textTransform: "uppercase" }}>Monthly</div>
+                  <div style={{ fontSize: "10px", color: "#8B8FA8", textAlign: "right", letterSpacing: "0.08em", textTransform: "uppercase" }}>Annual</div>
+                </div>
+                {income.map(i => {
+                  const amt = i.fixed_amount || 0;
+                  const monthly = i.frequency === "biweekly" ? amt * 2 : i.frequency === "weekly" ? amt * 4 : amt;
+                  return (
+                    <div key={i.id} style={{ display: "grid", gridTemplateColumns: "1fr 90px 90px", gap: "8px", padding: "10px 0", borderBottom: "1px solid rgba(255,255,255,0.04)", alignItems: "center" }}>
+                      <div>
+                        <div style={{ fontSize: "13px", color: "#F0F6FC", fontWeight: "500" }}>{i.name}</div>
+                        <div style={{ fontSize: "11px", color: "#8B8FA8", marginTop: "1px", textTransform: "capitalize" }}>{i.frequency || "monthly"} · ${fmt(amt)}/check</div>
+                      </div>
+                      <div style={{ fontFamily: "'DM Mono', monospace", fontSize: "13px", color: "#00D4AA", textAlign: "right" }}>${fmt(monthly)}</div>
+                      <div style={{ fontFamily: "'DM Mono', monospace", fontSize: "13px", color: "#8B8FA8", textAlign: "right" }}>${fmt(monthly * 12)}</div>
+                    </div>
+                  );
+                })}
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 90px 90px", gap: "8px", paddingTop: "12px", borderTop: "1px solid rgba(255,255,255,0.08)", marginTop: "4px" }}>
+                  <div style={{ fontSize: "12px", color: "#8B8FA8", fontWeight: "600" }}>Total</div>
+                  <div style={{ fontFamily: "'DM Mono', monospace", fontSize: "13px", color: "#00D4AA", textAlign: "right", fontWeight: "600" }}>${fmt(monthlyIncome)}</div>
+                  <div style={{ fontFamily: "'DM Mono', monospace", fontSize: "13px", color: "#8B8FA8", textAlign: "right" }}>${fmt(monthlyIncome * 12)}</div>
+                </div>
+              </div>
+
+              {/* Net summary panel */}
+              <div style={{ background: "#1A1826", border: "1px solid rgba(255,255,255,0.06)", borderRadius: "12px", padding: "20px" }}>
+                <div style={{ fontSize: "11px", color: "#8B8FA8", letterSpacing: "0.1em", textTransform: "uppercase", fontWeight: "600", marginBottom: "16px" }}>Net Summary</div>
+                {[
+                  { label: "Monthly Income",    val: monthlyIncome,    color: "#00D4AA" },
+                  { label: "Monthly Bills",      val: -monthlyBills,    color: "#F87171" },
+                  { label: "Monthly Remaining",  val: monthlyRemaining, color: monthlyRemaining >= 0 ? "#4ADE80" : "#F87171" },
+                ].map((row, i) => (
+                  <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 0", borderBottom: i < 2 ? "1px solid rgba(255,255,255,0.04)" : "none" }}>
+                    <div style={{ fontSize: "13px", color: "#8B8FA8" }}>{row.label}</div>
+                    <div style={{ fontFamily: "'DM Mono', monospace", fontSize: "14px", color: row.color, fontWeight: "500" }}>
+                      {row.val < 0 ? "-" : ""}${fmt(Math.abs(row.val))}
+                    </div>
+                  </div>
+                ))}
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "14px 0 0" }}>
+                  <div style={{ fontSize: "13px", color: "#8B8FA8" }}>Annual Remaining</div>
+                  <div style={{ fontFamily: "'DM Mono', monospace", fontSize: "18px", color: annualRemaining >= 0 ? "#4ADE80" : "#F87171", fontWeight: "600" }}>
+                    {annualRemaining < 0 ? "-" : ""}${fmt(Math.abs(annualRemaining))}
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       );
@@ -6198,6 +6369,7 @@ function Dashboard() {
               label: "Dashboard",
               icon: <LayoutDashboard size={16} />,
             },
+            { key: "monthly", label: "Monthly Overview", icon: <BarChart2 size={16} /> },
             { key: "bills", label: "Bills", icon: <Receipt size={16} /> },
             { key: "income", label: "Income", icon: <Wallet size={16} /> },
             {
@@ -6335,6 +6507,7 @@ function Dashboard() {
           <div className="nav-label">Main</div>
           {[
             { key: "dashboard", label: "Dashboard", icon: <LayoutDashboard size={16} /> },
+            { key: "monthly", label: "Monthly Overview", icon: <BarChart2 size={16} /> },
             { key: "bills", label: "Bills", icon: <Receipt size={16} /> },
             { key: "income", label: "Income", icon: <Wallet size={16} /> },
             { key: "accounts", label: "Accounts", icon: <CreditCard size={16} /> },
