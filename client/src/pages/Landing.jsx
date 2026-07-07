@@ -32,13 +32,13 @@ const D_ACCOUNTS = [
 ];
 
 const PHASES = [
-  { dur: 4000, caption: "Your complete financial picture — accounts synced, every pay period mapped out ahead of you." },
-  { dur: 3200, caption: "Paycheck arrives early? One tap. Income marked received, Available Now updates instantly." },
-  { dur: 2400, caption: "Pay a bill, check it off. Locked to this period only — nothing bleeds into other periods." },
-  { dur: 2400, caption: "Bills Remaining shrinks in real time. Watch Available This Month climb as you clear them." },
-  { dur: 2400, caption: "Every future pay period projects forward automatically. See where you'll stand weeks from now." },
-  { dur: 2400, caption: "Every dollar accounted for. Nothing slips through the cracks." },
-  { dur: 4500, caption: "That's Stryde. Total control. Zero surprises. This is what financial confidence feels like." },
+  { dur: 4000, title: "Your full financial picture", caption: "Accounts synced, every pay period mapped out — income, bills, and end balance all in one view." },
+  { dur: 3200, title: "Got paid early? Mark it in one tap.", caption: "Available Now updates instantly. Watch the number jump the moment you confirm." },
+  { dur: 2400, title: "Pay a bill, check it off.", caption: "Each bill is locked to its pay period. Nothing bleeds into other periods." },
+  { dur: 2400, title: "Bills Remaining shrinks in real time.", caption: "Every payment you log reduces the total. Available This Month climbs as you clear them." },
+  { dur: 2400, title: "See exactly where you'll land.", caption: "Future pay periods project forward automatically — weeks ahead, no guesswork." },
+  { dur: 2400, title: "Every dollar accounted for.", caption: "Nothing slips through. You always know what's spoken for before it hits." },
+  { dur: 4500, title: "That's Stryde.", caption: "Total control. Zero surprises. This is what financial confidence feels like." },
 ];
 
 function fmt(n) {
@@ -96,14 +96,44 @@ function DashboardPreview() {
 
   return (
     <section style={{ padding: "80px 20px", background: "#08070F" }}>
+      <style>{`
+        @keyframes ringPulse {
+          0%   { box-shadow: 0 0 0 0   rgba(108,99,255,0.7); }
+          60%  { box-shadow: 0 0 0 6px rgba(108,99,255,0);   }
+          100% { box-shadow: 0 0 0 6px rgba(108,99,255,0);   }
+        }
+        @keyframes tileFlash {
+          0%   { background: rgba(108,99,255,0.25); }
+          100% { background: rgba(26,24,38,1);      }
+        }
+        @keyframes captionFade {
+          from { opacity: 0; transform: translateY(10px); }
+          to   { opacity: 1; transform: translateY(0);    }
+        }
+      `}</style>
       <div style={{ maxWidth: "1280px", margin: "0 auto" }}>
 
         {/* Heading */}
-        <div style={{ textAlign: "center", marginBottom: "52px" }}>
+        <div style={{ textAlign: "center", marginBottom: "40px" }}>
           <div style={{ fontSize: "11px", fontWeight: "700", letterSpacing: "0.22em", textTransform: "uppercase", color: "#6C63FF", marginBottom: "14px" }}>See It In Action</div>
           <h2 style={{ fontSize: "44px", fontWeight: "800", letterSpacing: "-0.025em", margin: 0, lineHeight: 1.15 }}>
             Everything you need,<br /><span style={{ color: "#6C63FF" }}>in one view.</span>
           </h2>
+        </div>
+
+        {/* Phase description — above the preview so it's always visible */}
+        <div key={phase} style={{ animation: "captionFade 0.45s ease", textAlign: "center", marginBottom: "32px" }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "10px", marginBottom: "10px" }}>
+            {PHASES.map((_, i) => (
+              <div key={i} onClick={() => setPhase(i)} style={{ width: phase === i ? "28px" : "7px", height: "7px", borderRadius: "4px", background: phase === i ? "#6C63FF" : "rgba(255,255,255,0.12)", transition: "all 0.35s ease", cursor: "pointer" }} />
+            ))}
+          </div>
+          <div style={{ fontSize: "22px", fontWeight: "800", color: "#F0F6FC", letterSpacing: "-0.02em", marginBottom: "8px" }}>
+            {PHASES[phase].title}
+          </div>
+          <div style={{ fontSize: "15px", color: "#8B8FA8", lineHeight: 1.6, maxWidth: "560px", margin: "0 auto" }}>
+            {PHASES[phase].caption}
+          </div>
         </div>
 
         {/* Browser chrome wrapper — scales down to fit narrow viewports */}
@@ -199,12 +229,12 @@ function DashboardPreview() {
                 {/* stat-row-4 */}
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: "12px", marginBottom: "28px" }}>
                   {[
-                    { label: "Available Now",        val: availNow,        neg: false },
-                    { label: "Income This Month",    val: incomeThisMonth, neg: false },
-                    { label: "Bills Remaining",      val: billsRemaining,  neg: true  },
-                    { label: "Available This Month", val: availThisMonth,  neg: false },
+                    { label: "Available Now",        val: availNow,        neg: false, flash: phase === 1 },
+                    { label: "Income This Month",    val: incomeThisMonth, neg: false, flash: phase === 1 },
+                    { label: "Bills Remaining",      val: billsRemaining,  neg: true,  flash: phase >= 2 && phase <= 6 },
+                    { label: "Available This Month", val: availThisMonth,  neg: false, flash: phase >= 2 },
                   ].map((t, i) => (
-                    <div key={i} style={{ background: "#1A1826", border: D, borderRadius: "12px", padding: "20px 22px", position: "relative", overflow: "hidden" }}>
+                    <div key={`tile-${i}-${phase}`} style={{ background: "#1A1826", border: D, borderRadius: "12px", padding: "20px 22px", position: "relative", overflow: "hidden", animation: t.flash ? "tileFlash 1s ease-out forwards" : "none" }}>
                       <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: "1px", background: "linear-gradient(90deg, rgba(0,212,170,0.8), transparent)" }} />
                       <div style={{ fontSize: "10px", color: "#8B8FA8", letterSpacing: "0.1em", textTransform: "uppercase", fontWeight: "600", marginBottom: "10px" }}>{t.label}</div>
                       <div style={{ fontFamily: "'DM Mono', monospace", fontSize: "26px", fontWeight: "500", color: t.neg ? "#F87171" : "#00D4AA", lineHeight: 1, transition: "color 0.5s ease" }}>
@@ -260,7 +290,7 @@ function DashboardPreview() {
                       {/* Income section */}
                       <div style={{ marginTop: "12px", borderTop: "1px solid rgba(255,255,255,0.05)", paddingTop: "12px" }}>
                         <div style={{ fontSize: "9px", color: "#8B8FA8", letterSpacing: "0.12em", textTransform: "uppercase", fontWeight: "600", marginBottom: "10px" }}>Income</div>
-                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                        <div key={`inc-${phase}`} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderRadius: "8px", padding: "4px", margin: "-4px", animation: phase === 1 ? "ringPulse 0.8s ease-out 2" : "none" }}>
                           <div>
                             <div style={{ fontSize: "13px", fontWeight: "600", color: incomeReceived ? "#4ADE80" : "#F0F6FC", transition: "color 0.5s ease" }}>
                               {incomeReceived ? "✓ Payroll" : "Payroll"}
@@ -286,8 +316,9 @@ function DashboardPreview() {
                       <div style={{ marginTop: "12px", borderTop: "1px solid rgba(255,255,255,0.05)", paddingTop: "4px" }}>
                         {D_BILLS.map((b, i) => {
                           const paid = i < paidCount;
+                          const justPaid = i === paidCount - 1 && phase >= 2;
                           return (
-                            <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 0", opacity: paid ? 0.38 : 1, transition: "opacity 0.6s ease", borderBottom: i < D_BILLS.length - 1 ? DBORD : "none" }}>
+                            <div key={`bill-${i}-${phase}`} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 4px", margin: "0 -4px", opacity: paid ? 0.38 : 1, transition: "opacity 0.6s ease", borderBottom: i < D_BILLS.length - 1 ? DBORD : "none", borderRadius: "6px", animation: justPaid ? "ringPulse 0.8s ease-out 2" : "none" }}>
                               <div>
                                 <div style={{ fontSize: "13px", fontWeight: paid ? "400" : "500", color: paid ? "#8B8FA8" : "#F0F6FC", textDecoration: paid ? "line-through" : "none", transition: "all 0.5s ease" }}>
                                   {b.name}
@@ -388,17 +419,6 @@ function DashboardPreview() {
         </div>
         </div>
 
-        {/* Caption + dots */}
-        <div style={{ textAlign: "center", marginTop: "40px" }}>
-          <p style={{ fontSize: "17px", color: "#8B8FA8", margin: "0 0 22px", minHeight: "26px", lineHeight: 1.55, maxWidth: "660px", marginLeft: "auto", marginRight: "auto" }}>
-            {PHASES[phase].caption}
-          </p>
-          <div style={{ display: "flex", justifyContent: "center", gap: "6px" }}>
-            {PHASES.map((_, i) => (
-              <div key={i} style={{ width: phase === i ? "24px" : "6px", height: "6px", borderRadius: "3px", background: phase === i ? "#6C63FF" : "rgba(255,255,255,0.1)", transition: "all 0.4s ease" }} />
-            ))}
-          </div>
-        </div>
 
       </div>
     </section>
