@@ -1,5 +1,5 @@
 import { useNavigate } from "react-router-dom";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import "./Landing.css";
 
 // ── Demo data (fictional — no real user info) ─────────────────────────────────
@@ -48,6 +48,24 @@ function fmt(n) {
 // ── Full dashboard mockup ──────────────────────────────────────────────────────
 function DashboardPreview() {
   const [phase, setPhase] = useState(0);
+  const wrapRef  = useRef(null);
+  const innerRef = useRef(null);
+  const [scale, setScale]       = useState(1);
+  const [innerH, setInnerH]     = useState(0);
+  const DESIGN_W = 1240;
+
+  useEffect(() => {
+    function update() {
+      if (!wrapRef.current || !innerRef.current) return;
+      const availW = wrapRef.current.offsetWidth;
+      const s = Math.min(1, availW / DESIGN_W);
+      setScale(s);
+      setInnerH(innerRef.current.offsetHeight);
+    }
+    update();
+    window.addEventListener("resize", update);
+    return () => window.removeEventListener("resize", update);
+  }, []);
 
   useEffect(() => {
     const t = setTimeout(
@@ -88,8 +106,10 @@ function DashboardPreview() {
           </h2>
         </div>
 
-        {/* Browser chrome wrapper */}
-        <div style={{ background: "#1A1729", border: "1px solid rgba(255,255,255,0.09)", borderRadius: "16px", overflow: "hidden", boxShadow: "0 40px 120px rgba(0,0,0,0.75)" }}>
+        {/* Browser chrome wrapper — scales down to fit narrow viewports */}
+        <div ref={wrapRef} style={{ overflow: "hidden", borderRadius: "16px", boxShadow: "0 40px 120px rgba(0,0,0,0.75)", height: innerH ? innerH * scale : "auto" }}>
+        <div ref={innerRef} style={{ width: `${DESIGN_W}px`, transform: `scale(${scale})`, transformOrigin: "top left" }}>
+        <div style={{ background: "#1A1729", border: "1px solid rgba(255,255,255,0.09)", borderRadius: "16px", overflow: "hidden" }}>
           <div style={{ background: "#131122", padding: "11px 16px", display: "flex", alignItems: "center", gap: "8px", borderBottom: D }}>
             <div style={{ display: "flex", gap: "6px" }}>
               {["#FF5F57","#FEBC2E","#28C840"].map(c => <div key={c} style={{ width: "10px", height: "10px", borderRadius: "50%", background: c }} />)}
@@ -364,6 +384,8 @@ function DashboardPreview() {
               </div>
             </div>
           </div>
+        </div>
+        </div>
         </div>
 
         {/* Caption + dots */}
