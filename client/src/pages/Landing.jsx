@@ -32,13 +32,13 @@ const D_ACCOUNTS = [
 ];
 
 const PHASES = [
-  { dur: 4000, title: "Your full financial picture", caption: "Accounts synced, every pay period mapped out — income, bills, and end balance all in one view." },
-  { dur: 3200, title: "Got paid early? Mark it in one tap.", caption: "Available Now updates instantly. Watch the number jump the moment you confirm." },
-  { dur: 2400, title: "Pay a bill, check it off.", caption: "Each bill is locked to its pay period. Nothing bleeds into other periods." },
-  { dur: 2400, title: "Bills Remaining shrinks in real time.", caption: "Every payment you log reduces the total. Available This Month climbs as you clear them." },
-  { dur: 2400, title: "See exactly where you'll land.", caption: "Future pay periods project forward automatically — weeks ahead, no guesswork." },
-  { dur: 2400, title: "Every dollar accounted for.", caption: "Nothing slips through. You always know what's spoken for before it hits." },
-  { dur: 4500, title: "That's Stryde.", caption: "Total control. Zero surprises. This is what financial confidence feels like." },
+  { dur: 6000, title: "Your full financial picture", caption: "Accounts synced, every pay period mapped out — income, bills, and end balance all in one view." },
+  { dur: 5500, title: "Got paid early? Mark it in one tap.", caption: "Available Now updates instantly. Watch the number jump the moment you confirm." },
+  { dur: 4500, title: "Pay a bill, check it off.", caption: "Each bill is locked to its pay period. Nothing bleeds into other periods." },
+  { dur: 4500, title: "Bills Remaining shrinks in real time.", caption: "Every payment you log reduces the total. Available This Month climbs as you clear them." },
+  { dur: 4500, title: "See exactly where you'll land.", caption: "Future pay periods project forward automatically — weeks ahead, no guesswork." },
+  { dur: 4500, title: "Every dollar accounted for.", caption: "Nothing slips through. You always know what's spoken for before it hits." },
+  { dur: 6000, title: "That's Stryde.", caption: "Total control. Zero surprises. This is what financial confidence feels like." },
 ];
 
 function fmt(n) {
@@ -97,14 +97,21 @@ function DashboardPreview() {
   return (
     <section style={{ padding: "80px 20px", background: "#08070F" }}>
       <style>{`
-        @keyframes ringPulse {
-          0%   { box-shadow: 0 0 0 0   rgba(108,99,255,0.7); }
-          60%  { box-shadow: 0 0 0 6px rgba(108,99,255,0);   }
-          100% { box-shadow: 0 0 0 6px rgba(108,99,255,0);   }
+        @keyframes rowGlow {
+          0%   { background: rgba(108,99,255,0.28); }
+          100% { background: rgba(108,99,255,0.08); }
+        }
+        @keyframes rowGlowGreen {
+          0%   { background: rgba(74,222,128,0.22); }
+          100% { background: rgba(74,222,128,0.06); }
         }
         @keyframes tileFlash {
-          0%   { background: rgba(108,99,255,0.25); }
-          100% { background: rgba(26,24,38,1);      }
+          0%   { background: rgba(108,99,255,0.35); border-color: rgba(108,99,255,0.6); }
+          100% { background: rgba(26,24,38,1);      border-color: rgba(255,255,255,0.06); }
+        }
+        @keyframes tileFlashGreen {
+          0%   { background: rgba(74,222,128,0.25); border-color: rgba(74,222,128,0.5); }
+          100% { background: rgba(26,24,38,1);      border-color: rgba(255,255,255,0.06); }
         }
         @keyframes captionFade {
           from { opacity: 0; transform: translateY(10px); }
@@ -229,12 +236,12 @@ function DashboardPreview() {
                 {/* stat-row-4 */}
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: "12px", marginBottom: "28px" }}>
                   {[
-                    { label: "Available Now",        val: availNow,        neg: false, flash: phase === 1 },
-                    { label: "Income This Month",    val: incomeThisMonth, neg: false, flash: phase === 1 },
-                    { label: "Bills Remaining",      val: billsRemaining,  neg: true,  flash: phase >= 2 && phase <= 6 },
-                    { label: "Available This Month", val: availThisMonth,  neg: false, flash: phase >= 2 },
+                    { label: "Available Now",        val: availNow,        neg: false, flashAnim: phase === 1 ? "tileFlashGreen 1.5s ease-out forwards" : "none" },
+                    { label: "Income This Month",    val: incomeThisMonth, neg: false, flashAnim: phase === 1 ? "tileFlashGreen 1.5s ease-out forwards" : "none" },
+                    { label: "Bills Remaining",      val: billsRemaining,  neg: true,  flashAnim: phase >= 2 && phase <= 6 ? "tileFlash 1.5s ease-out forwards" : "none" },
+                    { label: "Available This Month", val: availThisMonth,  neg: false, flashAnim: phase >= 2 ? "tileFlash 1.5s ease-out forwards" : "none" },
                   ].map((t, i) => (
-                    <div key={`tile-${i}-${phase}`} style={{ background: "#1A1826", border: D, borderRadius: "12px", padding: "20px 22px", position: "relative", overflow: "hidden", animation: t.flash ? "tileFlash 1s ease-out forwards" : "none" }}>
+                    <div key={`tile-${i}-${phase}`} style={{ background: "#1A1826", border: D, borderRadius: "12px", padding: "20px 22px", position: "relative", overflow: "hidden", animation: t.flashAnim }}>
                       <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: "1px", background: "linear-gradient(90deg, rgba(0,212,170,0.8), transparent)" }} />
                       <div style={{ fontSize: "10px", color: "#8B8FA8", letterSpacing: "0.1em", textTransform: "uppercase", fontWeight: "600", marginBottom: "10px" }}>{t.label}</div>
                       <div style={{ fontFamily: "'DM Mono', monospace", fontSize: "26px", fontWeight: "500", color: t.neg ? "#F87171" : "#00D4AA", lineHeight: 1, transition: "color 0.5s ease" }}>
@@ -290,7 +297,7 @@ function DashboardPreview() {
                       {/* Income section */}
                       <div style={{ marginTop: "12px", borderTop: "1px solid rgba(255,255,255,0.05)", paddingTop: "12px" }}>
                         <div style={{ fontSize: "9px", color: "#8B8FA8", letterSpacing: "0.12em", textTransform: "uppercase", fontWeight: "600", marginBottom: "10px" }}>Income</div>
-                        <div key={`inc-${phase}`} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderRadius: "8px", padding: "4px", margin: "-4px", animation: phase === 1 ? "ringPulse 0.8s ease-out 2" : "none" }}>
+                        <div key={`inc-${phase}`} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderRadius: "8px", padding: "6px 8px", margin: "-6px -8px", background: phase === 1 ? "rgba(74,222,128,0.1)" : "transparent", outline: phase === 1 ? "2px solid rgba(74,222,128,0.5)" : "none", outlineOffset: "0px", animation: phase === 1 ? "rowGlowGreen 1.5s ease-out forwards" : "none" }}>
                           <div>
                             <div style={{ fontSize: "13px", fontWeight: "600", color: incomeReceived ? "#4ADE80" : "#F0F6FC", transition: "color 0.5s ease" }}>
                               {incomeReceived ? "✓ Payroll" : "Payroll"}
@@ -318,7 +325,7 @@ function DashboardPreview() {
                           const paid = i < paidCount;
                           const justPaid = i === paidCount - 1 && phase >= 2;
                           return (
-                            <div key={`bill-${i}-${phase}`} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 4px", margin: "0 -4px", opacity: paid ? 0.38 : 1, transition: "opacity 0.6s ease", borderBottom: i < D_BILLS.length - 1 ? DBORD : "none", borderRadius: "6px", animation: justPaid ? "ringPulse 0.8s ease-out 2" : "none" }}>
+                            <div key={`bill-${i}-${phase}`} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 8px", margin: "0 -8px", opacity: paid ? 0.38 : 1, transition: "opacity 0.6s ease", borderBottom: i < D_BILLS.length - 1 ? DBORD : "none", borderRadius: "6px", background: justPaid ? "rgba(108,99,255,0.1)" : "transparent", outline: justPaid ? "2px solid rgba(108,99,255,0.55)" : "none", animation: justPaid ? "rowGlow 1.5s ease-out forwards" : "none" }}>
                               <div>
                                 <div style={{ fontSize: "13px", fontWeight: paid ? "400" : "500", color: paid ? "#8B8FA8" : "#F0F6FC", textDecoration: paid ? "line-through" : "none", transition: "all 0.5s ease" }}>
                                   {b.name}
