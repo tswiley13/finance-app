@@ -36,8 +36,9 @@ input:-webkit-autofill:focus {
   box-shadow: 0 0 0 3px rgba(108,99,255,0.15), 0 0 12px rgba(108,99,255,0.1);
 }
 
-body {
+html, body {
   margin: 0;
+  background-color: #13111F;
 }
 
 /* Phones and tablets (≤1024px) get hamburger menu instead of sidebar */

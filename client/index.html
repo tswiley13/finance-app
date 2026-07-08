@@ -13,6 +13,11 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="Stryde" />
     <link rel="apple-touch-icon" href="/apple-touch-icon-180x180.png" />
+
+    <!-- Paint the dark background immediately to prevent a white flash before JS/CSS loads -->
+    <style>
+      html, body { margin: 0; background-color: #13111F; }
+    </style>
   </head>
   <body>
     <div id="root"></div>
