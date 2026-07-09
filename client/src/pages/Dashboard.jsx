@@ -1994,14 +1994,23 @@ function Dashboard() {
             if (isBillPaidInPeriod(b.id, periodKey)) return false;
             if (b.account_id) {
               const acct = accounts.find(a => a.id === b.account_id);
+              // Accumulating accounts (e.g. escrow) are funded gradually via separate
+              // contribution logic, not by subtracting the full bill each period.
+              if (acct?.is_accumulating) return false;
               const isPrimary = acct?.is_primary && !acct?.is_accumulating;
               if (!isPrimary) {
-                // Future periods: always exclude — bills account is funded by a separate transfer.
-                if (!isCurrent) return false;
-                // Current period: only exclude once the WTMG transfer is confirmed.
-                const transferred = transfers[b.account_id] || 0;
-                const totalForAcct = unpaidTotalByAcct[b.account_id] || 0;
-                if (transferred >= totalForAcct) return false;
+                // Bills assigned to a non-primary "bills" account are funded by a WTMG
+                // transfer FROM primary. For the CURRENT period, the live primary balance
+                // already reflects that transfer once it's recorded — so exclude these
+                // bills only after the transfer is confirmed to avoid double-counting.
+                //
+                // For FUTURE periods, no transfer is modeled and the running balance is
+                // the whole money pool, so the bill IS the outflow — always subtract it.
+                if (isCurrent) {
+                  const transferred = transfers[b.account_id] || 0;
+                  const totalForAcct = unpaidTotalByAcct[b.account_id] || 0;
+                  if (transferred >= totalForAcct) return false;
+                }
               }
             }
             return true;
