@@ -6311,16 +6311,32 @@ function Dashboard() {
                   const nextPeriodKey = nextBreakdown.period.start_date;
                   const nextPeriodBills = nextBreakdown.bills || [];
 
-                  // Group bills by account (same logic as current period)
+                  // The pre-fund transfer should equal the period's FULL bill total, matching
+                  // the End Balance (start + income - bills). Bills explicitly assigned to a
+                  // non-primary bills account group under that account; bills paid from primary
+                  // or left unassigned fold into the main bills account (the one most bills route
+                  // to) instead of being dropped from the transfer.
                   const nextGrouped = {};
+                  let unassignedTotal = 0;
                   nextPeriodBills.forEach(bill => {
                     if (bill.transfer_to_account_id) return;
                     const acct = accounts.find(a => a.id === bill.account_id);
-                    if (!acct || acct.is_accumulating || acct.is_primary) return;
+                    if (acct?.is_accumulating) return; // funded via accumulation contributions
+                    if (!acct || acct.is_primary) {
+                      unassignedTotal += bill.amount || 0;
+                      return;
+                    }
                     const key = acct.id;
-                    if (!nextGrouped[key]) nextGrouped[key] = { acctName: acct.name, total: 0, buffer: acct.minimum_buffer || 0 };
+                    if (!nextGrouped[key]) nextGrouped[key] = { acctName: acct.name, total: 0, buffer: acct.minimum_buffer || 0, count: 0 };
                     nextGrouped[key].total += bill.amount || 0;
+                    nextGrouped[key].count += 1;
                   });
+
+                  // Fold primary/unassigned bills into the main bills account (most bills assigned).
+                  if (unassignedTotal > 0) {
+                    const mainKey = Object.keys(nextGrouped).sort((a, b) => nextGrouped[b].count - nextGrouped[a].count)[0];
+                    if (mainKey) nextGrouped[mainKey].total += unassignedTotal;
+                  }
 
                   if (Object.keys(nextGrouped).length === 0) return null;
 
