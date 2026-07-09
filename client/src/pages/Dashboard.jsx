@@ -6311,34 +6311,37 @@ function Dashboard() {
                   const nextPeriodKey = nextBreakdown.period.start_date;
                   const nextPeriodBills = nextBreakdown.bills || [];
 
-                  // The pre-fund transfer should equal the period's FULL bill total, matching
-                  // the End Balance (start + income - bills). Bills explicitly assigned to a
-                  // non-primary bills account group under that account; bills paid from primary
-                  // or left unassigned fold into the main bills account (the one most bills route
-                  // to) instead of being dropped from the transfer.
+                  // Group every regular bill under the account it's actually paid from, so the
+                  // rows reconcile with the End Balance (start + income - bills) for ANY user
+                  // setup — one bills account, several, or paying straight from primary.
+                  //   • Non-primary account  -> a "Transfer to X" row (money must leave primary).
+                  //   • Primary / unassigned -> a "Paid from <primary>" row (direct debit, no
+                  //     transfer to record) so those bills are still shown and the total matches.
+                  //   • Accumulating accounts are funded gradually via their own contributions.
+                  const primaryAcct = accounts.find(a => a.is_primary && !a.is_accumulating);
+                  const DIRECT_KEY = "__direct__";
                   const nextGrouped = {};
-                  let unassignedTotal = 0;
                   nextPeriodBills.forEach(bill => {
                     if (bill.transfer_to_account_id) return;
                     const acct = accounts.find(a => a.id === bill.account_id);
-                    if (acct?.is_accumulating) return; // funded via accumulation contributions
-                    if (!acct || acct.is_primary) {
-                      unassignedTotal += bill.amount || 0;
-                      return;
+                    if (acct?.is_accumulating) return;
+                    const isDirect = !acct || acct.is_primary;
+                    const key = isDirect ? DIRECT_KEY : acct.id;
+                    if (!nextGrouped[key]) {
+                      nextGrouped[key] = {
+                        acctName: isDirect ? (primaryAcct?.name || "primary account") : acct.name,
+                        total: 0,
+                        buffer: isDirect ? 0 : (acct.minimum_buffer || 0),
+                        isDirect,
+                      };
                     }
-                    const key = acct.id;
-                    if (!nextGrouped[key]) nextGrouped[key] = { acctName: acct.name, total: 0, buffer: acct.minimum_buffer || 0, count: 0 };
                     nextGrouped[key].total += bill.amount || 0;
-                    nextGrouped[key].count += 1;
                   });
 
-                  // Fold primary/unassigned bills into the main bills account (most bills assigned).
-                  if (unassignedTotal > 0) {
-                    const mainKey = Object.keys(nextGrouped).sort((a, b) => nextGrouped[b].count - nextGrouped[a].count)[0];
-                    if (mainKey) nextGrouped[mainKey].total += unassignedTotal;
-                  }
-
-                  if (Object.keys(nextGrouped).length === 0) return null;
+                  // Only surface the pre-fund section when there's at least one real transfer
+                  // to make; a purely pay-from-primary period has nothing to pre-fund.
+                  const hasTransfer = Object.values(nextGrouped).some(g => !g.isDirect);
+                  if (!hasTransfer) return null;
 
                   return (
                     <div style={{ marginTop: "20px", paddingTop: "16px", borderTop: "1px solid rgba(255,255,255,0.06)" }}>
@@ -6348,7 +6351,19 @@ function Dashboard() {
                         </div>
                         <div style={{ fontSize: "10px", color: "#6C63FF", fontWeight: "600" }}>Pre-fund</div>
                       </div>
-                      {Object.entries(nextGrouped).map(([acctId, data]) => {
+                      {Object.entries(nextGrouped)
+                        .sort(([, a], [, b]) => (a.isDirect ? 1 : 0) - (b.isDirect ? 1 : 0))
+                        .map(([acctId, data]) => {
+                        // Primary/unassigned bills are a direct debit — show the amount for
+                        // reconciliation, but there's no transfer to record.
+                        if (data.isDirect) {
+                          return (
+                            <div key={acctId} style={{ padding: "8px 0", borderBottom: "1px solid rgba(255,255,255,0.04)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                              <div className="row-name" style={{ color: "#8B8FA8" }}>Paid from {data.acctName}</div>
+                              <div style={{ fontFamily: "'DM Mono', monospace", fontSize: "12px", color: "#8B8FA8" }}>${fmt(data.total)}</div>
+                            </div>
+                          );
+                        }
                         const needed = data.total + data.buffer;
                         const transferred = nextTransfers[acctId] || 0;
                         const remaining = Math.max(0, needed - transferred);
