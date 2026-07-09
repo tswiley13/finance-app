@@ -261,6 +261,7 @@ function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [searchParams, setSearchParams] = useSearchParams();
   const [activeNav, setActiveNav] = useState("dashboard");
+  const [isMobile, setIsMobile] = useState(typeof window !== "undefined" && window.innerWidth <= 640);
   const [scrollToInvite, setScrollToInvite] = useState(false);
   const [editingBill, setEditingBill] = useState(null);
   const [billName, setBillName] = useState("");
@@ -377,6 +378,13 @@ function Dashboard() {
     const tab = searchParams.get("tab") || "dashboard";
     setActiveNav(tab);
   }, [searchParams]);
+
+  // Track viewport so layouts with fixed-width columns can adapt on phones
+  useEffect(() => {
+    const onResize = () => setIsMobile(window.innerWidth <= 640);
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, []);
 
   // Auto sign-out after 15 minutes of inactivity
   useEffect(() => {
@@ -2508,10 +2516,10 @@ function Dashboard() {
       const rowBorder   = "1px solid rgba(255,255,255,0.04)";
 
       const statTile = (label, value, negative, delta = null) => (
-        <div style={{ background: "#1A1826", border: whatIfMode ? "1px solid rgba(251,191,36,0.25)" : panelBorder, borderRadius: "12px", padding: "20px 22px", position: "relative", overflow: "hidden" }}>
+        <div style={{ background: "#1A1826", border: whatIfMode ? "1px solid rgba(251,191,36,0.25)" : panelBorder, borderRadius: "12px", padding: isMobile ? "16px 14px" : "20px 22px", position: "relative", overflow: "hidden" }}>
           <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: "1px", background: whatIfMode ? "linear-gradient(90deg, rgba(251,191,36,0.8), transparent)" : "linear-gradient(90deg, rgba(0,212,170,0.8), transparent)" }} />
           <div style={{ fontSize: "10px", color: "#8B8FA8", letterSpacing: "0.1em", textTransform: "uppercase", fontWeight: "600", marginBottom: "10px" }}>{label}</div>
-          <div style={{ fontFamily: "'DM Mono', monospace", fontSize: "26px", fontWeight: "500", color: negative ? "#F87171" : "#00D4AA", lineHeight: 1 }}>
+          <div style={{ fontFamily: "'DM Mono', monospace", fontSize: isMobile ? "19px" : "26px", fontWeight: "500", color: negative ? "#F87171" : "#00D4AA", lineHeight: 1.1, whiteSpace: "nowrap" }}>
             {value < 0 ? "-" : ""}${fmt(Math.abs(value))}
           </div>
           {whatIfMode && delta !== null && delta !== 0 && (
@@ -2572,7 +2580,7 @@ function Dashboard() {
               )}
             </div>
             <div style={{ fontFamily: "'DM Mono', monospace", fontSize: "13px", color: enabled ? "#F87171" : "#4A4F5C", textAlign: "right" }}>{enabled ? `$${fmt(monthly)}` : "—"}</div>
-            <div style={{ fontFamily: "'DM Mono', monospace", fontSize: "13px", color: "#8B8FA8", textAlign: "right" }}>{enabled ? `$${fmt(monthly * 12)}` : "—"}</div>
+            {!isMobile && <div style={{ fontFamily: "'DM Mono', monospace", fontSize: "13px", color: "#8B8FA8", textAlign: "right" }}>{enabled ? `$${fmt(monthly * 12)}` : "—"}</div>}
           </div>
         );
       };
@@ -2586,7 +2594,9 @@ function Dashboard() {
         }, 0);
         if (group.length === 0 && (!whatIfMode || !whatIfExtraBills.some(b => group.includes(b)))) return null;
         if (group.length === 0) return null;
-        const cols = whatIfMode ? "24px 1fr 110px 110px 110px" : "1fr 100px 110px 110px";
+        const cols = isMobile
+          ? (whatIfMode ? "20px 1fr 72px 76px" : "1fr 72px 80px")
+          : (whatIfMode ? "24px 1fr 110px 110px 110px" : "1fr 100px 110px 110px");
         return (
           <div style={{ background: "#1A1826", border: panelBorder, borderRadius: "12px", padding: "20px", marginBottom: "12px" }}>
             <div style={{ display: "grid", gridTemplateColumns: cols, gap: "8px", marginBottom: "8px" }}>
@@ -2594,7 +2604,7 @@ function Dashboard() {
               <div style={{ fontSize: "11px", color: "#8B8FA8", letterSpacing: "0.1em", textTransform: "uppercase", fontWeight: "600" }}>{title}</div>
               <div style={{ fontSize: "10px", color: "#8B8FA8", textAlign: "right", letterSpacing: "0.08em", textTransform: "uppercase" }}>Per Check</div>
               <div style={{ fontSize: "10px", color: "#8B8FA8", textAlign: "right", letterSpacing: "0.08em", textTransform: "uppercase" }}>Monthly</div>
-              <div style={{ fontSize: "10px", color: "#8B8FA8", textAlign: "right", letterSpacing: "0.08em", textTransform: "uppercase" }}>Annual</div>
+              {!isMobile && <div style={{ fontSize: "10px", color: "#8B8FA8", textAlign: "right", letterSpacing: "0.08em", textTransform: "uppercase" }}>Annual</div>}
             </div>
             {group.map(b => billRow(b, multiplier))}
             <div style={{ display: "grid", gridTemplateColumns: cols, gap: "8px", paddingTop: "12px", marginTop: "4px", borderTop: "1px solid rgba(255,255,255,0.08)" }}>
@@ -2602,7 +2612,7 @@ function Dashboard() {
               <div style={{ fontSize: "12px", color: "#8B8FA8", fontWeight: "600" }}>Subtotal</div>
               <div />
               <div style={{ fontFamily: "'DM Mono', monospace", fontSize: "13px", color: "#F87171", textAlign: "right", fontWeight: "600" }}>${fmt(groupMonthly)}</div>
-              <div style={{ fontFamily: "'DM Mono', monospace", fontSize: "13px", color: "#8B8FA8", textAlign: "right" }}>${fmt(groupMonthly * 12)}</div>
+              {!isMobile && <div style={{ fontFamily: "'DM Mono', monospace", fontSize: "13px", color: "#8B8FA8", textAlign: "right" }}>${fmt(groupMonthly * 12)}</div>}
             </div>
           </div>
         );
@@ -2650,14 +2660,14 @@ function Dashboard() {
           )}
 
           {/* Stat tiles */}
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: "12px", marginBottom: "28px" }}>
+          <div style={{ display: "grid", gridTemplateColumns: isMobile ? "repeat(2,1fr)" : "repeat(4,1fr)", gap: isMobile ? "8px" : "12px", marginBottom: "28px" }}>
             {statTile("Monthly Income",    wiMonthlyIncome, false, whatIfMode ? wiMonthlyIncome - realMonthlyIncome : null)}
             {statTile("Monthly Bills",     wiMonthlyBills,  true,  whatIfMode ? -(wiMonthlyBills - realMonthlyBills) : null)}
             {statTile("Monthly Remaining", wiRemaining,     wiRemaining < 0, whatIfMode ? deltaRemaining : null)}
             {statTile("Annual Remaining",  wiAnnual,        wiAnnual < 0,    whatIfMode ? deltaRemaining * 12 : null)}
           </div>
 
-          <div style={{ display: "grid", gridTemplateColumns: "58% 40%", gap: "12px", alignItems: "start" }}>
+          <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "58% 40%", gap: "12px", alignItems: "start" }}>
 
             {/* Left: bills */}
             <div>
@@ -2690,12 +2700,12 @@ function Dashboard() {
 
               {/* Grand total */}
               <div style={{ background: "#1A1826", border: whatIfMode ? "1px solid rgba(251,191,36,0.25)" : panelBorder, borderRadius: "12px", padding: "16px 20px" }}>
-                <div style={{ display: "grid", gridTemplateColumns: whatIfMode ? "24px 1fr 110px 110px 110px" : "1fr 100px 110px 110px", gap: "8px", alignItems: "center" }}>
+                <div style={{ display: "grid", gridTemplateColumns: isMobile ? (whatIfMode ? "20px 1fr 72px 76px" : "1fr 72px 80px") : (whatIfMode ? "24px 1fr 110px 110px 110px" : "1fr 100px 110px 110px"), gap: "8px", alignItems: "center" }}>
                   {whatIfMode && <div />}
                   <div style={{ fontSize: "13px", color: "#F0F6FC", fontWeight: "700" }}>Total Bills</div>
-                  <div />
+                  {!isMobile && <div />}
                   <div style={{ fontFamily: "'DM Mono', monospace", fontSize: "15px", color: "#F87171", textAlign: "right", fontWeight: "600" }}>${fmt(wiMonthlyBills)}</div>
-                  <div style={{ fontFamily: "'DM Mono', monospace", fontSize: "15px", color: "#8B8FA8", textAlign: "right" }}>${fmt(wiMonthlyBills * 12)}</div>
+                  {!isMobile && <div style={{ fontFamily: "'DM Mono', monospace", fontSize: "15px", color: "#8B8FA8", textAlign: "right" }}>${fmt(wiMonthlyBills * 12)}</div>}
                 </div>
                 {whatIfMode && wiMonthlyBills !== realMonthlyBills && (
                   <div style={{ marginTop: "8px", paddingTop: "8px", borderTop: rowBorder, display: "flex", justifyContent: "flex-end", gap: "8px", alignItems: "center" }}>
