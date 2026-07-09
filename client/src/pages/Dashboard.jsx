@@ -2553,7 +2553,7 @@ function Dashboard() {
         const changed   = whatIfMode && !isExtra && (parseFloat(whatIfBills[b.id]?.amount) !== undefined && parseFloat(whatIfBills[b.id]?.amount) !== realAmt);
 
         return (
-          <div key={b.id} style={{ display: "grid", gridTemplateColumns: whatIfMode ? "24px 1fr 110px 110px 110px" : "1fr 100px 110px 110px", gap: "8px", padding: "10px 0", borderBottom: rowBorder, alignItems: "center", opacity: (!whatIfMode || enabled) ? 1 : 0.35, transition: "opacity 0.2s" }}>
+          <div key={b.id} style={{ display: "grid", gridTemplateColumns: isMobile ? (whatIfMode ? "20px 1fr 72px 76px" : "1fr 72px 80px") : (whatIfMode ? "24px 1fr 110px 110px 110px" : "1fr 100px 110px 110px"), gap: "8px", padding: "10px 0", borderBottom: rowBorder, alignItems: "center", opacity: (!whatIfMode || enabled) ? 1 : 0.35, transition: "opacity 0.2s" }}>
             {whatIfMode && (
               <button onClick={() => {
                 if (isExtra) {
