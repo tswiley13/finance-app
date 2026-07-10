@@ -6184,12 +6184,17 @@ function Dashboard() {
                                 </button>
                               </div>
                             ) : done ? (
-                              <button
-                                onClick={undoTransfer}
-                                style={{ background: "none", border: "1px solid rgba(255,255,255,0.1)", color: "#8B8FA8", padding: "4px 10px", borderRadius: "6px", cursor: "pointer", fontSize: "11px", fontFamily: "'Inter', sans-serif" }}
-                              >
-                                Undo
-                              </button>
+                              <>
+                                <div className="row-amount" style={{ color: "#4ADE80", textAlign: "right" }}>
+                                  ${fmt(suggestedAmount)}
+                                </div>
+                                <button
+                                  onClick={undoTransfer}
+                                  style={{ background: "none", border: "1px solid rgba(255,255,255,0.1)", color: "#8B8FA8", padding: "4px 10px", borderRadius: "6px", cursor: "pointer", fontSize: "11px", fontFamily: "'Inter', sans-serif" }}
+                                >
+                                  Undo
+                                </button>
+                              </>
                             ) : null}
                           </div>
                         </div>
