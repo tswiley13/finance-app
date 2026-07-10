@@ -2020,7 +2020,7 @@ function Dashboard() {
         const endBalance = startBalance + pendingIncome - billsForEndBalance;
         runningBalance = endBalance;
 
-        return { ...item, startBalance, pendingIncome, billsDeducted, endBalance, isCurrent };
+        return { ...item, startBalance, pendingIncome, billsDeducted, billsForEndBalance, endBalance, isCurrent };
       });
 
       // Monthly summary — based on current calendar month only
@@ -6184,17 +6184,12 @@ function Dashboard() {
                                 </button>
                               </div>
                             ) : done ? (
-                              <>
-                                <div className="row-amount" style={{ color: "#4ADE80", textAlign: "right" }}>
-                                  ${fmt(suggestedAmount)}
-                                </div>
-                                <button
-                                  onClick={undoTransfer}
-                                  style={{ background: "none", border: "1px solid rgba(255,255,255,0.1)", color: "#8B8FA8", padding: "4px 10px", borderRadius: "6px", cursor: "pointer", fontSize: "11px", fontFamily: "'Inter', sans-serif" }}
-                                >
-                                  Undo
-                                </button>
-                              </>
+                              <button
+                                onClick={undoTransfer}
+                                style={{ background: "none", border: "1px solid rgba(255,255,255,0.1)", color: "#8B8FA8", padding: "4px 10px", borderRadius: "6px", cursor: "pointer", fontSize: "11px", fontFamily: "'Inter', sans-serif" }}
+                              >
+                                Undo
+                              </button>
                             ) : null}
                           </div>
                         </div>
@@ -6314,18 +6309,12 @@ function Dashboard() {
                   if (!nextBreakdown) return null;
 
                   const nextPeriodKey = nextBreakdown.period.start_date;
-                  const nextPeriodBills = nextBreakdown.bills || [];
 
-                  // One number: the total to set aside for the upcoming period's bills. We don't
-                  // try to route it per account — the user knows their own setup and distributes
-                  // it however their bills are paid. Accumulating accounts fund gradually via
-                  // their own contribution rows, so they're excluded here.
-                  const billsToTransfer = nextPeriodBills.reduce((sum, bill) => {
-                    if (bill.transfer_to_account_id) return sum;
-                    const acct = accounts.find(a => a.id === bill.account_id);
-                    if (acct?.is_accumulating) return sum;
-                    return sum + (bill.amount || 0);
-                  }, 0);
+                  // One number: the total to set aside for the upcoming period's bills. Use the
+                  // exact amount the End Balance subtracts (start + income - bills) so the two
+                  // always agree. The user knows their own setup and distributes it across
+                  // whatever accounts their bills are paid from.
+                  const billsToTransfer = nextBreakdown.billsForEndBalance || 0;
                   if (billsToTransfer <= 0) return null;
 
                   const rowKey = "next-bills-total";
