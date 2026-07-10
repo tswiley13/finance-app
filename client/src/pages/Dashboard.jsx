@@ -6311,37 +6311,22 @@ function Dashboard() {
                   const nextPeriodKey = nextBreakdown.period.start_date;
                   const nextPeriodBills = nextBreakdown.bills || [];
 
-                  // Group every regular bill under the account it's actually paid from, so the
-                  // rows reconcile with the End Balance (start + income - bills) for ANY user
-                  // setup — one bills account, several, or paying straight from primary.
-                  //   • Non-primary account  -> a "Transfer to X" row (money must leave primary).
-                  //   • Primary / unassigned -> a "Paid from <primary>" row (direct debit, no
-                  //     transfer to record) so those bills are still shown and the total matches.
-                  //   • Accumulating accounts are funded gradually via their own contributions.
-                  const primaryAcct = accounts.find(a => a.is_primary && !a.is_accumulating);
-                  const DIRECT_KEY = "__direct__";
-                  const nextGrouped = {};
-                  nextPeriodBills.forEach(bill => {
-                    if (bill.transfer_to_account_id) return;
+                  // One number: the total to set aside for the upcoming period's bills. We don't
+                  // try to route it per account — the user knows their own setup and distributes
+                  // it however their bills are paid. Accumulating accounts fund gradually via
+                  // their own contribution rows, so they're excluded here.
+                  const billsToTransfer = nextPeriodBills.reduce((sum, bill) => {
+                    if (bill.transfer_to_account_id) return sum;
                     const acct = accounts.find(a => a.id === bill.account_id);
-                    if (acct?.is_accumulating) return;
-                    const isDirect = !acct || acct.is_primary;
-                    const key = isDirect ? DIRECT_KEY : acct.id;
-                    if (!nextGrouped[key]) {
-                      nextGrouped[key] = {
-                        acctName: isDirect ? (primaryAcct?.name || "primary account") : acct.name,
-                        total: 0,
-                        buffer: isDirect ? 0 : (acct.minimum_buffer || 0),
-                        isDirect,
-                      };
-                    }
-                    nextGrouped[key].total += bill.amount || 0;
-                  });
+                    if (acct?.is_accumulating) return sum;
+                    return sum + (bill.amount || 0);
+                  }, 0);
+                  if (billsToTransfer <= 0) return null;
 
-                  // Only surface the pre-fund section when there's at least one real transfer
-                  // to make; a purely pay-from-primary period has nothing to pre-fund.
-                  const hasTransfer = Object.values(nextGrouped).some(g => !g.isDirect);
-                  if (!hasTransfer) return null;
+                  const rowKey = "next-bills-total";
+                  const transferred = nextTransfers[rowKey] || 0;
+                  const remaining = Math.max(0, billsToTransfer - transferred);
+                  const done = transferred >= billsToTransfer;
 
                   return (
                     <div style={{ marginTop: "20px", paddingTop: "16px", borderTop: "1px solid rgba(255,255,255,0.06)" }}>
@@ -6351,62 +6336,45 @@ function Dashboard() {
                         </div>
                         <div style={{ fontSize: "10px", color: "#6C63FF", fontWeight: "600" }}>Pre-fund</div>
                       </div>
-                      {Object.entries(nextGrouped)
-                        .sort(([, a], [, b]) => (a.isDirect ? 1 : 0) - (b.isDirect ? 1 : 0))
-                        .map(([acctId, data]) => {
-                        // Primary/unassigned bills are a direct debit — show the amount for
-                        // reconciliation, but there's no transfer to record.
-                        if (data.isDirect) {
-                          return (
-                            <div key={acctId} style={{ padding: "8px 0", borderBottom: "1px solid rgba(255,255,255,0.04)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                              <div className="row-name" style={{ color: "#8B8FA8" }}>Paid from {data.acctName}</div>
-                              <div style={{ fontFamily: "'DM Mono', monospace", fontSize: "12px", color: "#8B8FA8" }}>${fmt(data.total)}</div>
-                            </div>
-                          );
-                        }
-                        const needed = data.total + data.buffer;
-                        const transferred = nextTransfers[acctId] || 0;
-                        const remaining = Math.max(0, needed - transferred);
-                        const done = transferred >= needed;
-                        return (
-                          <div key={acctId} style={{ padding: "8px 0", borderBottom: "1px solid rgba(255,255,255,0.04)" }}>
-                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                              <div className="row-name" style={{ color: done ? "#4ADE80" : "#F0F6FC" }}>
-                                {done ? "✓ " : ""}Transfer to {data.acctName}
-                              </div>
+                      <div style={{ padding: "8px 0" }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                          <div className="row-name" style={{ color: done ? "#4ADE80" : "#F0F6FC" }}>
+                            {done ? "✓ " : ""}Bills to transfer
+                          </div>
+                          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                            {!done && transferringId === `next-${rowKey}` ? (
+                              <>
+                                <input
+                                  type="number"
+                                  value={transferAmount}
+                                  onChange={e => setTransferAmount(e.target.value)}
+                                  onKeyDown={e => {
+                                    if (e.key === "Enter") confirmNextTransfer(rowKey, transferAmount, nextPeriodKey);
+                                    if (e.key === "Escape") { setTransferringId(null); setTransferAmount(""); }
+                                  }}
+                                  placeholder={fmt(remaining)}
+                                  autoFocus
+                                  style={{ width: "80px", background: "rgba(255,255,255,0.06)", border: "1px solid rgba(108,99,255,0.4)", borderRadius: "6px", color: "#F0F6FC", fontFamily: "'DM Mono', monospace", fontSize: "12px", padding: "4px 8px", textAlign: "right" }}
+                                />
+                                <button onClick={() => confirmNextTransfer(rowKey, transferAmount, nextPeriodKey)} style={{ background: "rgba(108,99,255,0.15)", border: "1px solid rgba(108,99,255,0.3)", color: "#6C63FF", borderRadius: "6px", padding: "4px 10px", fontSize: "11px", fontWeight: "700", cursor: "pointer", fontFamily: "'Inter', sans-serif" }}>✓</button>
+                                <button onClick={() => confirmNextTransfer(rowKey, remaining, nextPeriodKey)} style={{ background: "rgba(108,99,255,0.08)", border: "1px solid rgba(108,99,255,0.2)", color: "#6C63FF", borderRadius: "6px", padding: "4px 10px", fontSize: "11px", cursor: "pointer", fontFamily: "'Inter', sans-serif" }}>Full ${fmt(remaining)}</button>
+                              </>
+                            ) : done ? (
                               <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                                {!done && transferringId === `next-${acctId}` ? (
-                                  <>
-                                    <input
-                                      type="number"
-                                      value={transferAmount}
-                                      onChange={e => setTransferAmount(e.target.value)}
-                                      onKeyDown={e => {
-                                        if (e.key === "Enter") confirmNextTransfer(acctId, transferAmount, nextPeriodKey);
-                                        if (e.key === "Escape") { setTransferringId(null); setTransferAmount(""); }
-                                      }}
-                                      placeholder={fmt(remaining)}
-                                      autoFocus
-                                      style={{ width: "80px", background: "rgba(255,255,255,0.06)", border: "1px solid rgba(108,99,255,0.4)", borderRadius: "6px", color: "#F0F6FC", fontFamily: "'DM Mono', monospace", fontSize: "12px", padding: "4px 8px", textAlign: "right" }}
-                                    />
-                                    <button onClick={() => confirmNextTransfer(acctId, transferAmount, nextPeriodKey)} style={{ background: "rgba(108,99,255,0.15)", border: "1px solid rgba(108,99,255,0.3)", color: "#6C63FF", borderRadius: "6px", padding: "4px 10px", fontSize: "11px", fontWeight: "700", cursor: "pointer", fontFamily: "'Inter', sans-serif" }}>✓</button>
-                                    <button onClick={() => confirmNextTransfer(acctId, remaining, nextPeriodKey)} style={{ background: "rgba(108,99,255,0.08)", border: "1px solid rgba(108,99,255,0.2)", color: "#6C63FF", borderRadius: "6px", padding: "4px 10px", fontSize: "11px", cursor: "pointer", fontFamily: "'Inter', sans-serif" }}>Full ${fmt(remaining)}</button>
-                                  </>
-                                ) : done ? (
-                                  <button onClick={() => undoNextTransfer(acctId, nextPeriodKey)} style={{ background: "none", border: "none", color: "#8B8FA8", cursor: "pointer", fontSize: "10px", fontFamily: "'Inter', sans-serif", textDecoration: "underline" }}>Undo</button>
-                                ) : (
-                                  <button onClick={() => { setTransferringId(`next-${acctId}`); setTransferAmount(""); }} style={{ background: "rgba(108,99,255,0.12)", border: "1px solid rgba(108,99,255,0.25)", color: "#6C63FF", borderRadius: "6px", padding: "4px 12px", fontSize: "11px", fontWeight: "600", cursor: "pointer", fontFamily: "'Inter', sans-serif" }}>
-                                    Transfer ${fmt(remaining)}
-                                  </button>
-                                )}
+                                <span style={{ fontFamily: "'DM Mono', monospace", fontSize: "12px", color: "#4ADE80" }}>${fmt(billsToTransfer)}</span>
+                                <button onClick={() => undoNextTransfer(rowKey, nextPeriodKey)} style={{ background: "none", border: "none", color: "#8B8FA8", cursor: "pointer", fontSize: "10px", fontFamily: "'Inter', sans-serif", textDecoration: "underline" }}>Undo</button>
                               </div>
-                            </div>
-                            {transferred > 0 && !done && (
-                              <div style={{ fontSize: "10px", color: "#8B8FA8", marginTop: "4px" }}>${fmt(transferred)} transferred so far</div>
+                            ) : (
+                              <button onClick={() => { setTransferringId(`next-${rowKey}`); setTransferAmount(""); }} style={{ background: "rgba(108,99,255,0.12)", border: "1px solid rgba(108,99,255,0.25)", color: "#6C63FF", borderRadius: "6px", padding: "4px 12px", fontSize: "11px", fontWeight: "600", cursor: "pointer", fontFamily: "'Inter', sans-serif" }}>
+                                Transfer ${fmt(remaining)}
+                              </button>
                             )}
                           </div>
-                        );
-                      })}
+                        </div>
+                        {transferred > 0 && !done && (
+                          <div style={{ fontSize: "10px", color: "#8B8FA8", marginTop: "4px" }}>${fmt(transferred)} of ${fmt(billsToTransfer)} transferred so far</div>
+                        )}
+                      </div>
                     </div>
                   );
                 })()}
