@@ -6704,7 +6704,14 @@ function Dashboard() {
       <style>{css}</style>
 
       <aside className="sidebar">
-        <div className="sidebar-logo">
+        <div
+          className="sidebar-logo"
+          role="button"
+          tabIndex={0}
+          onClick={() => navigate("dashboard")}
+          onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); navigate("dashboard"); } }}
+          style={{ cursor: "pointer" }}
+        >
           <div className="logo-text">Stryde</div>
           <div className="logo-tag">Stop hoping. Start knowing.</div>
         </div>
@@ -6808,7 +6815,15 @@ function Dashboard() {
 
           {/* Mobile: centered app name */}
           <div className="mobile-only" style={{ flex: 1, justifyContent: "center" }}>
-            <div style={{ fontSize: "18px", fontWeight: "900", letterSpacing: "0.1em", color: "#F0F6FC", textTransform: "uppercase" }}>Stryde</div>
+            <div
+              role="button"
+              tabIndex={0}
+              onClick={() => navigate("dashboard")}
+              onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); navigate("dashboard"); } }}
+              style={{ fontSize: "18px", fontWeight: "900", letterSpacing: "0.1em", color: "#F0F6FC", textTransform: "uppercase", cursor: "pointer" }}
+            >
+              Stryde
+            </div>
           </div>
 
           {/* Mobile: avatar on right */}
@@ -6845,7 +6860,16 @@ function Dashboard() {
       )}
       <div className="mobile-nav-drawer" style={{ transform: mobileMenuOpen ? "translateX(0)" : "translateX(-100%)", transition: "transform 0.25s ease" }}>
         <div className="mobile-nav-drawer-header">
-          <div className="mobile-nav-drawer-logo">Stryde</div>
+          <div
+            className="mobile-nav-drawer-logo"
+            role="button"
+            tabIndex={0}
+            onClick={() => { navigate("dashboard"); setMobileMenuOpen(false); }}
+            onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); navigate("dashboard"); setMobileMenuOpen(false); } }}
+            style={{ cursor: "pointer" }}
+          >
+            Stryde
+          </div>
           <button className="mobile-nav-close" onClick={() => setMobileMenuOpen(false)}>
             <X size={20} />
           </button>
