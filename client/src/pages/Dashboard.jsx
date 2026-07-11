@@ -6185,11 +6185,22 @@ function Dashboard() {
 
                   const nextPeriodKey = nextBreakdown.period.start_date;
 
-                  // One number: the total to set aside for the upcoming period's bills. Use the
-                  // exact amount the End Balance subtracts (start + income - bills) so the two
-                  // always agree. The user knows their own setup and distributes it across
-                  // whatever accounts their bills are paid from.
-                  const billsToTransfer = nextBreakdown.billsForEndBalance || 0;
+                  // One number: the total to set aside for the upcoming period's bills. This
+                  // mirrors what the End Balance subtracts (start + income - bills) so the two
+                  // agree — every bill except those funded gradually through an accumulating
+                  // account, and skipping anything already paid or skipped for that period.
+                  const billsToTransfer = (nextBreakdown.bills || []).reduce((sum, bill) => {
+                    if (skippedBillPeriods.has(`${bill.id}-${nextPeriodKey}`)) return sum;
+                    if (isBillPaidInPeriod(bill.id, nextPeriodKey)) return sum;
+                    if (bill.transfer_to_account_id) {
+                      const dest = accounts.find(a => a.id === bill.transfer_to_account_id);
+                      if (dest?.is_accumulating) return sum;
+                      return sum + (bill.amount || 0);
+                    }
+                    const acct = accounts.find(a => a.id === bill.account_id);
+                    if (acct?.is_accumulating) return sum;
+                    return sum + (bill.amount || 0);
+                  }, 0);
                   if (billsToTransfer <= 0) return null;
 
                   const rowKey = "next-bills-total";
