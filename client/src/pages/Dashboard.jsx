@@ -2040,41 +2040,10 @@ function Dashboard() {
         })
         .reduce((sum, inc) => sum + (inc.fixed_amount || 0), 0);
 
-      // Bills remaining: period-aware calculation for the current calendar month.
-      const daysInCurrentMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
-
-      // Pay periods whose start_date is within the current calendar month
-      const periodsStartingThisMonth = sortedAllPeriods.filter(p => {
-        const d = new Date(p.start_date + "T12:00:00");
-        return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
-      });
-
-      // Is this bill paid in any period that overlaps with the current calendar month?
-      const monthStart = new Date(currentYear, currentMonth, 1);
-      const monthEnd = new Date(currentYear, currentMonth + 1, 0, 23, 59, 59);
-      const paidThisMonth = (bill) => {
-        return sortedAllPeriods.some(p => {
-          const ps = new Date(p.start_date + "T00:00:00");
-          const pe = new Date(p.end_date + "T23:59:59");
-          if (pe < monthStart || ps > monthEnd) return false;
-          return isBillPaidInPeriod(bill.id, p.start_date);
-        });
-      };
-
-      // Is this bill skipped in the current period OR any period starting this month?
-      // We check both because a skip is recorded against whichever period the user
-      // clicked skip in — which may differ from the period containing the due date.
-      const currentPKey = currentPeriodIdx >= 0 ? sortedAllPeriods[currentPeriodIdx]?.start_date : null;
-      const isSkippedThisMonth = (bill) => {
-        if (currentPKey && skippedBillPeriods.has(`${bill.id}-${currentPKey}`)) return true;
-        return periodsStartingThisMonth.some(p => skippedBillPeriods.has(`${bill.id}-${p.start_date}`));
-      };
-
       // Bills Remaining: unpaid bills for the current period plus any upcoming period
-      // that ENDS within the current calendar month. This mirrors the per-period BILLS
-      // totals shown on the cards. (The previous version counted every period that merely
-      // *started* this month, so a period like Jul 30–Aug 12 pulled next month's recurring
-      // bills into the total and overstated it.)
+      // that ENDS within the current calendar month, mirroring the per-period BILLS
+      // totals shown on the cards. (Counting periods that merely *start* this month would
+      // pull a spill-over period like Jul 30–Aug 12 — really next month's bills — in.)
       const monthEndDate = new Date(currentYear, currentMonth + 1, 0, 23, 59, 59);
       const monthBills = rows
         .filter(item => {
@@ -2085,59 +2054,8 @@ function Dashboard() {
         })
         .reduce((sum, item) => sum + (item.billsDeducted || 0), 0);
 
-      // Available This Month: only subtract bills assigned directly to the primary account.
-      // Bills from other accounts (e.g. Wiley Bills) are pre-funded via transfers and
-      // don't reduce the primary spending account balance further.
-      const primaryAccountIdsForMonth = new Set(
-        accounts.filter(a => a.is_primary && !a.is_accumulating).map(a => a.id)
-      );
-      const monthBillsPrimary = bills
-        .filter(b => b.is_active !== false && primaryAccountIdsForMonth.has(b.account_id))
-        .reduce((sum, b) => {
-          const freq = b.frequency || "monthly";
-          if (freq === "payday" || freq === "biweekly") {
-            let t = 0;
-            for (const period of periodsStartingThisMonth) {
-              if (skippedBillPeriods.has(`${b.id}-${period.start_date}`)) continue;
-              if (isBillPaidInPeriod(b.id, period.start_date)) continue;
-              t += (b.amount || 0);
-            }
-            return sum + t;
-          }
-          if (isSkippedThisMonth(b)) return sum;
-          if (freq === "quarterly") {
-            if (!b.due_month) return sum;
-            const startM = b.due_month - 1;
-            const dueMonths = [startM, (startM+3)%12, (startM+6)%12, (startM+9)%12];
-            if (!dueMonths.includes(currentMonth)) return sum;
-            if (paidThisMonth(b)) return sum;
-            return sum + (b.amount || 0);
-          }
-          if (freq === "annually") {
-            if (!b.due_month || b.due_month - 1 !== currentMonth) return sum;
-            if (paidThisMonth(b)) return sum;
-            return sum + (b.amount || 0);
-          }
-          if (b.due_day && b.due_day > daysInCurrentMonth) return sum;
-          if (b.due_day) {
-            const dueDateThisMonth = new Date(currentYear, currentMonth, b.due_day);
-            const relPeriod = sortedAllPeriods.find(p => {
-              const ps = new Date(p.start_date + "T00:00:00");
-              const pe = new Date(p.end_date + "T23:59:59");
-              return dueDateThisMonth >= ps && dueDateThisMonth <= pe;
-            });
-            if (relPeriod) {
-              if (isBillPaidInPeriod(b.id, relPeriod.start_date)) return sum;
-            } else {
-              if (paidThisMonth(b)) return sum;
-            }
-          } else {
-            if (paidThisMonth(b)) return sum;
-          }
-          return sum + (b.amount || 0);
-        }, 0);
-
-      const availableThisMonth = primaryBalance + monthIncome - monthBillsPrimary;
+      // Available This Month: what's left after this month's remaining bills.
+      const availableThisMonth = primaryBalance + monthIncome - monthBills;
 
       return (
         <div className="content-area">
