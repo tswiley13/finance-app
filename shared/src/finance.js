@@ -137,6 +137,24 @@ function incomeItemsInPeriod(inc, periodStart, periodEnd) {
   return out;
 }
 
+/**
+ * Is this deposit still ahead of us?
+ *
+ * Only a future deposit can be "received early" — once the pay date arrives the
+ * money is already in the synced balance, so there's nothing left to mark and
+ * the "Got Paid" affordance must not be offered. Marking it anyway writes a row
+ * that changes no number, which reads as a broken button.
+ */
+export function isIncomeFuture(inc, today = new Date()) {
+  return !!(inc.actualPayDate && new Date(inc.actualPayDate + "T12:00:00") > today);
+}
+
+/** Can the user mark this deposit as received early? */
+export function canMarkIncomeReceived(inc, periodKey, ctx) {
+  if (ctx.earlyPayments?.has(`${inc.id}-${periodKey}`)) return false;
+  return isIncomeFuture(inc, ctx.today ? new Date(ctx.today) : new Date());
+}
+
 // ── Accumulating-account contributions ("Set Aside") ─────────────────────────
 
 function buildContributions(ctx, upcomingPeriods, today) {

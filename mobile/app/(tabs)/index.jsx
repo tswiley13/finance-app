@@ -4,7 +4,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import {
   fmtDate, localDateStr, getBillsToTransfer, getPeriodTransferGroups,
-  isBillPaidInPeriod, getBillPaidAmount, ordinalSuffix,
+  isBillPaidInPeriod, getBillPaidAmount, ordinalSuffix, canMarkIncomeReceived,
 } from "@stryde/shared";
 import {
   useStrydeData, markBillPaid, undoBillPaid,
@@ -260,6 +260,11 @@ function PeriodCard({ row, open, onToggle, d, run }) {
               <Label style={{ marginTop: 12, marginBottom: 8 }}>Income</Label>
               {row.incomeItems.map((inc, i) => {
                 const received = d.earlyPayments.has(`${inc.id}-${periodKey}`);
+                // "Got Paid" only makes sense for a deposit that hasn't landed
+                // yet. Once the pay date arrives the money is already in the
+                // balance, so there's nothing to mark — offering the button
+                // would write a record that changes no number.
+                const canMark = canMarkIncomeReceived(inc, periodKey, d.ctx);
                 return (
                   <View key={`${inc.id}-${i}`} style={[s.rowBetween, { paddingVertical: 7 }]}>
                     <View style={{ flex: 1 }}>
@@ -267,19 +272,19 @@ function PeriodCard({ row, open, onToggle, d, run }) {
                         {received ? "✓ " : ""}{inc.name}
                       </Text>
                       <Text style={s.faintSm}>
-                        {fmtDate(inc.actualPayDate)}{received ? " · Received" : ""}
+                        {fmtDate(inc.actualPayDate)}{received ? " · Received early" : ""}
                       </Text>
                     </View>
-                    <Money value={inc.fixed_amount} color={c.positive} size={13} />
+                    <Money value={inc.fixed_amount} color={received ? c.positive : c.textMuted} size={13} />
                     {received ? (
                       <Pressable onPress={() => run(() => undoIncomeReceived(d.userId, inc.id, periodKey))} style={{ marginLeft: 10 }}>
                         <Text style={s.undo}>Undo</Text>
                       </Pressable>
-                    ) : (
+                    ) : canMark ? (
                       <Pressable onPress={() => run(() => markIncomeReceived(d.userId, inc.id, periodKey))} style={[s.gotPaidBtn, { marginLeft: 10 }]}>
                         <Text style={s.gotPaidText}>Got Paid</Text>
                       </Pressable>
-                    )}
+                    ) : null}
                   </View>
                 );
               })}

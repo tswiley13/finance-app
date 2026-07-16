@@ -146,3 +146,31 @@ assert.equal(getPeriodTransferGroups(afterRows[0], afterCtx).every((g) => g.done
   "group reports done, so the tile hides");
 
 console.log("✓ current-period transfer tests passed");
+
+// ── "Got Paid" visibility ────────────────────────────────────────────────────
+// Only a deposit that hasn't landed yet can be marked received early. Once the
+// pay date arrives the money is already in the synced balance, so the button
+// must not show — otherwise tapping it writes a record that moves no number,
+// which reads as a broken button.
+import { canMarkIncomeReceived, isIncomeFuture } from "../src/index.js";
+
+const NOW = new Date("2026-07-16T14:43:00"); // mid-afternoon on payday
+
+assert.equal(isIncomeFuture({ actualPayDate: "2026-07-16" }, NOW), false,
+  "a deposit dated today has already landed");
+assert.equal(isIncomeFuture({ actualPayDate: "2026-07-30" }, NOW), true,
+  "a deposit two weeks out is still pending");
+assert.equal(isIncomeFuture({ actualPayDate: "2026-07-02" }, NOW), false,
+  "a past deposit has landed");
+
+const todayCtx = { earlyPayments: new Set(), today: NOW };
+assert.equal(canMarkIncomeReceived({ id: "pay", actualPayDate: "2026-07-16" }, "2026-07-16", todayCtx), false,
+  "no Got Paid on payday itself — matches the web app");
+assert.equal(canMarkIncomeReceived({ id: "pay", actualPayDate: "2026-07-30" }, "2026-07-16", todayCtx), true,
+  "Got Paid offered for a future deposit");
+
+const alreadyCtx = { earlyPayments: new Set(["pay-2026-07-16"]), today: NOW };
+assert.equal(canMarkIncomeReceived({ id: "pay", actualPayDate: "2026-07-30" }, "2026-07-16", alreadyCtx), false,
+  "already marked -> show Undo, not Got Paid");
+
+console.log("✓ Got Paid visibility tests passed");
