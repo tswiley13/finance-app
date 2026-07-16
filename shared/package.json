@@ -1,0 +1,11 @@
+{
+  "name": "@stryde/shared",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "main": "src/index.js",
+  "exports": {
+    ".": "./src/index.js"
+  },
+  "description": "Shared Stryde finance calculations — pure functions, no UI or platform dependencies. Consumed by both the web app (client/) and the mobile app (mobile/)."
+}
