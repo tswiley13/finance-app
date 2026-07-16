@@ -114,3 +114,35 @@ console.log(`  Available Now        $${proj.availableNow.toFixed(2)}`);
 console.log(`  Income This Month    $${proj.incomeThisMonth.toFixed(2)}`);
 console.log(`  Bills Remaining      $${proj.billsRemaining.toFixed(2)}`);
 console.log(`  Available This Month $${proj.availableThisMonth.toFixed(2)}`);
+
+// ── Current-period transfers ─────────────────────────────────────────────────
+// The row_key MUST be the account id: that's what the end balance checks before
+// it stops subtracting that account's bills, and it's what the web app writes.
+import { getPeriodTransferGroups } from "../src/index.js";
+
+const groups = getPeriodTransferGroups(rows[0], ctx);
+assert.equal(groups.length, 1, "one funding account needs a transfer");
+assert.equal(groups[0].accountId, "billsacct", "keyed by account id, not a synthetic key");
+assert.equal(Number(groups[0].needed.toFixed(2)), 1268.71, "needs the unpaid bills total");
+assert.equal(groups[0].done, false, "nothing transferred yet");
+
+// Primary account bills never produce a transfer row (you don't pay yourself).
+const primaryOnlyCtx = {
+  ...ctx,
+  bills: [{ id: "x", name: "Direct", amount: 50, frequency: "monthly", due_day: 13, account_id: "spend" }],
+};
+const primaryRows = enrichBreakdown(getPayPeriodBreakdown(primaryOnlyCtx), primaryOnlyCtx);
+assert.equal(getPeriodTransferGroups(primaryRows[0], primaryOnlyCtx).length, 0,
+  "no transfer row for the primary account");
+
+// Once the transfer is recorded, the end balance stops subtracting those bills.
+const afterCtx = { ...ctx, transfers: { billsacct: 1268.71 } };
+const afterRows = enrichBreakdown(getPayPeriodBreakdown(afterCtx), afterCtx);
+assert.equal(Number(afterRows[0].billsForEndBalance.toFixed(2)), 0,
+  "transfer confirmed -> current period bills no longer hit the primary balance");
+assert.equal(Number(afterRows[0].endBalance.toFixed(2)), 339.31,
+  "end balance settles to the untouched primary balance");
+assert.equal(getPeriodTransferGroups(afterRows[0], afterCtx).every((g) => g.done), true,
+  "group reports done, so the tile hides");
+
+console.log("✓ current-period transfer tests passed");

@@ -433,6 +433,55 @@ export function getBillsToTransfer(item, ctx) {
   }, 0);
 }
 
+/**
+ * The transfers still owed for a period, grouped by the account being funded.
+ *
+ * Keyed by account_id on purpose — that's what the END BALANCE checks
+ * (`transfers[bill.account_id] >= unpaid total`) before it stops subtracting
+ * that account's bills, and it's the same row_key the web app writes. Use a
+ * synthetic key here and the two apps stop seeing each other's transfers and
+ * the current period's end balance never settles.
+ *
+ * Skips:
+ *  - the primary account (you don't transfer money to yourself)
+ *  - accumulating accounts (funded gradually via contributions)
+ *  - bills already paid or skipped for this period
+ */
+export function getPeriodTransferGroups(item, ctx) {
+  const { accounts = [], billPayments = {}, skippedBillPeriods, transfers = {} } = ctx;
+  const periodKey = item.period.start_date;
+
+  const groups = {};
+  (item.bills || []).forEach((bill) => {
+    if (isBillSkipped(skippedBillPeriods, bill.id, periodKey)) return;
+    if (isBillPaidInPeriod(billPayments, bill.id, periodKey)) return;
+    if (bill.transfer_to_account_id) return;
+    const acct = accounts.find((a) => a.id === bill.account_id);
+    if (!acct || acct.is_accumulating || acct.is_primary) return;
+    if (!groups[acct.id]) {
+      groups[acct.id] = {
+        accountId: acct.id,
+        name: acct.name,
+        total: 0,
+        buffer: acct.minimum_buffer || 0,
+      };
+    }
+    groups[acct.id].total += bill.amount || 0;
+  });
+
+  return Object.values(groups).map((g) => {
+    const needed = g.total + g.buffer;
+    const transferred = transfers[g.accountId] || 0;
+    return {
+      ...g,
+      needed,
+      transferred,
+      remaining: Math.max(0, needed - transferred),
+      done: transferred >= needed,
+    };
+  });
+}
+
 // ── Monthly Overview ─────────────────────────────────────────────────────────
 
 /** Group bills the way the Monthly Overview page shows them. */

@@ -3,7 +3,7 @@ import { View, Text, ScrollView, Pressable, RefreshControl, StyleSheet } from "r
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import {
-  fmtDate, localDateStr, getBillsToTransfer,
+  fmtDate, localDateStr, getBillsToTransfer, getPeriodTransferGroups,
   isBillPaidInPeriod, getBillPaidAmount, ordinalSuffix,
 } from "@stryde/shared";
 import {
@@ -95,6 +95,11 @@ export default function Dashboard() {
           <StatTile label="Available This Month" value={p.availableThisMonth} negative={p.availableThisMonth < 0} />
         </View>
 
+        {/* Outstanding transfers for the CURRENT period — the one thing that's
+            actually actionable right now, so it sits up top. Disappears once
+            everything's been moved. */}
+        {current && <CurrentTransfers row={current} d={d} run={run} />}
+
         {/* Pay periods */}
         <Label style={{ marginTop: 24, marginBottom: 10 }}>Pay Periods</Label>
         {d.rows.length === 0 && <Empty text="No pay periods yet" />}
@@ -114,6 +119,63 @@ export default function Dashboard() {
         {nextRow && <PreFund row={nextRow} d={d} run={run} />}
       </ScrollView>
     </SafeAreaView>
+  );
+}
+
+function CurrentTransfers({ row, d, run }) {
+  const groups = getPeriodTransferGroups(row, d.ctx);
+  const outstanding = groups.filter((g) => !g.done);
+  // Nothing left to move — don't take up space.
+  if (outstanding.length === 0) return null;
+
+  const periodStart = row.period.start_date;
+  const totalLeft = outstanding.reduce((sum, g) => sum + g.remaining, 0);
+
+  return (
+    <Panel style={{ marginTop: 16, borderColor: "rgba(108,99,255,0.3)" }}>
+      <View style={s.rowBetween}>
+        <Label style={{ color: c.accent }}>Where the Money Goes</Label>
+        <Text style={s.faint}>This pay period</Text>
+      </View>
+      <Text style={[s.faint, { marginTop: 4 }]}>
+        {outstanding.length === 1
+          ? "You still need to move money to cover this period's bills."
+          : `${outstanding.length} transfers still needed for this period.`}
+      </Text>
+      <Divider style={{ marginVertical: 12 }} />
+
+      {outstanding.map((g) => (
+        <View key={g.accountId} style={[s.rowBetween, { paddingVertical: 6 }]}>
+          <View style={{ flex: 1 }}>
+            <Text style={{ color: c.text, fontSize: 14, fontWeight: "500" }}>
+              Transfer to {g.name}
+            </Text>
+            {g.transferred > 0 && (
+              <Text style={s.faintSm}>${g.transferred.toFixed(2)} moved so far</Text>
+            )}
+            {g.buffer > 0 && (
+              <Text style={s.faintSm}>Includes ${g.buffer.toFixed(2)} buffer</Text>
+            )}
+          </View>
+          <Pressable
+            onPress={() => run(() => recordTransfer(d.userId, periodStart, g.accountId, g.needed))}
+            style={s.transferBtn}
+          >
+            <Text style={s.transferBtnText}>Transfer ${g.remaining.toFixed(2)}</Text>
+          </Pressable>
+        </View>
+      ))}
+
+      {outstanding.length > 1 && (
+        <>
+          <Divider style={{ marginVertical: 10 }} />
+          <View style={s.rowBetween}>
+            <Text style={{ color: c.textMuted, fontSize: 12, fontWeight: "600" }}>Total to move</Text>
+            <Money value={totalLeft} color={c.accent} size={14} weight="700" />
+          </View>
+        </>
+      )}
+    </Panel>
   );
 }
 
