@@ -8,7 +8,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { fmtDate, incMultiplier } from "@stryde/shared";
 import { supabase } from "../../src/supabase";
 import { useStrydeData } from "../../src/useStrydeData";
-import { Panel, Money, Loading, Empty, Divider } from "../../src/ui";
+import { Panel, Money, Empty, Divider, dataGate } from "../../src/ui";
 import { Field, Input, MoneyInput, Select, Btn, FormError } from "../../src/form";
 import { DateField } from "../../src/DateField";
 import { c } from "../../src/theme";
@@ -45,7 +45,8 @@ export default function Income() {
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
 
-  if (d.loading) return <Loading />;
+  const gate = dataGate(d);
+  if (gate) return gate;
 
   const active = d.income.filter((i) => i.is_active !== false);
   const monthlyTotal = active.reduce(

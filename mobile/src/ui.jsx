@@ -57,6 +57,42 @@ export function Empty({ text }) {
   );
 }
 
+export function Message({ title, body }) {
+  return (
+    <View style={[s.center, { padding: 32 }]}>
+      <Text style={{ color: c.text, fontSize: 19, fontWeight: "700", marginBottom: 8, textAlign: "center" }}>
+        {title}
+      </Text>
+      <Text style={{ color: c.textMuted, fontSize: 14, textAlign: "center", lineHeight: 20 }}>
+        {body}
+      </Text>
+    </View>
+  );
+}
+
+/**
+ * Every screen must clear this before touching `d.household` or rendering data.
+ *
+ * Without it a signed-in user with no household (or a failed load) reaches a
+ * screen where `d.household` is null, and the first save crashes on
+ * `d.household.id`. Returns an element to render, or null to carry on.
+ */
+export function dataGate(d) {
+  if (d.loading) return <Loading />;
+  if (d.error) {
+    return <Message title="Something went wrong" body={d.error} />;
+  }
+  if (d.needsOnboarding || !d.household) {
+    return (
+      <Message
+        title="Finish setting up"
+        body="Set up your household on the web at stryde.money, then come back here."
+      />
+    );
+  }
+  return null;
+}
+
 export function Divider({ style }) {
   return <View style={[{ height: 1, backgroundColor: c.borderSoft }, style]} />;
 }

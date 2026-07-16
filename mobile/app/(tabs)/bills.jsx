@@ -8,7 +8,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { ordinalSuffix } from "@stryde/shared";
 import { supabase } from "../../src/supabase";
 import { useStrydeData } from "../../src/useStrydeData";
-import { Panel, Label, Money, Loading, Empty, Pill, Divider } from "../../src/ui";
+import { Panel, Money, Empty, Pill, Divider, dataGate } from "../../src/ui";
 import { Field, Input, MoneyInput, Select, Toggle, Btn, FormError, MONTHS, DAYS } from "../../src/form";
 import { c } from "../../src/theme";
 
@@ -58,7 +58,8 @@ export default function Bills() {
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
 
-  if (d.loading) return <Loading />;
+  const gate = dataGate(d);
+  if (gate) return gate;
 
   const active = d.bills.filter((b) => b.is_active !== false);
   const total = active.reduce((sum, b) => sum + (b.amount || 0), 0);

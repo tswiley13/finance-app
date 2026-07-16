@@ -5,7 +5,7 @@ import { Stack } from "expo-router";
 import { fmtDate, localDateStr, buildPayPeriods } from "@stryde/shared";
 import { supabase } from "../src/supabase";
 import { useStrydeData } from "../src/useStrydeData";
-import { Panel, Label, Money, Loading, Empty, Pill } from "../src/ui";
+import { Panel, Label, Money, Empty, Pill, dataGate } from "../src/ui";
 import { ScreenHeader } from "../src/ScreenHeader";
 import { c } from "../src/theme";
 
@@ -13,7 +13,8 @@ export default function PayPeriods() {
   const d = useStrydeData();
   const [regenerating, setRegenerating] = useState(false);
 
-  if (d.loading) return <Loading />;
+  const gate = dataGate(d);
+  if (gate) return gate;
 
   function confirmRegenerate() {
     const rows = buildPayPeriods({ income: d.income });

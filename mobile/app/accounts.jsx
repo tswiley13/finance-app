@@ -7,7 +7,7 @@ import { SafeAreaView, SafeAreaProvider } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { supabase } from "../src/supabase";
 import { useStrydeData } from "../src/useStrydeData";
-import { Panel, Money, Loading, Empty, Pill, Divider } from "../src/ui";
+import { Panel, Money, Empty, Pill, Divider, dataGate } from "../src/ui";
 import { Field, Input, MoneyInput, Select, Toggle, Btn, FormError, DAYS } from "../src/form";
 import { c } from "../src/theme";
 
@@ -39,7 +39,8 @@ export default function Accounts() {
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
 
-  if (d.loading) return <Loading />;
+  const gate = dataGate(d);
+  if (gate) return gate;
 
   const total = d.accounts.reduce((sum, a) => sum + (a.current_balance || 0), 0);
 

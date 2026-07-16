@@ -8,7 +8,7 @@ import { Stack } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { supabase } from "../src/supabase";
 import { useStrydeData } from "../src/useStrydeData";
-import { Panel, Label, Money, Loading, Empty, Pill, Divider } from "../src/ui";
+import { Panel, Label, Money, Empty, Pill, Divider, dataGate } from "../src/ui";
 import { Field, Input, MoneyInput, Select, Btn, FormError } from "../src/form";
 import { ScreenHeader } from "../src/ScreenHeader";
 import { c } from "../src/theme";
@@ -41,7 +41,8 @@ export default function Debts() {
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
 
-  if (d.loading) return <Loading />;
+  const gate = dataGate(d);
+  if (gate) return gate;
 
   const open = d.debts.filter((x) => !x.is_paid_off);
   const totalBalance = open.reduce((sum, x) => sum + (x.balance || 0), 0);

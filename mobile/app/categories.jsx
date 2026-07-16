@@ -8,8 +8,8 @@ import { Stack } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { supabase } from "../src/supabase";
 import { useStrydeData } from "../src/useStrydeData";
-import { Panel, Loading, Empty, Divider } from "../src/ui";
-import { Input, Btn, FormError } from "../src/form";
+import { Panel, Empty, Divider, dataGate } from "../src/ui";
+import { Input, FormError } from "../src/form";
 import { c } from "../src/theme";
 import { ScreenHeader } from "../src/ScreenHeader";
 
@@ -19,7 +19,8 @@ export default function Categories() {
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
 
-  if (d.loading) return <Loading />;
+  const gate = dataGate(d);
+  if (gate) return gate;
 
   async function add() {
     const trimmed = name.trim();

@@ -1,9 +1,9 @@
 import { useState } from "react";
-import { View, Text, ScrollView, Pressable, RefreshControl, StyleSheet } from "react-native";
+import { View, Text, ScrollView, Pressable, RefreshControl, Alert, StyleSheet } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import {
-  fmtDate, localDateStr, getBillsToTransfer, getPeriodTransferGroups,
+  fmtDate, getBillsToTransfer, getPeriodTransferGroups,
   isBillPaidInPeriod, getBillPaidAmount, ordinalSuffix, canMarkIncomeReceived,
 } from "@stryde/shared";
 import {
@@ -11,7 +11,7 @@ import {
   markIncomeReceived, undoIncomeReceived,
   recordTransfer, undoTransfer,
 } from "../../src/useStrydeData";
-import { Panel, Label, Money, StatTile, Pill, Loading, Empty, Divider } from "../../src/ui";
+import { Panel, Label, Money, StatTile, Pill, Empty, Divider, dataGate } from "../../src/ui";
 import { c, mono } from "../../src/theme";
 
 export default function Dashboard() {
@@ -20,29 +20,8 @@ export default function Dashboard() {
   const [showUpcoming, setShowUpcoming] = useState(false);
   const [busy, setBusy] = useState(false);
 
-  if (d.loading) return <Loading text="Loading your finances…" />;
-  if (d.needsOnboarding) {
-    return (
-      <SafeAreaView style={s.screen}>
-        <View style={s.center}>
-          <Text style={s.h1}>Welcome to Stryde</Text>
-          <Text style={s.muted}>
-            Finish setting up your household on the web at stryde.money, then come back here.
-          </Text>
-        </View>
-      </SafeAreaView>
-    );
-  }
-  if (d.error) {
-    return (
-      <SafeAreaView style={s.screen}>
-        <View style={s.center}>
-          <Text style={s.h1}>Something went wrong</Text>
-          <Text style={s.muted}>{d.error}</Text>
-        </View>
-      </SafeAreaView>
-    );
-  }
+  const gate = dataGate(d);
+  if (gate) return gate;
 
   const p = d.projection;
   const currentIdx = d.rows.findIndex((r) => r.isCurrent);
@@ -53,12 +32,24 @@ export default function Dashboard() {
   const upcoming = d.rows.filter((_, i) => i !== currentIdx);
   const lastUpcoming = upcoming[upcoming.length - 1] || null;
 
+  // Every mutation helper resolves to a Supabase error (or undefined). Surface
+  // it — silently swallowing a failed write on a finance app means the user
+  // believes a bill is paid when nothing was recorded.
   async function run(fn) {
     if (busy) return;
     setBusy(true);
-    await fn();
-    await d.reload();
-    setBusy(false);
+    try {
+      const error = await fn();
+      if (error) {
+        Alert.alert("Couldn't save", error.message || String(error));
+      } else {
+        await d.reload();
+      }
+    } catch (e) {
+      Alert.alert("Couldn't save", e?.message || String(e));
+    } finally {
+      setBusy(false);
+    }
   }
 
   const greeting = () => {

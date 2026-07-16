@@ -6,7 +6,7 @@ import { Ionicons } from "@expo/vector-icons";
 import * as Clipboard from "expo-clipboard";
 import { supabase } from "../src/supabase";
 import { useStrydeData } from "../src/useStrydeData";
-import { Panel, Label, Loading, Divider, Pill } from "../src/ui";
+import { Panel, Label, Divider, Pill, dataGate } from "../src/ui";
 import { ScreenHeader } from "../src/ScreenHeader";
 import { c } from "../src/theme";
 
@@ -16,7 +16,8 @@ export default function Settings() {
   const d = useStrydeData();
   const [deleting, setDeleting] = useState(false);
 
-  if (d.loading) return <Loading />;
+  const gate = dataGate(d);
+  if (gate) return gate;
 
   async function signOut() {
     await supabase.auth.signOut();

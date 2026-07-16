@@ -3,15 +3,16 @@ import { View, Text, ScrollView, Pressable, RefreshControl, StyleSheet } from "r
 import { SafeAreaView } from "react-native-safe-area-context";
 import { groupBillsForOverview, ordinalSuffix, billMultiplier, incMultiplier } from "@stryde/shared";
 import { useStrydeData } from "../../src/useStrydeData";
-import { Panel, Label, Money, StatTile, Loading, Empty, Divider } from "../../src/ui";
-import { c, mono } from "../../src/theme";
+import { Panel, Label, Money, StatTile, Empty, Divider, dataGate } from "../../src/ui";
+import { c } from "../../src/theme";
 
 export default function Monthly() {
   const d = useStrydeData();
   const [whatIf, setWhatIf] = useState(false);
   const [disabled, setDisabled] = useState({}); // billId -> true when toggled off
 
-  if (d.loading) return <Loading />;
+  const gate = dataGate(d);
+  if (gate) return gate;
 
   const groups = groupBillsForOverview(d.bills);
   const enabled = (b) => !whatIf || !disabled[b.id];
