@@ -1,0 +1,9 @@
+node_modules/
+.expo/
+dist/
+ios/
+android/
+*.log
+
+# Local env (contains project keys)
+.env

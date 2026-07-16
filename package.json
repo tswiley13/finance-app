@@ -1,0 +1,24 @@
+{
+  "name": "stryde",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Stryde — Stop hoping. Start knowing.",
+  "comments": {
+    "workspaces": "client/ is intentionally NOT a workspace: it's the live Vercel deploy (Root Directory = client, own vercel.json) and builds standalone. Only shared/ and mobile/ are linked here."
+  },
+  "workspaces": [
+    "shared",
+    "mobile"
+  ],
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "scripts": {
+    "mobile": "npm run start --workspace mobile",
+    "ios": "npm run ios --workspace mobile",
+    "android": "npm run android --workspace mobile",
+    "web": "npm run dev --prefix client",
+    "test:shared": "node shared/test/finance.test.mjs"
+  },
+  "license": "UNLICENSED"
+}

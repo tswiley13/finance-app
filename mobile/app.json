@@ -1,0 +1,43 @@
+{
+  "expo": {
+    "name": "Stryde",
+    "slug": "stryde",
+    "version": "1.0.0",
+    "runtimeVersion": { "policy": "appVersion" },
+    "scheme": "stryde",
+    "orientation": "portrait",
+    "userInterfaceStyle": "dark",
+    "newArchEnabled": false,
+    "splash": {
+      "image": "./assets/splash.png",
+      "backgroundColor": "#13111F",
+      "resizeMode": "contain"
+    },
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "money.stryde.app",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      },
+      "buildNumber": "1"
+    },
+    "android": {
+      "package": "money.stryde.app",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#13111F"
+      },
+      "versionCode": 1
+    },
+    "web": {
+      "bundler": "metro",
+      "output": "single"
+    },
+    "plugins": ["expo-router"],
+    "experiments": { "typedRoutes": false },
+    "extra": {
+      "router": { "origin": false }
+    },
+    "icon": "./assets/icon.png"
+  }
+}
