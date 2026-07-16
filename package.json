@@ -4,12 +4,16 @@
   "version": "1.0.0",
   "description": "Stryde — Stop hoping. Start knowing.",
   "comments": {
-    "workspaces": "client/ is intentionally NOT a workspace: it's the live Vercel deploy (Root Directory = client, own vercel.json) and builds standalone. Only shared/ and mobile/ are linked here."
+    "workspaces": "client/ is intentionally NOT a workspace: it's the live Vercel deploy (Root Directory = client, own vercel.json) and builds standalone. Only shared/ and mobile/ are linked here.",
+    "overrides": "@expo/vector-icons pulls its own expo-font (57.x, built for SDK 54+) alongside the 12.0.10 that expo@51 ships. Loading the newer JS against Expo Go's SDK 51 native module throws 'ExpoFontLoader.getLoadedFonts is not a function'. Pin the whole tree to the SDK 51 version."
   },
   "workspaces": [
     "shared",
     "mobile"
   ],
+  "overrides": {
+    "expo-font": "12.0.10"
+  },
   "engines": {
     "node": ">=20.0.0"
   },
