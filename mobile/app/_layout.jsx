@@ -3,6 +3,7 @@ import { Stack, useRouter, useSegments } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { View } from "react-native";
 import { supabase } from "../src/supabase";
+import { StrydeDataProvider } from "../src/useStrydeData";
 import { Loading } from "../src/ui";
 import { c } from "../src/theme";
 
@@ -40,16 +41,19 @@ export default function RootLayout() {
   return (
     <>
       <StatusBar style="light" />
-      <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: c.bg } }}>
-        <Stack.Screen name="sign-in" />
-        <Stack.Screen name="(tabs)" />
-        {/* Pushed from the More tab */}
-        <Stack.Screen name="accounts" />
-        <Stack.Screen name="categories" />
-        <Stack.Screen name="debts" />
-        <Stack.Screen name="payperiods" />
-        <Stack.Screen name="settings" />
-      </Stack>
+      {/* One fetch for the whole app — every screen reads from this. */}
+      <StrydeDataProvider>
+        <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: c.bg } }}>
+          <Stack.Screen name="sign-in" />
+          <Stack.Screen name="(tabs)" />
+          {/* Pushed from the More tab */}
+          <Stack.Screen name="accounts" />
+          <Stack.Screen name="categories" />
+          <Stack.Screen name="debts" />
+          <Stack.Screen name="payperiods" />
+          <Stack.Screen name="settings" />
+        </Stack>
+      </StrydeDataProvider>
     </>
   );
 }

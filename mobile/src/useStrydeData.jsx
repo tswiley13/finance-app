@@ -1,6 +1,12 @@
-// Loads everything the app needs and hands back the shared finance engine's
-// output. Mirrors the web dashboard's fetch so both apps read identical data.
-import { useCallback, useEffect, useState } from "react";
+// Loads everything the app needs once and hands back the shared finance
+// engine's output. Mirrors the web dashboard's fetch so both apps read
+// identical data.
+//
+// This lives in a provider rather than a plain hook on purpose: every screen
+// calls useStrydeData(), and as a plain hook each one ran its own full fetch —
+// ~10 Supabase queries per tab tap. Loading once and sharing keeps tab changes
+// instant and cheap on cellular.
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { supabase } from "./supabase";
 import {
   getPayPeriodBreakdown,
@@ -9,7 +15,9 @@ import {
   localDateStr,
 } from "@stryde/shared";
 
-export function useStrydeData() {
+const StrydeContext = createContext(null);
+
+export function StrydeDataProvider({ children }) {
   const [state, setState] = useState({
     loading: true,
     error: null,
@@ -113,25 +121,46 @@ export function useStrydeData() {
 
   useEffect(() => { load(); }, [load]);
 
-  // Everything downstream reads from the shared engine — never recomputed locally.
-  const ctx = {
-    payPeriods: state.payPeriods,
-    income: state.income,
-    bills: state.bills,
-    accounts: state.accounts,
-    billPayments: state.billPayments,
-    skippedBillPeriods: state.skippedBillPeriods,
-    earlyPayments: state.earlyPayments,
-    transfers: state.transfers,
-  };
+  // Refetch when the signed-in user changes, so switching accounts doesn't
+  // leave the previous household's data on screen.
+  useEffect(() => {
+    const { data: sub } = supabase.auth.onAuthStateChange((event) => {
+      if (event === "SIGNED_IN" || event === "SIGNED_OUT") load();
+    });
+    return () => sub.subscription.unsubscribe();
+  }, [load]);
 
-  const breakdown = state.loading ? [] : getPayPeriodBreakdown(ctx);
-  const rows = state.loading ? [] : enrichBreakdown(breakdown, ctx);
-  const projection = state.loading
-    ? { availableNow: 0, incomeThisMonth: 0, billsRemaining: 0, availableThisMonth: 0 }
-    : getMonthlyProjection(rows, ctx);
+  // Derived once per data change instead of on every screen's every render.
+  const value = useMemo(() => {
+    const ctx = {
+      payPeriods: state.payPeriods,
+      income: state.income,
+      bills: state.bills,
+      accounts: state.accounts,
+      billPayments: state.billPayments,
+      skippedBillPeriods: state.skippedBillPeriods,
+      earlyPayments: state.earlyPayments,
+      transfers: state.transfers,
+    };
 
-  return { ...state, ctx, rows, projection, reload: load };
+    const breakdown = state.loading ? [] : getPayPeriodBreakdown(ctx);
+    const rows = state.loading ? [] : enrichBreakdown(breakdown, ctx);
+    const projection = state.loading
+      ? { availableNow: 0, incomeThisMonth: 0, billsRemaining: 0, availableThisMonth: 0 }
+      : getMonthlyProjection(rows, ctx);
+
+    return { ...state, ctx, rows, projection, reload: load };
+  }, [state, load]);
+
+  return <StrydeContext.Provider value={value}>{children}</StrydeContext.Provider>;
+}
+
+export function useStrydeData() {
+  const value = useContext(StrydeContext);
+  if (!value) {
+    throw new Error("useStrydeData must be used inside <StrydeDataProvider>");
+  }
+  return value;
 }
 
 // ── Mutations ────────────────────────────────────────────────────────────────
