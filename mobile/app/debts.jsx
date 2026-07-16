@@ -3,7 +3,7 @@ import {
   View, Text, ScrollView, Pressable, RefreshControl, Modal, Alert,
   KeyboardAvoidingView, Platform, StyleSheet,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaView, SafeAreaProvider } from "react-native-safe-area-context";
 import { Stack } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { supabase } from "../src/supabase";
@@ -192,7 +192,11 @@ export default function Debts() {
       </ScrollView>
 
       <Modal visible={!!editing} animationType="slide" onRequestClose={() => setEditing(null)}>
-        <SafeAreaView style={s.screen}>
+        {/* A Modal renders in its own native view hierarchy, so the root
+            SafeAreaProvider's insets don't reach it — without this the header
+            hides under the notch and Cancel/Save become untappable. */}
+        <SafeAreaProvider>
+        <SafeAreaView style={s.screen} edges={["top", "bottom"]}>
           <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : undefined}>
             <View style={s.modalHeader}>
               <Pressable onPress={() => setEditing(null)} hitSlop={10}>
@@ -253,7 +257,8 @@ export default function Debts() {
               )}
             </ScrollView>
           </KeyboardAvoidingView>
-        </SafeAreaView>
+          </SafeAreaView>
+        </SafeAreaProvider>
       </Modal>
     </SafeAreaView>
   );
