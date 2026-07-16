@@ -500,6 +500,34 @@ export function getPeriodTransferGroups(item, ctx) {
   });
 }
 
+/**
+ * Bills that were due in the PREVIOUS period and never got paid or skipped.
+ *
+ * These don't stop being owed just because a new pay period started, so the
+ * current period surfaces them as carry-over rather than letting them vanish.
+ */
+export function getCarryOverBills(ctx) {
+  const { payPeriods = [], bills = [], billPayments = {}, skippedBillPeriods } = ctx;
+  const today = ctx.today ? new Date(ctx.today) : new Date();
+  const todayStr = localDateStr(today);
+
+  const sorted = [...payPeriods].sort((a, b) => new Date(a.start_date) - new Date(b.start_date));
+  const curIdx = sorted.findIndex((p) => p.start_date <= todayStr && p.end_date >= todayStr);
+  if (curIdx <= 0) return [];
+
+  const prev = sorted[curIdx - 1];
+  const prevStart = new Date(prev.start_date + "T00:00:00");
+  const prevEnd = new Date(prev.end_date + "T23:59:59");
+
+  return bills.filter((bill) => {
+    if (bill.is_active === false) return false;
+    if (!isBillDueInPeriod(bill, prevStart, prevEnd)) return false;
+    if (isBillSkipped(skippedBillPeriods, bill.id, prev.start_date)) return false;
+    if (isBillPaidInPeriod(billPayments, bill.id, prev.start_date)) return false;
+    return true;
+  }).map((bill) => ({ ...bill, _carryOverFrom: prev.start_date }));
+}
+
 // ── Monthly Overview ─────────────────────────────────────────────────────────
 
 /** Group bills the way the Monthly Overview page shows them. */

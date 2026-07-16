@@ -1,13 +1,13 @@
 import { useState } from "react";
-import { View, Text, ScrollView, Pressable, RefreshControl, Alert, StyleSheet } from "react-native";
+import { View, Text, ScrollView, Pressable, RefreshControl, Alert, TextInput, StyleSheet } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import {
-  fmtDate, getBillsToTransfer, getPeriodTransferGroups,
+  fmtDate, getBillsToTransfer, getPeriodTransferGroups, getCarryOverBills,
   isBillPaidInPeriod, getBillPaidAmount, ordinalSuffix, canMarkIncomeReceived,
 } from "@stryde/shared";
 import {
-  useStrydeData, markBillPaid, undoBillPaid,
+  useStrydeData, markBillPaid, undoBillPaid, skipBill, restoreBill,
   markIncomeReceived, undoIncomeReceived,
   recordTransfer, undoTransfer,
 } from "../../src/useStrydeData";
@@ -31,6 +31,8 @@ export default function Dashboard() {
   // Everything that isn't the current period folds into one tile.
   const upcoming = d.rows.filter((_, i) => i !== currentIdx);
   const lastUpcoming = upcoming[upcoming.length - 1] || null;
+  // Bills the previous period never settled — they don't stop being owed.
+  const carryOver = getCarryOverBills(d.ctx);
 
   // Every mutation helper resolves to a Supabase error (or undefined). Surface
   // it — silently swallowing a failed write on a finance app means the user
@@ -101,6 +103,25 @@ export default function Dashboard() {
             phone-height wall of eight cards buries everything below it. */}
         <Label style={{ marginTop: 24, marginBottom: 10 }}>Pay Periods</Label>
         {d.rows.length === 0 && <Empty text="No pay periods yet" />}
+
+        {carryOver.length > 0 && (
+          <Panel style={{ marginBottom: 10, borderColor: "rgba(248,113,113,0.3)" }}>
+            <Label style={{ color: c.danger }}>Carried Over</Label>
+            <Text style={[s.faintSm, { marginBottom: 6 }]}>
+              Unpaid from last period — still owed.
+            </Text>
+            {carryOver.map((b) => (
+              <BillRow
+                key={`co-${b.id}`}
+                bill={b}
+                periodKey={b._carryOverFrom}
+                d={d}
+                run={run}
+                carryOver
+              />
+            ))}
+          </Panel>
+        )}
 
         {currentRow && (
           <PeriodCard
@@ -336,55 +357,129 @@ function PeriodCard({ row, open, onToggle, d, run }) {
             <>
               <Divider style={{ marginTop: 10 }} />
               <Label style={{ marginTop: 12, marginBottom: 4 }}>Bills</Label>
-              {row.bills.map((b) => {
-                const paid = isBillPaidInPeriod(d.billPayments, b.id, periodKey);
-                const paidAmt = getBillPaidAmount(d.billPayments, b.id, periodKey);
-                const partial = paid && paidAmt > 0 && paidAmt < (b.amount || 0);
-                const freq = b.frequency || "monthly";
-                const sub = partial
-                  ? `$${paidAmt.toFixed(2)} paid · $${((b.amount || 0) - paidAmt).toFixed(2)} left`
-                  : paid
-                    ? "Paid this period"
-                    : freq === "payday"
-                      ? "Every Pay Day"
-                      : freq === "biweekly"
-                        ? "Biweekly"
-                        : b.due_day
-                          ? `Due the ${b.due_day}${ordinalSuffix(b.due_day)}`
-                          : "";
-                return (
-                  <View key={b.id} style={[s.rowBetween, { paddingVertical: 7, opacity: paid && !partial ? 0.4 : 1 }]}>
-                    <View style={{ flex: 1 }}>
-                      <Text
-                        style={{
-                          color: paid && !partial ? c.textMuted : c.text,
-                          fontSize: 13,
-                          fontWeight: "500",
-                          textDecorationLine: paid && !partial ? "line-through" : "none",
-                        }}
-                      >
-                        {paid && !partial ? "✓ " : ""}{b.name}
-                      </Text>
-                      {!!sub && <Text style={s.faintSm}>{sub}</Text>}
-                    </View>
-                    <Money value={b.amount} color={c.textMuted} size={13} />
-                    {paid ? (
-                      <Pressable onPress={() => run(() => undoBillPaid(d.userId, b.id, periodKey))} style={{ marginLeft: 10 }}>
-                        <Text style={s.undo}>Undo</Text>
-                      </Pressable>
-                    ) : (
-                      <Pressable onPress={() => run(() => markBillPaid(d.userId, b, periodKey))} style={[s.paidBtn, { marginLeft: 10 }]}>
-                        <Text style={s.paidBtnText}>Paid</Text>
-                      </Pressable>
-                    )}
-                  </View>
-                );
-              })}
+              {row.bills.map((b) => (
+                <BillRow key={b.id} bill={b} periodKey={periodKey} d={d} run={run} />
+              ))}
             </>
           )}
         </View>
       )}
     </Panel>
+  );
+}
+
+/**
+ * One bill in a period card. Handles the three states the web app has:
+ * unpaid (Paid / Partial / Skip), partially paid, and fully paid.
+ */
+function BillRow({ bill, periodKey, d, run, carryOver }) {
+  const [enteringPartial, setEnteringPartial] = useState(false);
+  const [partialAmt, setPartialAmt] = useState("");
+
+  const skipped = d.skippedBillPeriods.has(`${bill.id}-${periodKey}`);
+  const paidAmt = getBillPaidAmount(d.billPayments, bill.id, periodKey);
+  const paid = isBillPaidInPeriod(d.billPayments, bill.id, periodKey);
+  const amount = bill.amount || 0;
+  const isPartial = paidAmt > 0 && paidAmt < amount;
+  const isFull = paid && !isPartial;
+  const remaining = amount - paidAmt;
+  const freq = bill.frequency || "monthly";
+
+  const sub = skipped
+    ? "Skipped this period"
+    : isPartial
+      ? `$${paidAmt.toFixed(2)} paid · $${remaining.toFixed(2)} left`
+      : isFull
+        ? "Paid this period"
+        : carryOver
+          ? "Unpaid from last period"
+          : freq === "payday"
+            ? "Every Pay Day"
+            : freq === "biweekly"
+              ? "Biweekly"
+              : bill.due_day
+                ? `Due the ${bill.due_day}${ordinalSuffix(bill.due_day)}`
+                : "";
+
+  function submitPartial() {
+    const v = parseFloat(partialAmt);
+    if (!v || v <= 0) return;
+    setEnteringPartial(false);
+    setPartialAmt("");
+    run(() => markBillPaid(d.userId, bill, periodKey, v, d.billPayments));
+  }
+
+  return (
+    <View style={[s.billRow, { opacity: isFull || skipped ? 0.4 : 1 }]}>
+      <View style={{ flex: 1 }}>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+          <Text
+            style={{
+              color: isFull || skipped ? c.textMuted : c.text,
+              fontSize: 13,
+              fontWeight: "500",
+              textDecorationLine: isFull || skipped ? "line-through" : "none",
+            }}
+          >
+            {isFull ? "✓ " : ""}{bill.name}
+          </Text>
+          {isPartial && <Pill text="PARTIAL" color={c.warning} bg="rgba(251,191,36,0.15)" />}
+          {carryOver && !isFull && <Pill text="CARRY-OVER" color={c.danger} bg="rgba(248,113,113,0.12)" />}
+        </View>
+        {!!sub && <Text style={s.faintSm}>{sub}</Text>}
+      </View>
+
+      {enteringPartial ? (
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+          <TextInput
+            value={partialAmt}
+            onChangeText={(t) => setPartialAmt(t.replace(/[^0-9.]/g, ""))}
+            placeholder={remaining.toFixed(2)}
+            placeholderTextColor={c.textDim}
+            keyboardType="decimal-pad"
+            autoFocus
+            onSubmitEditing={submitPartial}
+            style={s.partialInput}
+          />
+          <Pressable onPress={submitPartial} style={s.miniOk} hitSlop={6}>
+            <Text style={{ color: c.positive, fontSize: 13, fontWeight: "700" }}>✓</Text>
+          </Pressable>
+          <Pressable onPress={() => { setEnteringPartial(false); setPartialAmt(""); }} hitSlop={6}>
+            <Text style={{ color: c.danger, fontSize: 13 }}>✕</Text>
+          </Pressable>
+        </View>
+      ) : (
+        <>
+          <Money value={isPartial ? remaining : amount} color={isPartial ? c.warning : c.textMuted} size={13} />
+          {skipped ? (
+            <Pressable onPress={() => run(() => restoreBill(d.userId, bill.id, periodKey))} style={{ marginLeft: 10 }}>
+              <Text style={s.undo}>Restore</Text>
+            </Pressable>
+          ) : isFull ? (
+            <Pressable onPress={() => run(() => undoBillPaid(d.userId, bill.id, periodKey))} style={{ marginLeft: 10 }}>
+              <Text style={s.undo}>Undo</Text>
+            </Pressable>
+          ) : (
+            <View style={{ flexDirection: "row", gap: 4, marginLeft: 8 }}>
+              <Pressable
+                onPress={() => run(() => markBillPaid(d.userId, bill, periodKey, undefined, d.billPayments))}
+                style={s.paidBtn}
+              >
+                <Text style={s.paidBtnText}>Paid</Text>
+              </Pressable>
+              <Pressable onPress={() => setEnteringPartial(true)} style={s.partialBtn}>
+                <Text style={s.partialBtnText}>Partial</Text>
+              </Pressable>
+              {!isPartial && (
+                <Pressable onPress={() => run(() => skipBill(d.userId, bill.id, periodKey))} style={s.skipBtn}>
+                  <Text style={s.skipBtnText}>✕</Text>
+                </Pressable>
+              )}
+            </View>
+          )}
+        </>
+      )}
+    </View>
   );
 }
 
@@ -438,6 +533,25 @@ const s = StyleSheet.create({
   upcomingHeader: { flexDirection: "row", alignItems: "center", padding: 16 },
   upcomingTitle: { color: c.text, fontSize: 14, fontWeight: "600" },
   chevronSlot: { width: 20, justifyContent: "center" },
+  billRow: { flexDirection: "row", alignItems: "center", paddingVertical: 7 },
+  partialInput: {
+    width: 74, backgroundColor: "rgba(255,255,255,0.06)",
+    borderWidth: 1, borderColor: "rgba(108,99,255,0.4)", borderRadius: 6,
+    color: c.text, fontSize: 12, paddingHorizontal: 8, paddingVertical: 4, textAlign: "right",
+  },
+  miniOk: { paddingHorizontal: 4 },
+  partialBtn: {
+    backgroundColor: "rgba(251,191,36,0.08)", borderWidth: 1,
+    borderColor: "rgba(251,191,36,0.3)", borderRadius: 5,
+    paddingHorizontal: 8, paddingVertical: 4,
+  },
+  partialBtnText: { color: c.warning, fontSize: 11, fontWeight: "600" },
+  skipBtn: {
+    backgroundColor: "rgba(248,113,113,0.08)", borderWidth: 1,
+    borderColor: "rgba(248,113,113,0.25)", borderRadius: 5,
+    paddingHorizontal: 7, paddingVertical: 4,
+  },
+  skipBtnText: { color: c.danger, fontSize: 11, fontWeight: "600" },
   // Cards nest inside the tile, so drop the outer padding and let them sit flush.
   upcomingBody: {
     paddingHorizontal: 8,

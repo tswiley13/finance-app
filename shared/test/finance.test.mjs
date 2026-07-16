@@ -174,3 +174,44 @@ assert.equal(canMarkIncomeReceived({ id: "pay", actualPayDate: "2026-07-30" }, "
   "already marked -> show Undo, not Got Paid");
 
 console.log("✓ Got Paid visibility tests passed");
+
+// ── Partial payments, skips, carry-over ──────────────────────────────────────
+import { getCarryOverBills } from "../src/index.js";
+
+// A partial payment reduces the period's bill total by what was actually paid.
+const partialCtx = {
+  ...ctx,
+  billPayments: { ...billPayments, "capone-2026-07-02": { is_paid: false, paid_amount: 55.72 } },
+};
+const partialRows = enrichBreakdown(getPayPeriodBreakdown(partialCtx), partialCtx);
+assert.equal(Number(partialRows[0].billsDeducted.toFixed(2)), 1212.99,
+  "1268.71 - 55.72 partial = 1212.99 still owed");
+
+// A skipped bill drops out of the period entirely.
+const skipCtx = { ...ctx, skippedBillPeriods: new Set(["boat-2026-07-02"]) };
+const skipRows = enrichBreakdown(getPayPeriodBreakdown(skipCtx), skipCtx);
+assert.equal(Number(skipRows[0].billsDeducted.toFixed(2)), 1103.71,
+  "skipping the $165 Boat Storage leaves 1103.71");
+assert.equal(Number(skipRows[0].billsForEndBalance.toFixed(2)), 1103.71,
+  "a skipped bill doesn't hit the end balance either");
+
+// Carry-over: unpaid bills from the PREVIOUS period are still owed.
+const carryPeriods = [
+  { id: "p0", start_date: "2026-06-18", end_date: "2026-07-01" }, // previous
+  ...payPeriods,
+];
+const carryCtx = { ...ctx, payPeriods: carryPeriods, billPayments: {} };
+const carried = getCarryOverBills(carryCtx);
+assert.ok(carried.length > 0, "previous period's unpaid bills carry over");
+assert.equal(carried.every((b) => b._carryOverFrom === "2026-06-18"), true,
+  "carry-over bills are tagged with the period they came from");
+
+// Paying or skipping them in that period clears the carry-over.
+const clearedCtx = {
+  ...carryCtx,
+  skippedBillPeriods: new Set(carried.map((b) => `${b.id}-2026-06-18`)),
+};
+assert.equal(getCarryOverBills(clearedCtx).length, 0,
+  "skipping the previous period's bills clears the carry-over");
+
+console.log("✓ partial / skip / carry-over tests passed");

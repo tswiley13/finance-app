@@ -165,18 +165,51 @@ export function useStrydeData() {
 
 // ── Mutations ────────────────────────────────────────────────────────────────
 
-export async function markBillPaid(userId, bill, periodStart, amount) {
+/**
+ * Record a payment against a bill for one period.
+ *
+ * Payments ACCUMULATE: paying $40 then $60 on a $100 bill leaves it fully paid,
+ * not stuck at $60. Pass `amount` for a partial; omit it to pay the remainder.
+ * Mirrors the web app's markBillPaid.
+ */
+export async function markBillPaid(userId, bill, periodStart, amount, billPayments = {}) {
+  const existing = billPayments[`${bill.id}-${periodStart}`];
+  const prevPaid = existing?.paid_amount || 0;
+  const thisPayment =
+    amount !== undefined && amount !== null && amount !== "" ? parseFloat(amount) : (bill.amount || 0) - prevPaid;
+  const totalPaid = prevPaid + thisPayment;
+
   const record = {
     user_id: userId,
     bill_id: bill.id,
     period_start: periodStart,
     paid_date: localDateStr(),
-    paid_amount: amount ?? bill.amount,
-    is_paid: true,
+    paid_amount: totalPaid,
+    is_paid: totalPaid >= (bill.amount || 0),
   };
   const { error } = await supabase
     .from("bill_payments")
     .upsert(record, { onConflict: "user_id,bill_id,period_start" });
+  return error;
+}
+
+/** Skip a bill for one period — it stops counting toward that period's totals. */
+export async function skipBill(userId, billId, periodStart) {
+  const { error } = await supabase
+    .from("bill_skips")
+    .insert({ user_id: userId, bill_id: billId, period_start: periodStart });
+  // 23505 = unique violation, i.e. already skipped. Not a failure.
+  if (error && error.code !== "23505") return error;
+  return null;
+}
+
+export async function restoreBill(userId, billId, periodStart) {
+  const { error } = await supabase
+    .from("bill_skips")
+    .delete()
+    .eq("user_id", userId)
+    .eq("bill_id", billId)
+    .eq("period_start", periodStart);
   return error;
 }
 
