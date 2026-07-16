@@ -9,6 +9,7 @@ import { supabase } from "../src/supabase";
 import { useStrydeData } from "../src/useStrydeData";
 import { Panel, Money, Empty, Pill, Divider, dataGate } from "../src/ui";
 import { Field, Input, MoneyInput, Select, Toggle, Btn, FormError, DAYS } from "../src/form";
+import { PlaidConnect, PlaidSyncButton, isPlaidAvailable } from "../src/PlaidConnect";
 import { c } from "../src/theme";
 
 const TYPES = [
@@ -144,8 +145,21 @@ export default function Accounts() {
         </View>
 
         <View style={s.summary}>
-          <Text style={s.faint}>{d.accounts.length} total</Text>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+            <Text style={s.faint}>{d.accounts.length} total</Text>
+            {isPlaidAvailable && <PlaidSyncButton userId={d.userId} onDone={d.reload} />}
+          </View>
           <Money value={total} color={c.success} size={14} weight="600" />
+        </View>
+
+        <View style={{ marginBottom: 14 }}>
+          <PlaidConnect userId={d.userId} onDone={d.reload} />
+          {!isPlaidAvailable && (
+            <Text style={s.plaidNote}>
+              Connecting a bank needs a full build of the app — it doesn't work in Expo Go.
+              You can still add accounts and set balances by hand.
+            </Text>
+          )}
         </View>
 
         {d.accounts.length === 0 && <Empty text="No accounts yet — tap Add to create one" />}
@@ -187,7 +201,8 @@ export default function Accounts() {
         ))}
 
         <Text style={s.note}>
-          Balances sync from your bank via Plaid on the web app. Editing here sets them manually.
+          Connected banks sync automatically. Accounts you add by hand keep whatever
+          balance you set.
         </Text>
       </ScrollView>
 
@@ -325,6 +340,7 @@ const s = StyleSheet.create({
   barTrack: { height: 4, backgroundColor: "rgba(255,255,255,0.06)", borderRadius: 2, marginTop: 10, overflow: "hidden" },
   barFill: { height: 4, backgroundColor: c.success, borderRadius: 2 },
   note: { color: c.textDim, fontSize: 11, textAlign: "center", marginTop: 18, lineHeight: 16 },
+  plaidNote: { color: c.textDim, fontSize: 11, marginTop: 8, lineHeight: 15, textAlign: "center" },
   modalHeader: {
     flexDirection: "row", alignItems: "center", justifyContent: "space-between",
     paddingHorizontal: 16, paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: c.border,
