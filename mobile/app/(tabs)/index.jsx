@@ -17,6 +17,7 @@ import { c, mono } from "../../src/theme";
 export default function Dashboard() {
   const d = useStrydeData();
   const [expanded, setExpanded] = useState({ 0: true });
+  const [showUpcoming, setShowUpcoming] = useState(false);
   const [busy, setBusy] = useState(false);
 
   if (d.loading) return <Loading text="Loading your finances…" />;
@@ -44,8 +45,13 @@ export default function Dashboard() {
   }
 
   const p = d.projection;
-  const current = d.rows.find((r) => r.isCurrent);
-  const nextRow = current ? d.rows[d.rows.indexOf(current) + 1] : null;
+  const currentIdx = d.rows.findIndex((r) => r.isCurrent);
+  const currentRow = currentIdx >= 0 ? d.rows[currentIdx] : null;
+  const current = currentRow; // used by the transfers tile
+  const nextRow = currentIdx >= 0 ? d.rows[currentIdx + 1] : null;
+  // Everything that isn't the current period folds into one tile.
+  const upcoming = d.rows.filter((_, i) => i !== currentIdx);
+  const lastUpcoming = upcoming[upcoming.length - 1] || null;
 
   async function run(fn) {
     if (busy) return;
@@ -100,19 +106,67 @@ export default function Dashboard() {
             everything's been moved. */}
         {current && <CurrentTransfers row={current} d={d} run={run} />}
 
-        {/* Pay periods */}
+        {/* Pay periods. The current one stays open; the rest fold away — a
+            phone-height wall of eight cards buries everything below it. */}
         <Label style={{ marginTop: 24, marginBottom: 10 }}>Pay Periods</Label>
         {d.rows.length === 0 && <Empty text="No pay periods yet" />}
-        {d.rows.map((row, i) => (
+
+        {currentRow && (
           <PeriodCard
-            key={row.period.id || i}
-            row={row}
-            open={!!expanded[i]}
-            onToggle={() => setExpanded((e) => ({ ...e, [i]: !e[i] }))}
+            row={currentRow}
+            open={!!expanded[currentIdx]}
+            onToggle={() => setExpanded((e) => ({ ...e, [currentIdx]: !e[currentIdx] }))}
             d={d}
             run={run}
           />
-        ))}
+        )}
+
+        {upcoming.length > 0 && (
+          <Panel style={{ marginBottom: 10, padding: 0, overflow: "hidden" }}>
+            <Pressable onPress={() => setShowUpcoming((v) => !v)} style={s.upcomingHeader}>
+              <View style={{ flex: 1 }}>
+                <Text style={s.upcomingTitle}>Upcoming Pay Periods</Text>
+                <Text style={s.faintSm}>
+                  {upcoming.length} period{upcoming.length === 1 ? "" : "s"}
+                  {lastUpcoming ? ` · through ${fmtDate(lastUpcoming.period.end_date)}` : ""}
+                </Text>
+              </View>
+              {!showUpcoming && lastUpcoming && (
+                <View style={{ alignItems: "flex-end", marginRight: 8 }}>
+                  <Label style={{ fontSize: 9, marginBottom: 2 }}>Ends</Label>
+                  <Money
+                    value={lastUpcoming.endBalance}
+                    color={lastUpcoming.endBalance < 0 ? c.danger : c.positive}
+                    size={14}
+                  />
+                </View>
+              )}
+              <Ionicons
+                name={showUpcoming ? "chevron-up" : "chevron-down"}
+                size={16}
+                color={c.textFaint}
+              />
+            </Pressable>
+
+            {showUpcoming && (
+              <View style={s.upcomingBody}>
+                {upcoming.map((row, i) => {
+                  const idx = d.rows.indexOf(row);
+                  return (
+                    <PeriodCard
+                      key={row.period.id || `u${i}`}
+                      row={row}
+                      open={!!expanded[idx]}
+                      onToggle={() => setExpanded((e) => ({ ...e, [idx]: !e[idx] }))}
+                      d={d}
+                      run={run}
+                    />
+                  );
+                })}
+              </View>
+            )}
+          </Panel>
+        )}
 
         {/* Next period's pre-fund lives down here on purpose: it's planning
             ahead, not something you need to act on the moment you open the app. */}
@@ -395,4 +449,14 @@ const s = StyleSheet.create({
     borderRadius: 6, paddingHorizontal: 12, paddingVertical: 6,
   },
   transferBtnText: { color: c.accent, fontSize: 12, fontWeight: "600" },
+  upcomingHeader: { flexDirection: "row", alignItems: "center", padding: 16 },
+  upcomingTitle: { color: c.text, fontSize: 14, fontWeight: "600" },
+  // Cards nest inside the tile, so drop the outer padding and let them sit flush.
+  upcomingBody: {
+    paddingHorizontal: 8,
+    paddingBottom: 8,
+    borderTopWidth: 1,
+    borderTopColor: c.borderSoft,
+    paddingTop: 8,
+  },
 });
