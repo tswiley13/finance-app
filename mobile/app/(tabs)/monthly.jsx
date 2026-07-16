@@ -1,15 +1,19 @@
 import { useState } from "react";
 import { View, Text, ScrollView, Pressable, RefreshControl, StyleSheet } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { groupBillsForOverview, ordinalSuffix, billMultiplier, incMultiplier } from "@stryde/shared";
 import { useStrydeData } from "../../src/useStrydeData";
 import { Panel, Label, Money, StatTile, Empty, Divider, dataGate } from "../../src/ui";
+import { Input, MoneyInput, Select } from "../../src/form";
 import { c } from "../../src/theme";
 
 export default function Monthly() {
   const d = useStrydeData();
   const [whatIf, setWhatIf] = useState(false);
-  const [disabled, setDisabled] = useState({}); // billId -> true when toggled off
+  const [disabled, setDisabled] = useState({});   // billId -> true when toggled off
+  const [extras, setExtras] = useState([]);       // hypothetical bills, never saved
+  const [nextId, setNextId] = useState(1);
 
   const gate = dataGate(d);
   if (gate) return gate;
@@ -23,8 +27,13 @@ export default function Monthly() {
   const billMonthly = (b) => (b.amount || 0) * billMultiplier(b.frequency);
   const activeBills = d.bills.filter((b) => b.is_active !== false);
   const realBills = activeBills.reduce((sum, b) => sum + billMonthly(b), 0);
-  const wiBills = activeBills.reduce((sum, b) => (enabled(b) ? sum + billMonthly(b) : sum), 0);
+  const extrasTotal = whatIf
+    ? extras.reduce((sum, e) => sum + (parseFloat(e.amount) || 0) * billMultiplier(e.frequency), 0)
+    : 0;
+  const wiBills =
+    activeBills.reduce((sum, b) => (enabled(b) ? sum + billMonthly(b) : sum), 0) + extrasTotal;
   const remaining = monthlyIncome - wiBills;
+  // Positive = the scenario saves money vs reality.
   const delta = realBills - wiBills;
 
   const groupList = [
@@ -43,7 +52,7 @@ export default function Monthly() {
         <View style={s.headerRow}>
           <Text style={s.pageTitle}>Monthly Overview</Text>
           <Pressable
-            onPress={() => { setWhatIf(!whatIf); setDisabled({}); }}
+            onPress={() => { setWhatIf(!whatIf); setDisabled({}); setExtras([]); }}
             style={[s.whatIfBtn, whatIf && { backgroundColor: c.warning }]}
           >
             <Text style={[s.whatIfText, whatIf && { color: "#13111F" }]}>
@@ -75,10 +84,15 @@ export default function Monthly() {
         {whatIf && delta !== 0 && (
           <Panel style={[s.whatIfBanner, { marginTop: 12 }]}>
             <Text style={{ color: c.warning, fontSize: 13, fontWeight: "700" }}>
-              Saves ${delta.toFixed(2)}/mo
+              {delta > 0
+                ? `Saves $${delta.toFixed(2)}/mo`
+                : `Costs $${Math.abs(delta).toFixed(2)}/mo more`}
             </Text>
             <Text style={{ color: c.textMuted, fontSize: 11, marginTop: 2 }}>
-              That's ${(delta * 12).toFixed(2)} back over a year. Nothing is saved until you make it real.
+              {delta > 0
+                ? `That's $${(delta * 12).toFixed(2)} back over a year.`
+                : `That's $${Math.abs(delta * 12).toFixed(2)} more over a year.`}
+              {" "}Nothing is saved until you make it real.
             </Text>
           </Panel>
         )}
@@ -135,6 +149,60 @@ export default function Monthly() {
           );
         })}
 
+        {/* Hypothetical bills — local only, never written to the database. */}
+        {whatIf && (
+          <Panel style={{ marginBottom: 10, borderColor: "rgba(251,191,36,0.25)" }}>
+            <Label style={{ color: c.warning, marginBottom: 10 }}>Hypothetical Bills</Label>
+
+            {extras.map((e) => (
+              <View key={e.id} style={{ marginBottom: 10 }}>
+                <View style={{ flexDirection: "row", gap: 6, alignItems: "center" }}>
+                  <View style={{ flex: 2 }}>
+                    <Input
+                      value={e.name}
+                      onChangeText={(v) => setExtras((x) => x.map((y) => (y.id === e.id ? { ...y, name: v } : y)))}
+                      placeholder="What if I added…"
+                    />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <MoneyInput
+                      value={e.amount}
+                      onChangeText={(v) => setExtras((x) => x.map((y) => (y.id === e.id ? { ...y, amount: v } : y)))}
+                    />
+                  </View>
+                  <Pressable
+                    onPress={() => setExtras((x) => x.filter((y) => y.id !== e.id))}
+                    hitSlop={8}
+                    style={{ paddingHorizontal: 4 }}
+                  >
+                    <Ionicons name="close" size={18} color={c.danger} />
+                  </Pressable>
+                </View>
+                <View style={{ marginTop: 6 }}>
+                  <Select
+                    value={e.frequency}
+                    onChange={(v) => setExtras((x) => x.map((y) => (y.id === e.id ? { ...y, frequency: v } : y)))}
+                    options={[
+                      { label: "Monthly", value: "monthly" },
+                      { label: "Every Pay Day", value: "payday" },
+                    ]}
+                  />
+                </View>
+              </View>
+            ))}
+
+            <Pressable
+              onPress={() => {
+                setExtras((x) => [...x, { id: `x${nextId}`, name: "", amount: "", frequency: "monthly" }]);
+                setNextId((n) => n + 1);
+              }}
+              style={s.addExtraBtn}
+            >
+              <Text style={s.addExtraText}>+ Add Hypothetical Bill</Text>
+            </Pressable>
+          </Panel>
+        )}
+
         {/* Income */}
         <Label style={{ marginTop: 12, marginBottom: 10 }}>Income</Label>
         <Panel>
@@ -177,6 +245,11 @@ const s = StyleSheet.create({
   billRow: { flexDirection: "row", alignItems: "center", gap: 8, paddingVertical: 7 },
   billName: { color: c.text, fontSize: 13, fontWeight: "500" },
   faintSm: { color: c.textFaint, fontSize: 10, marginTop: 1 },
+  addExtraBtn: {
+    borderWidth: 1, borderColor: "rgba(251,191,36,0.35)", borderStyle: "dashed",
+    borderRadius: 8, paddingVertical: 10, alignItems: "center",
+  },
+  addExtraText: { color: c.warning, fontSize: 12, fontWeight: "600" },
   check: {
     width: 16, height: 16, borderRadius: 4, borderWidth: 1, borderColor: "rgba(255,255,255,0.15)",
     alignItems: "center", justifyContent: "center",
