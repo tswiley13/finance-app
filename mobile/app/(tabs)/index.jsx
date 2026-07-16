@@ -95,9 +95,6 @@ export default function Dashboard() {
           <StatTile label="Available This Month" value={p.availableThisMonth} negative={p.availableThisMonth < 0} />
         </View>
 
-        {/* Where the money goes — next period pre-fund */}
-        {nextRow && <PreFund row={nextRow} d={d} run={run} />}
-
         {/* Pay periods */}
         <Label style={{ marginTop: 24, marginBottom: 10 }}>Pay Periods</Label>
         {d.rows.length === 0 && <Empty text="No pay periods yet" />}
@@ -111,6 +108,10 @@ export default function Dashboard() {
             run={run}
           />
         ))}
+
+        {/* Next period's pre-fund lives down here on purpose: it's planning
+            ahead, not something you need to act on the moment you open the app. */}
+        {nextRow && <PreFund row={nextRow} d={d} run={run} />}
       </ScrollView>
     </SafeAreaView>
   );
@@ -125,7 +126,7 @@ function PreFund({ row, d, run }) {
   const periodStart = row.period.start_date;
 
   return (
-    <Panel style={{ marginTop: 16 }}>
+    <Panel style={{ marginTop: 16, marginBottom: 8 }}>
       <View style={s.rowBetween}>
         <Label>Where the Money Goes</Label>
         <Text style={s.faint}>Next period</Text>
