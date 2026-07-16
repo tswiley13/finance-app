@@ -45,6 +45,7 @@ export default function RootLayout() {
       <StrydeDataProvider>
         <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: c.bg } }}>
           <Stack.Screen name="sign-in" />
+          <Stack.Screen name="onboarding" />
           <Stack.Screen name="(tabs)" />
           {/* Pushed from the More tab */}
           <Stack.Screen name="accounts" />

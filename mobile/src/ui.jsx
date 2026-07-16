@@ -1,4 +1,6 @@
+import { useEffect } from "react";
 import { View, Text, ActivityIndicator, StyleSheet } from "react-native";
+import { useRouter } from "expo-router";
 import { c, mono } from "./theme";
 
 export function Panel({ style, children }) {
@@ -76,6 +78,9 @@ export function Message({ title, body }) {
  * Without it a signed-in user with no household (or a failed load) reaches a
  * screen where `d.household` is null, and the first save crashes on
  * `d.household.id`. Returns an element to render, or null to carry on.
+ *
+ * A user with no household is sent to onboarding — they can set up entirely in
+ * the app; nothing here requires the website.
  */
 export function dataGate(d) {
   if (d.loading) return <Loading />;
@@ -83,14 +88,17 @@ export function dataGate(d) {
     return <Message title="Something went wrong" body={d.error} />;
   }
   if (d.needsOnboarding || !d.household) {
-    return (
-      <Message
-        title="Finish setting up"
-        body="Set up your household on the web at stryde.money, then come back here."
-      />
-    );
+    return <RedirectToOnboarding />;
   }
   return null;
+}
+
+function RedirectToOnboarding() {
+  const router = useRouter();
+  useEffect(() => {
+    router.replace("/onboarding");
+  }, [router]);
+  return <Loading text="Setting things up…" />;
 }
 
 export function Divider({ style }) {
