@@ -1,7 +1,9 @@
-import { View, Text, ScrollView, RefreshControl, StyleSheet } from "react-native";
+import { useState } from "react";
+import { View, Text, ScrollView, Pressable, RefreshControl, Alert, StyleSheet } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Stack } from "expo-router";
-import { fmtDate, localDateStr } from "@stryde/shared";
+import { fmtDate, localDateStr, buildPayPeriods } from "@stryde/shared";
+import { supabase } from "../src/supabase";
 import { useStrydeData } from "../src/useStrydeData";
 import { Panel, Label, Money, Loading, Empty, Pill } from "../src/ui";
 import { ScreenHeader } from "../src/ScreenHeader";
@@ -9,7 +11,51 @@ import { c } from "../src/theme";
 
 export default function PayPeriods() {
   const d = useStrydeData();
+  const [regenerating, setRegenerating] = useState(false);
+
   if (d.loading) return <Loading />;
+
+  function confirmRegenerate() {
+    const rows = buildPayPeriods({ income: d.income });
+    if (rows.length === 0) {
+      Alert.alert(
+        "No paychecks to build from",
+        "Pay periods come from income that arrives on a cycle (weekly or biweekly). Add one on the Income tab first."
+      );
+      return;
+    }
+    Alert.alert(
+      "Regenerate pay periods?",
+      `This replaces all ${d.payPeriods.length} existing periods with ${rows.length} rebuilt from your income's next pay dates.\n\nBills you've marked paid stay linked to their period dates, so anything that shifts may need re-checking.`,
+      [
+        { text: "Cancel", style: "cancel" },
+        { text: "Regenerate", style: "destructive", onPress: () => regenerate(rows) },
+      ]
+    );
+  }
+
+  async function regenerate(rows) {
+    setRegenerating(true);
+    try {
+      const { error: delErr } = await supabase
+        .from("pay_periods")
+        .delete()
+        .eq("household_id", d.household.id);
+      if (delErr) throw delErr;
+
+      const { error: insErr } = await supabase
+        .from("pay_periods")
+        .insert(rows.map((r) => ({ ...r, household_id: d.household.id })));
+      if (insErr) throw insErr;
+
+      await d.reload();
+      Alert.alert("Done", `Rebuilt ${rows.length} pay periods.`);
+    } catch (e) {
+      Alert.alert("Couldn't regenerate", e.message || String(e));
+    } finally {
+      setRegenerating(false);
+    }
+  }
 
   const today = localDateStr();
   const sorted = [...d.payPeriods].sort(
@@ -89,9 +135,26 @@ export default function PayPeriods() {
           );
         })}
 
+        <Panel style={{ marginTop: 14 }}>
+          <Label>Regenerate</Label>
+          <Text style={s.noteLeft}>
+            Rebuilds every pay period from your income's frequency and next pay date.
+            Do this after changing a pay date or adding a new paycheck.
+          </Text>
+          <Pressable
+            onPress={confirmRegenerate}
+            disabled={regenerating}
+            style={[s.regenBtn, regenerating && { opacity: 0.6 }]}
+          >
+            <Text style={s.regenText}>
+              {regenerating ? "Regenerating…" : "Regenerate Pay Periods"}
+            </Text>
+          </Pressable>
+        </Panel>
+
         <Text style={s.note}>
-          Pay periods are generated automatically from each income source's frequency and
-          next pay date. Edit those on the Income tab to change them.
+          Pay periods are generated from each income source's frequency and next pay
+          date. Edit those on the Income tab to change them.
         </Text>
       </ScrollView>
     </SafeAreaView>
@@ -115,4 +178,11 @@ const s = StyleSheet.create({
   stats: { flexDirection: "row", gap: 6, marginTop: 12 },
   stat: { flex: 1, backgroundColor: "rgba(255,255,255,0.03)", borderRadius: 8, padding: 8 },
   note: { color: c.textDim, fontSize: 11, textAlign: "center", marginTop: 18, lineHeight: 16 },
+  noteLeft: { color: c.textMuted, fontSize: 12, marginTop: 6, lineHeight: 17 },
+  regenBtn: {
+    marginTop: 12, borderWidth: 1, borderColor: "rgba(108,99,255,0.35)",
+    backgroundColor: "rgba(108,99,255,0.1)", borderRadius: 8,
+    paddingVertical: 12, alignItems: "center",
+  },
+  regenText: { color: c.accent, fontSize: 14, fontWeight: "600" },
 });
