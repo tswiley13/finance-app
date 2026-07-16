@@ -21,6 +21,8 @@ export function useStrydeData() {
     income: [],
     bills: [],
     accounts: [],
+    categories: [],
+    debts: [],
     members: [],
     billPayments: {},
     skippedBillPeriods: new Set(),
@@ -50,14 +52,17 @@ export function useStrydeData() {
       }
 
       const householdId = memberRow.household_id;
-      const [householdRes, periodsRes, incomeRes, billsRes, accountsRes, membersRes] = await Promise.all([
-        supabase.from("households").select("*").eq("id", householdId).maybeSingle(),
-        supabase.from("pay_periods").select("*").eq("household_id", householdId).order("start_date"),
-        supabase.from("income").select("*").eq("household_id", householdId),
-        supabase.from("bills").select("*").eq("household_id", householdId),
-        supabase.from("accounts").select("*").eq("household_id", householdId),
-        supabase.from("household_members").select("*").eq("household_id", householdId),
-      ]);
+      const [householdRes, periodsRes, incomeRes, billsRes, accountsRes, membersRes, categoriesRes, debtsRes] =
+        await Promise.all([
+          supabase.from("households").select("*").eq("id", householdId).maybeSingle(),
+          supabase.from("pay_periods").select("*").eq("household_id", householdId).order("start_date"),
+          supabase.from("income").select("*").eq("household_id", householdId),
+          supabase.from("bills").select("*").eq("household_id", householdId),
+          supabase.from("accounts").select("*").eq("household_id", householdId),
+          supabase.from("household_members").select("*").eq("household_id", householdId),
+          supabase.from("categories").select("*").eq("household_id", householdId).order("name"),
+          supabase.from("debts").select("*").eq("household_id", householdId).order("payoff_order"),
+        ]);
 
       const [skipRes, earlyRes, bpRes, transferRes] = await Promise.all([
         supabase.from("bill_skips").select("bill_id, period_start").eq("user_id", user.id),
@@ -92,6 +97,8 @@ export function useStrydeData() {
         income: incomeRes.data || [],
         bills: billsRes.data || [],
         accounts: accountsRes.data || [],
+        categories: categoriesRes.data || [],
+        debts: debtsRes.data || [],
         members: membersRes.data || [],
         billPayments,
         skippedBillPeriods: new Set((skipRes.data || []).map((r) => `${r.bill_id}-${r.period_start}`)),

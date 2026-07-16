@@ -43,6 +43,12 @@ export default function RootLayout() {
       <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: c.bg } }}>
         <Stack.Screen name="sign-in" />
         <Stack.Screen name="(tabs)" />
+        {/* Pushed from the More tab */}
+        <Stack.Screen name="accounts" />
+        <Stack.Screen name="categories" />
+        <Stack.Screen name="debts" />
+        <Stack.Screen name="payperiods" />
+        <Stack.Screen name="settings" />
       </Stack>
     </>
   );
