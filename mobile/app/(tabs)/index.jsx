@@ -124,18 +124,23 @@ export default function Dashboard() {
         {upcoming.length > 0 && (
           <Panel style={{ marginBottom: 10, padding: 0, overflow: "hidden" }}>
             <Pressable onPress={() => setShowUpcoming((v) => !v)} style={s.upcomingHeader}>
+              {/* Spacer balances the chevron so the text centers on the tile,
+                  not on the space left over beside it. */}
+              <View style={s.chevronSlot} />
               <View style={{ flex: 1 }}>
-                <Text style={s.upcomingTitle}>Upcoming Pay Periods</Text>
-                <Text style={s.faintSm}>
+                <Text style={[s.upcomingTitle, { textAlign: "center" }]}>Upcoming Pay Periods</Text>
+                <Text style={[s.faintSm, { textAlign: "center" }]}>
                   {upcoming.length} period{upcoming.length === 1 ? "" : "s"}
                   {lastUpcoming ? ` · through ${fmtDate(lastUpcoming.period.end_date)}` : ""}
                 </Text>
               </View>
-              <Ionicons
-                name={showUpcoming ? "chevron-up" : "chevron-down"}
-                size={16}
-                color={c.textFaint}
-              />
+              <View style={[s.chevronSlot, { alignItems: "flex-end" }]}>
+                <Ionicons
+                  name={showUpcoming ? "chevron-up" : "chevron-down"}
+                  size={16}
+                  color={c.textFaint}
+                />
+              </View>
             </Pressable>
 
             {showUpcoming && (
@@ -441,6 +446,7 @@ const s = StyleSheet.create({
   transferBtnText: { color: c.accent, fontSize: 12, fontWeight: "600" },
   upcomingHeader: { flexDirection: "row", alignItems: "center", padding: 16 },
   upcomingTitle: { color: c.text, fontSize: 14, fontWeight: "600" },
+  chevronSlot: { width: 20, justifyContent: "center" },
   // Cards nest inside the tile, so drop the outer padding and let them sit flush.
   upcomingBody: {
     paddingHorizontal: 8,
