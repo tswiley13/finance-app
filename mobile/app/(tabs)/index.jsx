@@ -131,16 +131,6 @@ export default function Dashboard() {
                   {lastUpcoming ? ` · through ${fmtDate(lastUpcoming.period.end_date)}` : ""}
                 </Text>
               </View>
-              {!showUpcoming && lastUpcoming && (
-                <View style={{ alignItems: "flex-end", marginRight: 8 }}>
-                  <Label style={{ fontSize: 9, marginBottom: 2 }}>Ends</Label>
-                  <Money
-                    value={lastUpcoming.endBalance}
-                    color={lastUpcoming.endBalance < 0 ? c.danger : c.positive}
-                    size={14}
-                  />
-                </View>
-              )}
               <Ionicons
                 name={showUpcoming ? "chevron-up" : "chevron-down"}
                 size={16}
