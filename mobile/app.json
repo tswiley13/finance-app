@@ -3,7 +3,9 @@
     "name": "Stryde",
     "slug": "stryde",
     "version": "1.0.0",
-    "runtimeVersion": { "policy": "appVersion" },
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
     "scheme": "stryde",
     "orientation": "portrait",
     "userInterfaceStyle": "dark",
@@ -33,10 +35,24 @@
       "bundler": "metro",
       "output": "single"
     },
-    "plugins": ["expo-router"],
-    "experiments": { "typedRoutes": false },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-build-properties",
+        {
+          "ios": {
+            "deploymentTarget": "15.1"
+          }
+        }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": false
+    },
     "extra": {
-      "router": { "origin": false }
+      "router": {
+        "origin": false
+      }
     },
     "icon": "./assets/icon.png"
   }
