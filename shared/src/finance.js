@@ -416,12 +416,56 @@ export function getMonthlyProjection(rows, ctx) {
     })
     .reduce((sum, item) => sum + (item.billsDeducted || 0), 0);
 
+  // Bills you've already funded via a confirmed WTMG transfer are paid from the
+  // bills account, not from primary — and the primary balance already dropped
+  // when that money moved (it's baked into availableNow). Subtracting them again
+  // in "Available This Month" would double-count them, and marking one paid would
+  // make the tile jump. Add the funded amount back so it stays stable.
+  //
+  // For the common single-account user this is always 0 (no transfers), so the
+  // tiles still read exactly availableNow + income - billsRemaining.
+  const current = rows.find((r) => r.isCurrent);
+  const fundedThisPeriod = current ? getFundedBillTotal(current, ctx) : 0;
+
   return {
     availableNow,
     incomeThisMonth,
     billsRemaining,
-    availableThisMonth: availableNow + incomeThisMonth - billsRemaining,
+    availableThisMonth: availableNow + incomeThisMonth - billsRemaining + fundedThisPeriod,
   };
+}
+
+/**
+ * Remaining unpaid amount of a period's bills that are already covered by a
+ * confirmed transfer into their (non-primary) bills account. This is the money
+ * that has left primary but is still sitting in the bills account waiting to pay
+ * those bills — so it shouldn't count against primary spending twice.
+ */
+export function getFundedBillTotal(item, ctx) {
+  const { accounts = [], billPayments = {}, skippedBillPeriods, transfers = {} } = ctx;
+  if (!item.isCurrentPeriod) return 0;
+  const periodKey = item.period.start_date;
+  const remaining = (b) => (b.amount || 0) - getBillPaidAmount(billPayments, b.id, periodKey);
+
+  // Unpaid total per account, to decide whether the transfer fully covers it.
+  const unpaidByAcct = {};
+  item.bills.forEach((b) => {
+    if (isBillSkipped(skippedBillPeriods, b.id, periodKey)) return;
+    if (isBillPaidInPeriod(billPayments, b.id, periodKey)) return;
+    if (!b.account_id) return;
+    unpaidByAcct[b.account_id] = (unpaidByAcct[b.account_id] || 0) + remaining(b);
+  });
+
+  let funded = 0;
+  item.bills.forEach((b) => {
+    if (isBillSkipped(skippedBillPeriods, b.id, periodKey)) return;
+    if (isBillPaidInPeriod(billPayments, b.id, periodKey)) return;
+    const acct = accounts.find((a) => a.id === b.account_id);
+    if (!acct || acct.is_primary || acct.is_accumulating) return;
+    const transferred = transfers[b.account_id] || 0;
+    if (transferred >= (unpaidByAcct[b.account_id] || 0)) funded += remaining(b);
+  });
+  return funded;
 }
 
 // ── Where The Money Goes ─────────────────────────────────────────────────────

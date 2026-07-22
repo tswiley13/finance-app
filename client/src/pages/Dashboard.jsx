@@ -2054,8 +2054,35 @@ function Dashboard() {
         })
         .reduce((sum, item) => sum + (item.billsDeducted || 0), 0);
 
-      // Available This Month: what's left after this month's remaining bills.
-      const availableThisMonth = primaryBalance + monthIncome - monthBills;
+      // Bills already funded via a confirmed WTMG transfer are paid from the bills
+      // account, not primary — and primaryBalance already dropped when that money
+      // moved. Subtracting them again in "Available This Month" would double-count
+      // them and make the tile jump when one is marked paid. Add the funded amount
+      // back so it stays stable. (0 for single-account users — no transfers.)
+      const currentRowItem = rows.find(item => item.isCurrent);
+      let fundedThisPeriod = 0;
+      if (currentRowItem) {
+        const pKey = currentRowItem.period.start_date;
+        const remainingOf = (b) => (b.amount || 0) - getBillPaidAmount(b.id, pKey);
+        const unpaidByAcct = {};
+        currentRowItem.bills.forEach(b => {
+          if (skippedBillPeriods.has(`${b.id}-${pKey}`)) return;
+          if (isBillPaidInPeriod(b.id, pKey)) return;
+          if (!b.account_id) return;
+          unpaidByAcct[b.account_id] = (unpaidByAcct[b.account_id] || 0) + remainingOf(b);
+        });
+        currentRowItem.bills.forEach(b => {
+          if (skippedBillPeriods.has(`${b.id}-${pKey}`)) return;
+          if (isBillPaidInPeriod(b.id, pKey)) return;
+          const acct = accounts.find(a => a.id === b.account_id);
+          if (!acct || acct.is_primary || acct.is_accumulating) return;
+          const transferred = transfers[b.account_id] || 0;
+          if (transferred >= (unpaidByAcct[b.account_id] || 0)) fundedThisPeriod += remainingOf(b);
+        });
+      }
+
+      // Available This Month: what's left after this month's *unfunded* bills.
+      const availableThisMonth = primaryBalance + monthIncome - monthBills + fundedThisPeriod;
 
       return (
         <div className="content-area">

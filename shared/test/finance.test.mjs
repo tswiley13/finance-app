@@ -215,3 +215,44 @@ assert.equal(getCarryOverBills(clearedCtx).length, 0,
   "skipping the previous period's bills clears the carry-over");
 
 console.log("✓ partial / skip / carry-over tests passed");
+
+// ── Available This Month stays stable when paying funded bills ────────────────
+// A pre-funder transfers all bill money into a non-primary bills account. Those
+// bills are then paid from that account, so marking one paid must NOT move
+// "Available This Month" — the money already left primary via the transfer.
+import { getFundedBillTotal } from "../src/index.js";
+
+const preFundCtx = {
+  ...ctx,
+  transfers: { billsacct: 1268.71 }, // confirmed transfer covering all current bills
+};
+const preFundRows = enrichBreakdown(getPayPeriodBreakdown(preFundCtx), preFundCtx);
+const before = getMonthlyProjection(preFundRows, preFundCtx);
+
+// Now "pay" one funded bill (Boat Storage, $165) from the bills account.
+const afterPayCtx = {
+  ...preFundCtx,
+  billPayments: { ...billPayments, "boat-2026-07-02": { is_paid: true, paid_amount: 165 } },
+};
+const afterPayRows = enrichBreakdown(getPayPeriodBreakdown(afterPayCtx), afterPayCtx);
+const after = getMonthlyProjection(afterPayRows, afterPayCtx);
+
+assert.equal(
+  Number(after.availableThisMonth.toFixed(2)),
+  Number(before.availableThisMonth.toFixed(2)),
+  "paying a funded bill leaves Available This Month unchanged"
+);
+// Bills Remaining still drops — it's genuinely one fewer bill to pay.
+assert.ok(after.billsRemaining < before.billsRemaining,
+  "Bills Remaining still reflects the paid bill");
+
+// The single-account case is untouched: no transfers -> funded is 0 -> tiles tie out.
+assert.equal(getFundedBillTotal(rows[0], ctx), 0, "no transfer -> nothing funded");
+const plainProj = getMonthlyProjection(rows, ctx);
+assert.equal(
+  Number(plainProj.availableThisMonth.toFixed(2)),
+  Number((plainProj.availableNow + plainProj.incomeThisMonth - plainProj.billsRemaining).toFixed(2)),
+  "single-account tiles still tie out exactly"
+);
+
+console.log("✓ funded-bill stability tests passed");
