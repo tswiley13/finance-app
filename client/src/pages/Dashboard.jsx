@@ -2271,8 +2271,17 @@ function Dashboard() {
 
                       const skippedBills = item.bills.filter(b => skippedBillPeriods.has(`${b.id}-${periodKey}`));
                       const activeBills = item.bills.filter(b => !skippedBillPeriods.has(`${b.id}-${periodKey}`));
-                      const unpaidBills = activeBills.filter(b => !isBillPaidInPeriod(b.id, periodKey));
-                      const paidBills = activeBills.filter(b => isBillPaidInPeriod(b.id, periodKey));
+                      // A bill only belongs in the struck-through "Paid" section when it's
+                      // FULLY paid. A partial payment still owes its remainder (which counts
+                      // in the BILLS total), so it stays in the unpaid list where it renders
+                      // as "Partial · $X paid · $Y remaining" — otherwise its leftover is
+                      // invisible but still inflates BILLS.
+                      const isFullyPaid = (b) => {
+                        const rec = getBillPaymentRecord(b.id, periodKey);
+                        return !!rec && (rec.is_paid || (rec.paid_amount || 0) >= (b.amount || 0));
+                      };
+                      const unpaidBills = activeBills.filter(b => !isFullyPaid(b));
+                      const paidBills = activeBills.filter(b => isFullyPaid(b));
 
                       if (activeBills.length === 0 && skippedBills.length === 0) return null;
                       return (
