@@ -28,6 +28,7 @@ export function Input({ value, onChangeText, placeholder, keyboardType, autoCapi
       keyboardType={keyboardType}
       autoCapitalize={autoCapitalize}
       multiline={multiline}
+      selectTextOnFocus
       style={[s.input, multiline && { height: 80, textAlignVertical: "top" }]}
     />
   );
@@ -47,6 +48,7 @@ export function MoneyInput({ value, onChangeText, placeholder = "0.00" }) {
         placeholder={placeholder}
         placeholderTextColor={c.textDim}
         keyboardType="decimal-pad"
+        selectTextOnFocus
         style={[s.input, { flex: 1, paddingLeft: 4, borderWidth: 0, backgroundColor: "transparent" }]}
       />
     </View>

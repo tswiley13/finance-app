@@ -6275,6 +6275,7 @@ function Dashboard() {
                                   }}
                                   placeholder={fmt(remaining)}
                                   autoFocus
+                                  onFocus={e => e.target.select()}
                                   style={{ width: "80px", background: "rgba(255,255,255,0.06)", border: "1px solid rgba(108,99,255,0.4)", borderRadius: "6px", color: "#F0F6FC", fontFamily: "'DM Mono', monospace", fontSize: "12px", padding: "4px 8px", textAlign: "right" }}
                                 />
                                 <button onClick={() => confirmNextTransfer(rowKey, transferAmount, nextPeriodKey)} style={{ background: "rgba(108,99,255,0.15)", border: "1px solid rgba(108,99,255,0.3)", color: "#6C63FF", borderRadius: "6px", padding: "4px 10px", fontSize: "11px", fontWeight: "700", cursor: "pointer", fontFamily: "'Inter', sans-serif" }}>✓</button>
@@ -6282,11 +6283,13 @@ function Dashboard() {
                               </>
                             ) : done ? (
                               <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                                <span style={{ fontFamily: "'DM Mono', monospace", fontSize: "12px", color: "#4ADE80" }}>${fmt(billsToTransfer)}</span>
+                                {/* Show what was actually transferred, not the bills total —
+                                    the user may fund more than the bills (extra buffer). */}
+                                <span style={{ fontFamily: "'DM Mono', monospace", fontSize: "12px", color: "#4ADE80" }}>${fmt(transferred)}</span>
                                 <button onClick={() => undoNextTransfer(rowKey, nextPeriodKey)} style={{ background: "none", border: "none", color: "#8B8FA8", cursor: "pointer", fontSize: "10px", fontFamily: "'Inter', sans-serif", textDecoration: "underline" }}>Undo</button>
                               </div>
                             ) : (
-                              <button onClick={() => { setTransferringId(`next-${rowKey}`); setTransferAmount(""); }} style={{ background: "rgba(108,99,255,0.12)", border: "1px solid rgba(108,99,255,0.25)", color: "#6C63FF", borderRadius: "6px", padding: "4px 12px", fontSize: "11px", fontWeight: "600", cursor: "pointer", fontFamily: "'Inter', sans-serif" }}>
+                              <button onClick={() => { setTransferringId(`next-${rowKey}`); setTransferAmount(remaining.toFixed(2)); }} style={{ background: "rgba(108,99,255,0.12)", border: "1px solid rgba(108,99,255,0.25)", color: "#6C63FF", borderRadius: "6px", padding: "4px 12px", fontSize: "11px", fontWeight: "600", cursor: "pointer", fontFamily: "'Inter', sans-serif" }}>
                                 Transfer ${fmt(remaining)}
                               </button>
                             )}
