@@ -317,7 +317,12 @@ export function getBillsForEndBalance(item, ctx) {
   return item.bills
     .filter((b) => {
       if (isBillSkipped(skippedBillPeriods, b.id, periodKey)) return false;
-      if (isBillPaidInPeriod(billPayments, b.id, periodKey)) return false;
+      // Paid bills are excluded only for the CURRENT period, where the live bank
+      // balance already reflects the payment. A future period's start is a
+      // projection that does NOT reflect payments — a bill is money that leaves
+      // your spending whether or not you've paid it yet, so pre-funding one
+      // early must not inflate the projected end balance.
+      if (isCurrent && isBillPaidInPeriod(billPayments, b.id, periodKey)) return false;
       if (b.account_id) {
         const acct = accounts.find((a) => a.id === b.account_id);
         if (acct?.is_accumulating) return false;
@@ -362,11 +367,21 @@ export function enrichBreakdown(breakdown, ctx) {
           .filter((inc) => !earlyPayments?.has(`${inc.id}-${periodKey}`))
           .reduce((sum, inc) => sum + (inc.fixed_amount || 0), 0);
 
-    // Bills tile: unpaid amounts, minus anything skipped.
-    const skippedUnpaid = item.bills
-      .filter((b) => isBillSkipped(skippedBillPeriods, b.id, periodKey))
-      .reduce((sum, b) => sum + ((b.amount || 0) - getBillPaidAmount(billPayments, b.id, periodKey)), 0);
-    const billsDeducted = item.billsTotal - skippedUnpaid;
+    // Bills tile. Current period: what's still unpaid, so it shrinks as you pay.
+    // Future period: the full planned outflow, so pre-funding a bill early doesn't
+    // move it (the money still leaves) — and it keeps the card's arithmetic honest,
+    // since the end balance below counts those bills too.
+    let billsDeducted;
+    if (isCurrent) {
+      const skippedUnpaid = item.bills
+        .filter((b) => isBillSkipped(skippedBillPeriods, b.id, periodKey))
+        .reduce((sum, b) => sum + ((b.amount || 0) - getBillPaidAmount(billPayments, b.id, periodKey)), 0);
+      billsDeducted = item.billsTotal - skippedUnpaid;
+    } else {
+      billsDeducted = item.bills
+        .filter((b) => !isBillSkipped(skippedBillPeriods, b.id, periodKey))
+        .reduce((sum, b) => sum + (b.amount || 0), 0);
+    }
 
     const billsForEndBalance = getBillsForEndBalance(item, ctx);
     const endBalance = startBalance + pendingIncome - billsForEndBalance;

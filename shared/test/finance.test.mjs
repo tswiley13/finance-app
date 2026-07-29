@@ -256,3 +256,51 @@ assert.equal(
 );
 
 console.log("✓ funded-bill stability tests passed");
+
+// ── Pre-paying a FUTURE period's bill must not move its projection ────────────
+// Got paid early -> you pre-fund next period's bills. That money leaves your
+// spending, so the future period's End Balance and BILLS must stay put whether
+// or not the bill is marked paid. (The current period is different — there the
+// live balance already reflects payments, so paid bills ARE excluded.)
+const futIdx = 1; // Jul 16-29 in this fixture is a future period
+{
+  const unpaidCtx = { ...ctx, billPayments: {} };
+  const unpaidRows = enrichBreakdown(getPayPeriodBreakdown(unpaidCtx), unpaidCtx);
+
+  // Pre-pay the whole Jul 16-29 period (all its bills marked paid early).
+  const paidPayments = {};
+  unpaidRows[futIdx].bills.forEach((b) => {
+    paidPayments[`${b.id}-2026-07-16`] = { is_paid: true, paid_amount: b.amount };
+  });
+  const paidCtx = { ...ctx, billPayments: paidPayments };
+  const paidRows = enrichBreakdown(getPayPeriodBreakdown(paidCtx), paidCtx);
+
+  assert.equal(
+    Number(paidRows[futIdx].endBalance.toFixed(2)),
+    Number(unpaidRows[futIdx].endBalance.toFixed(2)),
+    "future period End Balance is unchanged by pre-paying its bills"
+  );
+  assert.equal(
+    Number(paidRows[futIdx].billsDeducted.toFixed(2)),
+    Number(unpaidRows[futIdx].billsDeducted.toFixed(2)),
+    "future period BILLS total is unchanged by pre-paying its bills"
+  );
+  // And the card still ties out: start + income - bills = end.
+  const r = paidRows[futIdx];
+  assert.equal(
+    Number((r.startBalance + r.pendingIncome - r.billsDeducted).toFixed(2)),
+    Number(r.endBalance.toFixed(2)),
+    "future period card arithmetic ties out"
+  );
+}
+
+// Current period still excludes paid bills (unchanged behavior).
+{
+  const cur = rows[0]; // current
+  const paidCur = { ...ctx, billPayments: { ...billPayments, "boat-2026-07-02": { is_paid: true, paid_amount: 165 } } };
+  const paidCurRows = enrichBreakdown(getPayPeriodBreakdown(paidCur), paidCur);
+  assert.ok(paidCurRows[0].billsDeducted < cur.billsDeducted,
+    "current period BILLS still drops when a bill is paid");
+}
+
+console.log("✓ future pre-payment tests passed");

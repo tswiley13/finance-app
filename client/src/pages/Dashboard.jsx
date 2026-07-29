@@ -1956,14 +1956,21 @@ function Dashboard() {
         const pEnd = new Date(item.period.end_date + "T23:59:59");
         const periodKey = item.period.start_date;
 
-        // Bills tile: remaining unpaid amounts, excluding skipped
-        const skippedUnpaidTotal = item.bills
-          .filter(b => skippedBillPeriods.has(`${b.id}-${periodKey}`))
-          .reduce((sum, b) => {
-            const paidAmt = getBillPaidAmount(b.id, periodKey);
-            return sum + ((b.amount || 0) - paidAmt);
-          }, 0);
-        const billsDeducted = item.billsTotal - skippedUnpaidTotal;
+        // Bills tile. Current period: remaining unpaid amounts (shrinks as you pay).
+        // Future period: the full planned outflow, so pre-funding a bill early doesn't
+        // move it (the money still leaves) and the card stays consistent with the end
+        // balance below, which counts those bills too.
+        let billsDeducted;
+        if (isCurrent) {
+          const skippedUnpaidTotal = item.bills
+            .filter(b => skippedBillPeriods.has(`${b.id}-${periodKey}`))
+            .reduce((sum, b) => sum + ((b.amount || 0) - getBillPaidAmount(b.id, periodKey)), 0);
+          billsDeducted = item.billsTotal - skippedUnpaidTotal;
+        } else {
+          billsDeducted = item.bills
+            .filter(b => !skippedBillPeriods.has(`${b.id}-${periodKey}`))
+            .reduce((sum, b) => sum + (b.amount || 0), 0);
+        }
 
         // End balance: only subtract bills that will be paid directly from the primary account.
         // Bills assigned to non-primary, non-accumulating accounts (e.g. Wiley Bills) are
@@ -1991,7 +1998,11 @@ function Dashboard() {
         const billsForEndBalance = item.bills
           .filter(b => {
             if (skippedBillPeriods.has(`${b.id}-${periodKey}`)) return false;
-            if (isBillPaidInPeriod(b.id, periodKey)) return false;
+            // Paid bills are excluded only for the CURRENT period (its live balance
+            // already reflects the payment). A future period's start is a projection
+            // that doesn't — a bill is money leaving whether or not it's marked paid,
+            // so pre-funding one early must not inflate the projected end balance.
+            if (isCurrent && isBillPaidInPeriod(b.id, periodKey)) return false;
             if (b.account_id) {
               const acct = accounts.find(a => a.id === b.account_id);
               // Accumulating accounts (e.g. escrow) are funded gradually via separate
