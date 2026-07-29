@@ -5277,13 +5277,17 @@ function Dashboard() {
                   onChange={(e) => setBillName(e.target.value)}
                   style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", color: "#F2F0EB", padding: "8px 12px", borderRadius: "6px", fontSize: "13px", fontFamily: "'Inter', sans-serif" }}
                 />
-                <input
-                  type="number"
-                  placeholder="Amount"
-                  value={billAmount}
-                  onChange={(e) => setBillAmount(e.target.value)}
-                  style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", color: "#F2F0EB", padding: "8px 12px", borderRadius: "6px", fontSize: "13px", fontFamily: "'Inter', sans-serif" }}
-                />
+                <div style={{ display: "flex", alignItems: "center", background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "6px", padding: "0 12px" }}>
+                  <span style={{ color: "#8B8FA8", fontSize: "13px" }}>$</span>
+                  <input
+                    type="number"
+                    placeholder="Amount"
+                    value={billAmount}
+                    onChange={(e) => setBillAmount(e.target.value)}
+                    onFocus={(e) => e.target.select()}
+                    style={{ background: "none", border: "none", outline: "none", color: "#F2F0EB", padding: "8px 6px", fontSize: "13px", fontFamily: "'Inter', sans-serif", width: "100%" }}
+                  />
+                </div>
                 <select
                   value={billFrequency}
                   onChange={(e) => { setBillFrequency(e.target.value); if (e.target.value !== "semi-monthly") setBillDueDay2(""); }}
@@ -5298,13 +5302,21 @@ function Dashboard() {
                   <option value="annually">Annually</option>
                 </select>
                 {(billFrequency || "monthly") !== "payday" && (
-                  <input
-                    type="number"
-                    placeholder={(billFrequency || "monthly") === "semi-monthly" ? "1st due day" : "Due day of month"}
-                    value={dueDay}
-                    onChange={(e) => setDueDay(e.target.value)}
-                    style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", color: "#F2F0EB", padding: "8px 12px", borderRadius: "6px", fontSize: "13px", fontFamily: "'Inter', sans-serif" }}
-                  />
+                  <div style={{ display: "flex", alignItems: "center", background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "6px", padding: "0 12px" }}>
+                    <span style={{ color: "#8B8FA8", fontSize: "11px", textTransform: "uppercase", letterSpacing: "0.04em", whiteSpace: "nowrap", marginRight: "8px" }}>
+                      {(billFrequency || "monthly") === "semi-monthly" ? "1st due" : "Due day"}
+                    </span>
+                    <input
+                      type="number"
+                      min="1"
+                      max="31"
+                      placeholder="1–31"
+                      value={dueDay}
+                      onChange={(e) => setDueDay(e.target.value)}
+                      onFocus={(e) => e.target.select()}
+                      style={{ background: "none", border: "none", outline: "none", color: "#F2F0EB", padding: "8px 0", fontSize: "13px", fontFamily: "'Inter', sans-serif", width: "100%" }}
+                    />
+                  </div>
                 )}
                 {billFrequency === "semi-monthly" && (
                   <input
@@ -5595,21 +5607,17 @@ function Dashboard() {
                               fontFamily: "'Inter', sans-serif",
                             }}
                           />
-                          <input
-                            type="number"
-                            placeholder="Amount"
-                            value={billAmount}
-                            onChange={(e) => setBillAmount(e.target.value)}
-                            style={{
-                              background: "#2D2B45",
-                              border: "1px solid rgba(255,255,255,0.1)",
-                              color: "#F0F6FC",
-                              padding: "8px 12px",
-                              borderRadius: "6px",
-                              fontSize: "13px",
-                              fontFamily: "'Inter', sans-serif",
-                            }}
-                          />
+                          <div style={{ display: "flex", alignItems: "center", background: "#2D2B45", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "6px", padding: "0 12px" }}>
+                            <span style={{ color: "#8B8FA8", fontSize: "13px" }}>$</span>
+                            <input
+                              type="number"
+                              placeholder="Amount"
+                              value={billAmount}
+                              onChange={(e) => setBillAmount(e.target.value)}
+                              onFocus={(e) => e.target.select()}
+                              style={{ background: "none", border: "none", outline: "none", color: "#F0F6FC", padding: "8px 6px", fontSize: "13px", fontFamily: "'Inter', sans-serif", width: "100%" }}
+                            />
+                          </div>
                           <select
                             value={billFrequency}
                             onChange={(e) => { setBillFrequency(e.target.value); if (e.target.value !== "semi-monthly") setBillDueDay2(""); }}
@@ -5624,21 +5632,21 @@ function Dashboard() {
                             <option value="annually">Annually</option>
                           </select>
                           {(billFrequency || "monthly") !== "payday" && (
-                            <input
-                              type="number"
-                              placeholder={(billFrequency || "monthly") === "semi-monthly" ? "1st due day" : "Due day of month"}
-                              value={dueDay}
-                              onChange={(e) => setDueDay(e.target.value)}
-                              style={{
-                                background: "#2D2B45",
-                                border: "1px solid rgba(255,255,255,0.1)",
-                                color: "#F0F6FC",
-                                padding: "8px 12px",
-                                borderRadius: "6px",
-                                fontSize: "13px",
-                                fontFamily: "'Inter', sans-serif",
-                              }}
-                            />
+                            <div style={{ display: "flex", alignItems: "center", background: "#2D2B45", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "6px", padding: "0 12px" }}>
+                              <span style={{ color: "#8B8FA8", fontSize: "11px", textTransform: "uppercase", letterSpacing: "0.04em", whiteSpace: "nowrap", marginRight: "8px" }}>
+                                {(billFrequency || "monthly") === "semi-monthly" ? "1st due" : "Due day"}
+                              </span>
+                              <input
+                                type="number"
+                                min="1"
+                                max="31"
+                                placeholder="1–31"
+                                value={dueDay}
+                                onChange={(e) => setDueDay(e.target.value)}
+                                onFocus={(e) => e.target.select()}
+                                style={{ background: "none", border: "none", outline: "none", color: "#F0F6FC", padding: "8px 0", fontSize: "13px", fontFamily: "'Inter', sans-serif", width: "100%" }}
+                              />
+                            </div>
                           )}
                           {billFrequency === "semi-monthly" && (
                             <input
