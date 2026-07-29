@@ -280,17 +280,20 @@ const futIdx = 1; // Jul 16-29 in this fixture is a future period
     Number(unpaidRows[futIdx].endBalance.toFixed(2)),
     "future period End Balance is unchanged by pre-paying its bills"
   );
-  assert.equal(
-    Number(paidRows[futIdx].billsDeducted.toFixed(2)),
-    Number(unpaidRows[futIdx].billsDeducted.toFixed(2)),
-    "future period BILLS total is unchanged by pre-paying its bills"
+  // Bills Remaining SHOULD drop — you paid those bills, fewer are left.
+  assert.ok(
+    paidRows[futIdx].billsDeducted < unpaidRows[futIdx].billsDeducted,
+    "future period Bills Remaining drops as you pre-pay"
   );
-  // And the card still ties out: start + income - bills = end.
+  // End Balance holds because the money left regardless; the gap between what
+  // Bills Remaining shows and what the End Balance subtracts is the pre-paid
+  // amount that's already gone.
   const r = paidRows[futIdx];
+  const prePaid = unpaidRows[futIdx].billsDeducted - r.billsDeducted;
   assert.equal(
-    Number((r.startBalance + r.pendingIncome - r.billsDeducted).toFixed(2)),
+    Number((r.startBalance + r.pendingIncome - r.billsDeducted - prePaid).toFixed(2)),
     Number(r.endBalance.toFixed(2)),
-    "future period card arithmetic ties out"
+    "end balance = start + income - remaining - pre-paid"
   );
 }
 

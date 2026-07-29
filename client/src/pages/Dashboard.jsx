@@ -1956,21 +1956,15 @@ function Dashboard() {
         const pEnd = new Date(item.period.end_date + "T23:59:59");
         const periodKey = item.period.start_date;
 
-        // Bills tile. Current period: remaining unpaid amounts (shrinks as you pay).
-        // Future period: the full planned outflow, so pre-funding a bill early doesn't
-        // move it (the money still leaves) and the card stays consistent with the end
-        // balance below, which counts those bills too.
-        let billsDeducted;
-        if (isCurrent) {
-          const skippedUnpaidTotal = item.bills
-            .filter(b => skippedBillPeriods.has(`${b.id}-${periodKey}`))
-            .reduce((sum, b) => sum + ((b.amount || 0) - getBillPaidAmount(b.id, periodKey)), 0);
-          billsDeducted = item.billsTotal - skippedUnpaidTotal;
-        } else {
-          billsDeducted = item.bills
-            .filter(b => !skippedBillPeriods.has(`${b.id}-${periodKey}`))
-            .reduce((sum, b) => sum + (b.amount || 0), 0);
-        }
+        // Bills tile ("Bills Remaining"): remaining unpaid amounts, excluding skipped.
+        // This drops as you pay — correct. It is NOT what the End Balance subtracts:
+        // on a future period the End Balance counts a bill whether paid or not (the
+        // money leaves either way), so pre-paying reduces Bills Remaining but leaves
+        // the End Balance flat.
+        const skippedUnpaidTotal = item.bills
+          .filter(b => skippedBillPeriods.has(`${b.id}-${periodKey}`))
+          .reduce((sum, b) => sum + ((b.amount || 0) - getBillPaidAmount(b.id, periodKey)), 0);
+        const billsDeducted = item.billsTotal - skippedUnpaidTotal;
 
         // End balance: only subtract bills that will be paid directly from the primary account.
         // Bills assigned to non-primary, non-accumulating accounts (e.g. Wiley Bills) are
