@@ -307,3 +307,49 @@ const futIdx = 1; // Jul 16-29 in this fixture is a future period
 }
 
 console.log("✓ future pre-payment tests passed");
+
+// ── Paying a bill at a CUSTOM amount uses the real amount, not the template ───
+// A bigger-than-usual electric bill: template is $604 (allstate) but you
+// actually pay $654. The period must reflect the $654 that left, not the $604
+// template — and the extra must not vanish (or, worse, shrink the total).
+import { isBillFullyPaid, getBillPeriodCost } from "../src/index.js";
+{
+  const templateAmt = 604; // allstate
+  const actualPaid = 654;  // $50 higher this month
+  const key = "allstate-2026-07-16"; // future period p2
+
+  // Baseline: paid at the template amount.
+  const atTemplate = { ...ctx, billPayments: { ...billPayments, [key]: { is_paid: true, paid_amount: templateAmt } } };
+  const atTemplateRows = enrichBreakdown(getPayPeriodBreakdown(atTemplate), atTemplate);
+
+  // Same bill, paid $50 higher.
+  const atActual = { ...ctx, billPayments: { ...billPayments, [key]: { is_paid: true, paid_amount: actualPaid } } };
+  const atActualRows = enrichBreakdown(getPayPeriodBreakdown(atActual), atActual);
+
+  // A future period's projected End Balance must be $50 LOWER — that money left.
+  assert.equal(
+    Number((atTemplateRows[futIdx].endBalance - atActualRows[futIdx].endBalance).toFixed(2)),
+    50,
+    "paying $50 over the template lowers the future End Balance by $50"
+  );
+
+  // Bills Remaining for a fully-paid bill is 0 — never negative from over-paying.
+  const allstateBill = bills.find((b) => b.id === "allstate");
+  assert.equal(getBillPeriodCost(atActual.billPayments, allstateBill, "2026-07-16"), actualPaid,
+    "period cost of a fully-paid bill is the real amount paid");
+  assert.ok(isBillFullyPaid(atActual.billPayments, allstateBill, "2026-07-16"),
+    "over-paid bill is fully paid");
+  assert.ok(atActualRows[futIdx].billsDeducted >= 0,
+    "Bills Remaining never goes negative from an over-payment");
+
+  // Under-paying but flagged paid (e.g. a discount): cost tracks the real $580.
+  const under = { ...ctx, billPayments: { ...billPayments, [key]: { is_paid: true, paid_amount: 580 } } };
+  const underRows = enrichBreakdown(getPayPeriodBreakdown(under), under);
+  assert.equal(
+    Number((underRows[futIdx].endBalance - atTemplateRows[futIdx].endBalance).toFixed(2)),
+    24,
+    "paying $24 under the template raises the future End Balance by $24"
+  );
+}
+
+console.log("✓ custom-amount payment tests passed");

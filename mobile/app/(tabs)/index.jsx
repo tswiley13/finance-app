@@ -450,7 +450,7 @@ function BillRow({ bill, periodKey, d, run, carryOver }) {
         </View>
       ) : (
         <>
-          <Money value={isPartial ? remaining : amount} color={isPartial ? c.warning : c.textMuted} size={13} />
+          <Money value={isPartial ? remaining : isFull ? paidAmt : amount} color={isPartial ? c.warning : c.textMuted} size={13} />
           {skipped ? (
             <Pressable onPress={() => run(() => restoreBill(d.userId, bill.id, periodKey))} style={{ marginLeft: 10 }}>
               <Text style={s.undo}>Restore</Text>

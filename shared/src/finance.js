@@ -35,6 +35,24 @@ export function getBillPaidAmount(billPayments, billId, periodStart) {
   return p ? (p.paid_amount || 0) : 0;
 }
 
+// Fully paid = flagged paid, or the amount paid already covers the template.
+// (isBillPaidInPeriod is true for *partials* too, so it can't be used here.)
+export function isBillFullyPaid(billPayments, bill, periodStart) {
+  const p = getBillPaymentRecord(billPayments, bill.id, periodStart);
+  if (!p) return false;
+  return p.is_paid || (p.paid_amount || 0) >= (bill.amount || 0);
+}
+
+// What a bill actually costs the period. Once it's fully paid we use the real
+// amount paid — which may be higher or lower than the template (e.g. a bigger
+// electric bill this month) — otherwise the template amount we still expect to
+// leave. This keeps totals and projections honest to what really happened.
+export function getBillPeriodCost(billPayments, bill, periodStart) {
+  return isBillFullyPaid(billPayments, bill, periodStart)
+    ? getBillPaidAmount(billPayments, bill.id, periodStart)
+    : (bill.amount || 0);
+}
+
 export function isBillSkipped(skippedBillPeriods, billId, periodStart) {
   return !!(skippedBillPeriods && skippedBillPeriods.has(`${billId}-${periodStart}`));
 }
@@ -259,8 +277,12 @@ export function getPayPeriodBreakdown(ctx, limit = 10) {
 
     // Nets out anything already paid for this period.
     const billsTotal = periodBills.reduce((sum, b) => {
+      // Fully paid → nothing left to pay (an over-payment must not turn into a
+      // negative "remaining" that quietly shrinks the total). Partial → only
+      // the outstanding remainder still counts.
+      if (isBillFullyPaid(billPayments, b, period.start_date)) return sum;
       const paid = getBillPaidAmount(billPayments, b.id, period.start_date);
-      return sum + ((b.amount || 0) - paid);
+      return sum + Math.max(0, (b.amount || 0) - paid);
     }, 0);
 
     return {
@@ -335,7 +357,9 @@ export function getBillsForEndBalance(item, ctx) {
       }
       return true;
     })
-    .reduce((sum, b) => sum + (b.amount || 0), 0);
+    // Use the real amount paid for bills settled at a custom amount, so a
+    // future period's projected end balance reflects what actually left.
+    .reduce((sum, b) => sum + getBillPeriodCost(billPayments, b, periodKey), 0);
 }
 
 /**

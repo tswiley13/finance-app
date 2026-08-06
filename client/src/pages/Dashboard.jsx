@@ -696,6 +696,20 @@ function Dashboard() {
     const p = getBillPaymentRecord(billId, periodStart);
     return p ? (p.paid_amount || 0) : 0;
   }
+  // Fully paid = flagged paid, or amount paid already covers the template.
+  // (isBillPaidInPeriod is true for partials too, so it can't stand in here.)
+  function isBillFullyPaid(bill, periodStart) {
+    const p = getBillPaymentRecord(bill.id, periodStart);
+    if (!p) return false;
+    return p.is_paid || (p.paid_amount || 0) >= (bill.amount || 0);
+  }
+  // What a bill actually costs the period: the real amount paid once fully
+  // paid (may differ from the template), otherwise the template amount.
+  function getBillPeriodCost(bill, periodStart) {
+    return isBillFullyPaid(bill, periodStart)
+      ? getBillPaidAmount(bill.id, periodStart)
+      : (bill.amount || 0);
+  }
 
   function isBillDueInPeriod(bill) {
     // Bills always recur — scheduling is handled by dueInPeriod below
@@ -1151,8 +1165,12 @@ function Dashboard() {
       });
 
       const periodBillsTotal = periodBills.reduce((sum, b) => {
+        // Fully paid → nothing left (an over-payment must not become a negative
+        // "remaining" that quietly shrinks the total). Partial → only the
+        // outstanding remainder still counts.
+        if (isBillFullyPaid(b, period.start_date)) return sum;
         const paidAmt = getBillPaidAmount(b.id, period.start_date);
-        return sum + ((b.amount || 0) - paidAmt);
+        return sum + Math.max(0, (b.amount || 0) - paidAmt);
       }, 0);
 
       const isCurrentPeriod = periodStart <= today && periodEnd >= today;
@@ -2020,7 +2038,9 @@ function Dashboard() {
             }
             return true;
           })
-          .reduce((sum, b) => sum + (b.amount || 0), 0);
+          // Use the real amount paid for bills settled at a custom amount, so a
+          // future period's projected end balance reflects what actually left.
+          .reduce((sum, b) => sum + getBillPeriodCost(b, periodKey), 0);
 
         const endBalance = startBalance + pendingIncome - billsForEndBalance;
         runningBalance = endBalance;
@@ -2356,7 +2376,7 @@ function Dashboard() {
                               <div style={{ fontSize: "11px", color: "#5C6080", marginTop: "2px" }}>Paid</div>
                             </div>
                             <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                              <span style={{ fontFamily: "'DM Mono', monospace", fontSize: "13px", color: "#5C6080", textDecoration: "line-through" }}>${fmt(bill.amount)}</span>
+                              <span style={{ fontFamily: "'DM Mono', monospace", fontSize: "13px", color: "#5C6080", textDecoration: "line-through" }}>${fmt(getBillPeriodCost(bill, periodKey))}</span>
                               <button onClick={() => markBillUnpaid(bill, periodKey)} style={{ background: "none", border: "1px solid rgba(248,113,113,0.3)", color: "#F87171", padding: "2px 8px", borderRadius: "5px", cursor: "pointer", fontSize: "10px", fontFamily: "'Inter', sans-serif" }}>Undo</button>
                             </div>
                           </div>
@@ -6595,7 +6615,7 @@ function Dashboard() {
                               </div>
                               <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
                                 <span style={{ fontFamily: "'DM Mono', monospace", fontSize: "13px", color: getBillPaidAmount(bill.id, item.period.start_date) > 0 && !isBillPaidInPeriod(bill.id, item.period.start_date) ? "#FBBF24" : "#8B8FA8" }}>
-                                  ${fmt(getBillPaidAmount(bill.id, item.period.start_date) > 0 && !isBillPaidInPeriod(bill.id, item.period.start_date) ? (bill.amount - getBillPaidAmount(bill.id, item.period.start_date)) : bill.amount)}
+                                  ${fmt(getBillPaidAmount(bill.id, item.period.start_date) > 0 && !isBillPaidInPeriod(bill.id, item.period.start_date) ? (bill.amount - getBillPaidAmount(bill.id, item.period.start_date)) : getBillPeriodCost(bill, item.period.start_date))}
                                 </span>
                                 {pendingPaidBill?._key === `${bill.id}-${item.period.start_date}` ? (
                                   <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
