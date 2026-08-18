@@ -53,6 +53,18 @@ export function getBillPeriodCost(billPayments, bill, periodStart) {
     : (bill.amount || 0);
 }
 
+// A one-time payment is finished once it's been paid. Because it only ever
+// lands in a single period, any fully-paid record means it's done and should
+// drop off the active Bills list.
+export function isOneTimeBillDone(bill, billPayments = {}) {
+  if ((bill.frequency || "monthly") !== "one-time") return false;
+  return Object.entries(billPayments).some(
+    ([key, rec]) =>
+      key.startsWith(`${bill.id}-`) &&
+      (rec.is_paid || (rec.paid_amount || 0) >= (bill.amount || 0))
+  );
+}
+
 export function isBillSkipped(skippedBillPeriods, billId, periodStart) {
   return !!(skippedBillPeriods && skippedBillPeriods.has(`${billId}-${periodStart}`));
 }
@@ -73,6 +85,13 @@ function dueDayInPeriod(day, periodStart, periodEnd) {
 /** Is this bill due within the given pay period? Handles every frequency. */
 export function isBillDueInPeriod(bill, periodStart, periodEnd) {
   const freq = bill.frequency || "monthly";
+
+  // One-time payment — lands only in the single period containing its date.
+  if (freq === "one-time") {
+    if (!bill.due_date) return false;
+    const d = new Date(bill.due_date + "T12:00:00");
+    return d >= periodStart && d <= periodEnd;
+  }
 
   // Every paycheck — always lands in every period.
   if (freq === "biweekly" || freq === "payday") return true;
@@ -109,6 +128,7 @@ export function isBillDueInPeriod(bill, periodStart, periodEnd) {
 /** The date a bill effectively hits within a period — used only for sorting. */
 function billActualDate(bill, periodStart, periodEnd) {
   const freq = bill.frequency || "monthly";
+  if (freq === "one-time" && bill.due_date) return new Date(bill.due_date + "T12:00:00");
   if (freq === "payday" || freq === "biweekly") return periodStart;
   if (!bill.due_day) return periodEnd;
   const thisMonth = new Date(periodStart.getFullYear(), periodStart.getMonth(), bill.due_day);

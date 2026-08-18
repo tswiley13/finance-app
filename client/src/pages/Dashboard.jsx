@@ -277,6 +277,7 @@ function Dashboard() {
   const [isVariable, setIsVariable] = useState(false);
   const [billFrequency, setBillFrequency] = useState("");
   const [billDueDay2, setBillDueDay2] = useState("");
+  const [billDueDate, setBillDueDate] = useState(""); // exact date for a one-time payment
   const [billDueMonth, setBillDueMonth] = useState("");
   const [quickEditBillAmountId, setQuickEditBillAmountId] = useState(null);
   const [quickEditBillAmountVal, setQuickEditBillAmountVal] = useState("");
@@ -710,6 +711,14 @@ function Dashboard() {
       ? getBillPaidAmount(bill.id, periodStart)
       : (bill.amount || 0);
   }
+  // A one-time payment only ever lands in one period, so any fully-paid record
+  // means it's finished — hide it from the active Bills list.
+  function isOneTimeBillDone(bill) {
+    if ((bill.frequency || "monthly") !== "one-time") return false;
+    return Object.entries(billPayments).some(
+      ([key, rec]) => key.startsWith(`${bill.id}-`) && (rec.is_paid || (rec.paid_amount || 0) >= (bill.amount || 0))
+    );
+  }
 
   function isBillDueInPeriod(bill) {
     // Bills always recur — scheduling is handled by dueInPeriod below
@@ -719,7 +728,8 @@ function Dashboard() {
   async function addBill() {
     if (isSaving) return;
     const isPayday = (billFrequency || "monthly") === "payday";
-    if (!billName || !billAmount || (!isPayday && !dueDay) || !billAccountId) {
+    const isOneTime = billFrequency === "one-time";
+    if (!billName || !billAmount || (!isPayday && !isOneTime && !dueDay) || (isOneTime && !billDueDate) || !billAccountId) {
       setBillFormError("Please fill in all required fields.");
       return;
     }
@@ -732,13 +742,17 @@ function Dashboard() {
     setIsSaving(true);
     const householdData = household;
 
+    // One-time bills store the full date; due_day (NOT NULL) mirrors its day.
+    const oneTimeDay = isOneTime && billDueDate ? parseInt(billDueDate.slice(8, 10)) : null;
+
     const { data: savedBill, error } = await supabase
       .from("bills")
       .insert({
         household_id: householdData.id,
         name: billName,
         amount: parseFloat(billAmount),
-        due_day: isPayday ? 0 : parseInt(dueDay),
+        due_day: isPayday ? 0 : isOneTime ? oneTimeDay : parseInt(dueDay),
+        due_date: isOneTime ? billDueDate : null,
         payment_method: paymentMethod,
         category: billCategory,
         owner: billOwner,
@@ -763,6 +777,7 @@ function Dashboard() {
     setBillName("");
     setBillAmount("");
     setDueDay("");
+    setBillDueDate("");
     setPaymentMethod("");
     setBillCategory("");
     setBillOwner("joint");
@@ -780,7 +795,8 @@ function Dashboard() {
   async function updateBill() {
     if (isSaving) return;
     const isPaydayEdit = (billFrequency || "monthly") === "payday";
-    if (!billName || !billAmount || (!isPaydayEdit && !dueDay) || !billAccountId) {
+    const isOneTimeEdit = billFrequency === "one-time";
+    if (!billName || !billAmount || (!isPaydayEdit && !isOneTimeEdit && !dueDay) || (isOneTimeEdit && !billDueDate) || !billAccountId) {
       setBillFormError("Please fill in all required fields.");
       return;
     }
@@ -790,13 +806,17 @@ function Dashboard() {
     }
     setBillFormError("");
 
+    const oneTimeDayEdit = isOneTimeEdit && billDueDate ? parseInt(billDueDate.slice(8, 10)) : null;
+    const editedDueDay = isPaydayEdit ? 0 : isOneTimeEdit ? oneTimeDayEdit : parseInt(dueDay);
+
     setIsSaving(true);
     const { error } = await supabase
       .from("bills")
       .update({
         name: billName,
         amount: parseFloat(billAmount),
-        due_day: isPaydayEdit ? 0 : parseInt(dueDay),
+        due_day: editedDueDay,
+        due_date: isOneTimeEdit ? billDueDate : null,
         payment_method: paymentMethod,
         category: billCategory,
         owner: billOwner,
@@ -821,7 +841,8 @@ function Dashboard() {
               ...b,
               name: billName,
               amount: parseFloat(billAmount),
-              due_day: isPaydayEdit ? 0 : parseInt(dueDay),
+              due_day: editedDueDay,
+              due_date: isOneTimeEdit ? billDueDate : null,
               payment_method: paymentMethod,
               category: billCategory,
               owner: billOwner,
@@ -840,6 +861,7 @@ function Dashboard() {
     setBillName("");
     setBillAmount("");
     setDueDay("");
+    setBillDueDate("");
     setPaymentMethod("");
     setBillCategory("");
     setBillOwner("joint");
@@ -5320,8 +5342,20 @@ function Dashboard() {
                   <option value="payday">Every Pay Day</option>
                   <option value="quarterly">Quarterly</option>
                   <option value="annually">Annually</option>
+                  <option value="one-time">One-time payment</option>
                 </select>
-                {(billFrequency || "monthly") !== "payday" && (
+                {billFrequency === "one-time" && (
+                  <div style={{ display: "flex", alignItems: "center", background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "6px", padding: "0 12px" }}>
+                    <span style={{ color: "#8B8FA8", fontSize: "11px", textTransform: "uppercase", letterSpacing: "0.04em", whiteSpace: "nowrap", marginRight: "8px" }}>Date</span>
+                    <input
+                      type="date"
+                      value={billDueDate}
+                      onChange={(e) => setBillDueDate(e.target.value)}
+                      style={{ background: "none", border: "none", outline: "none", color: "#F2F0EB", padding: "8px 0", fontSize: "13px", fontFamily: "'Inter', sans-serif", width: "100%", colorScheme: "dark" }}
+                    />
+                  </div>
+                )}
+                {(billFrequency || "monthly") !== "payday" && billFrequency !== "one-time" && (
                   <div style={{ display: "flex", alignItems: "center", background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "6px", padding: "0 12px" }}>
                     <span style={{ color: "#8B8FA8", fontSize: "11px", textTransform: "uppercase", letterSpacing: "0.04em", whiteSpace: "nowrap", marginRight: "8px" }}>
                       {(billFrequency || "monthly") === "semi-monthly" ? "1st due" : "Due day"}
@@ -5475,6 +5509,7 @@ function Dashboard() {
               <div className="empty-state">No bills added yet</div>
             ) : (
               [...bills]
+                .filter((b) => !isOneTimeBillDone(b))
                 .sort((a, b) => {
                   const aPaid = !isBillDue(a) ? 1 : 0;
                   const bPaid = !isBillDue(b) ? 1 : 0;
@@ -5504,6 +5539,8 @@ function Dashboard() {
                               : freq === "biweekly" ? "Biweekly"
                               : freq === "quarterly" ? "Quarterly"
                               : freq === "annually" ? "Annually"
+                              : freq === "one-time"
+                                ? `One-time · ${bill.due_date ? new Date(bill.due_date + "T12:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric" }) : "no date"}`
                               : freq === "semi-monthly" && bill.due_day_2
                                 ? `Due the ${bill.due_day}${getSuffix(bill.due_day)} & ${bill.due_day_2}${getSuffix(bill.due_day_2)}`
                                 : `Due the ${bill.due_day}${getSuffix(bill.due_day)}`;
@@ -5569,6 +5606,7 @@ function Dashboard() {
                                 setBillFrequency(bill.frequency || "monthly");
                                 setBillDueDay2(bill.due_day_2 || "");
                                 setBillDueMonth(bill.due_month || "");
+                                setBillDueDate(bill.due_date || "");
                               }
                             }}
                             style={{ background: "none", border: "1px solid rgba(255,255,255,0.15)", color: "#8B8FA8", padding: "4px 10px", borderRadius: "6px", cursor: "pointer", fontSize: "11px", fontFamily: "'Inter', sans-serif", whiteSpace: "nowrap" }}
@@ -5650,8 +5688,20 @@ function Dashboard() {
                             <option value="payday">Every Pay Day</option>
                             <option value="quarterly">Quarterly</option>
                             <option value="annually">Annually</option>
+                            <option value="one-time">One-time payment</option>
                           </select>
-                          {(billFrequency || "monthly") !== "payday" && (
+                          {billFrequency === "one-time" && (
+                            <div style={{ display: "flex", alignItems: "center", background: "#2D2B45", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "6px", padding: "0 12px" }}>
+                              <span style={{ color: "#8B8FA8", fontSize: "11px", textTransform: "uppercase", letterSpacing: "0.04em", whiteSpace: "nowrap", marginRight: "8px" }}>Date</span>
+                              <input
+                                type="date"
+                                value={billDueDate}
+                                onChange={(e) => setBillDueDate(e.target.value)}
+                                style={{ background: "none", border: "none", outline: "none", color: "#F0F6FC", padding: "8px 0", fontSize: "13px", fontFamily: "'Inter', sans-serif", width: "100%", colorScheme: "dark" }}
+                              />
+                            </div>
+                          )}
+                          {(billFrequency || "monthly") !== "payday" && billFrequency !== "one-time" && (
                             <div style={{ display: "flex", alignItems: "center", background: "#2D2B45", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "6px", padding: "0 12px" }}>
                               <span style={{ color: "#8B8FA8", fontSize: "11px", textTransform: "uppercase", letterSpacing: "0.04em", whiteSpace: "nowrap", marginRight: "8px" }}>
                                 {(billFrequency || "monthly") === "semi-monthly" ? "1st due" : "Due day"}

@@ -353,3 +353,40 @@ import { isBillFullyPaid, getBillPeriodCost } from "../src/index.js";
 }
 
 console.log("✓ custom-amount payment tests passed");
+
+// ── One-time payments land in exactly one period, then finish when paid ───────
+import { isBillDueInPeriod, isOneTimeBillDone } from "../src/index.js";
+{
+  // A $400 car repair dated Jul 20 — inside the Jul 16-29 period only.
+  const repair = { id: "repair", name: "Car Repair", amount: 400, frequency: "one-time", due_date: "2026-07-20", account_id: "billsacct" };
+  const oneTimeCtx = { ...ctx, bills: [...bills, repair] };
+  const otRows = enrichBreakdown(getPayPeriodBreakdown(oneTimeCtx), oneTimeCtx);
+
+  const inPeriod = (row) => row.bills.some((b) => b.id === "repair");
+  assert.ok(!inPeriod(otRows[0]), "one-time bill NOT in the Jul 2-15 period");
+  assert.ok(inPeriod(otRows[1]), "one-time bill IS in the Jul 16-29 period (contains Jul 20)");
+  assert.ok(!inPeriod(otRows[2]), "one-time bill NOT in the Jul 30-Aug 12 period");
+
+  // It adds its amount to that period's bills total, exactly once.
+  const baseRows = enrichBreakdown(getPayPeriodBreakdown(ctx), ctx);
+  assert.equal(
+    Number((otRows[1].billsDeducted - baseRows[1].billsDeducted).toFixed(2)),
+    400,
+    "one-time bill adds its full amount to its period's Bills Remaining"
+  );
+
+  // A one-time bill with no date lands nowhere (guards against orphans).
+  const noDate = { ...repair, due_date: null };
+  const pStart = new Date("2026-07-16T00:00:00");
+  const pEnd = new Date("2026-07-29T23:59:59");
+  assert.ok(!isBillDueInPeriod(noDate, pStart, pEnd), "dateless one-time bill lands in no period");
+
+  // Once paid, it's done — drops off the active Bills list.
+  assert.ok(!isOneTimeBillDone(repair, {}), "unpaid one-time bill is not done");
+  assert.ok(
+    isOneTimeBillDone(repair, { "repair-2026-07-16": { is_paid: true, paid_amount: 400 } }),
+    "paid one-time bill is done"
+  );
+}
+
+console.log("✓ one-time payment tests passed");

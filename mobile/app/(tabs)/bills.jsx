@@ -5,11 +5,12 @@ import {
 } from "react-native";
 import { SafeAreaView, SafeAreaProvider } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
-import { ordinalSuffix } from "@stryde/shared";
+import { ordinalSuffix, isOneTimeBillDone } from "@stryde/shared";
 import { supabase } from "../../src/supabase";
 import { useStrydeData } from "../../src/useStrydeData";
 import { Panel, Money, Empty, Pill, Divider, dataGate } from "../../src/ui";
 import { Field, Input, MoneyInput, Select, Toggle, Btn, FormError, MONTHS, DAYS } from "../../src/form";
+import { DateField } from "../../src/DateField";
 import { c } from "../../src/theme";
 
 const FREQUENCIES = [
@@ -19,6 +20,7 @@ const FREQUENCIES = [
   { label: "Semi-monthly", value: "semi-monthly" },
   { label: "Quarterly", value: "quarterly" },
   { label: "Annually", value: "annually" },
+  { label: "One-time payment", value: "one-time" },
 ];
 
 const OWNERS = [
@@ -29,7 +31,7 @@ const OWNERS = [
 
 const blank = {
   name: "", amount: "", frequency: "monthly", due_day: null, due_day_2: null,
-  due_month: null, account_id: null, category: "", owner: "joint",
+  due_month: null, due_date: "", account_id: null, category: "", owner: "joint",
   payment_method: "", transfer_to_account_id: null, is_variable: false,
 };
 
@@ -37,6 +39,12 @@ export function freqLabel(b) {
   const f = b.frequency || "monthly";
   if (f === "payday") return "Every Pay Day";
   if (f === "biweekly") return "Biweekly";
+  if (f === "one-time") {
+    const dt = b.due_date
+      ? new Date(b.due_date + "T12:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric" })
+      : "no date";
+    return `One-time · ${dt}`;
+  }
   if (f === "quarterly") {
     const m = MONTHS.find((x) => x.value === b.due_month)?.label;
     return `Quarterly${m ? ` from ${m}` : ""}${b.due_day ? ` · ${b.due_day}${ordinalSuffix(b.due_day)}` : ""}`;
@@ -61,7 +69,7 @@ export default function Bills() {
   const gate = dataGate(d);
   if (gate) return gate;
 
-  const active = d.bills.filter((b) => b.is_active !== false);
+  const active = d.bills.filter((b) => b.is_active !== false && !isOneTimeBillDone(b, d.billPayments));
   const total = active.reduce((sum, b) => sum + (b.amount || 0), 0);
   const acctName = (id) => d.accounts.find((a) => a.id === id)?.name;
 
@@ -90,6 +98,7 @@ export default function Bills() {
       due_day: b.due_day || null,
       due_day_2: b.due_day_2 || null,
       due_month: b.due_month || null,
+      due_date: b.due_date || "",
       account_id: b.account_id || null,
       category: b.category || "",
       owner: b.owner || "joint",
@@ -104,8 +113,12 @@ export default function Bills() {
   // Mirrors the web app's validation exactly.
   function validate() {
     const isPayday = form.frequency === "payday";
-    if (!form.name || !form.amount || (!isPayday && !form.due_day) || !form.account_id) {
+    const isOneTime = form.frequency === "one-time";
+    if (!form.name || !form.amount || (!isPayday && !isOneTime && !form.due_day) || !form.account_id) {
       return "Please fill in all required fields.";
+    }
+    if (isOneTime && !form.due_date) {
+      return "Pick the date for this one-time payment.";
     }
     if (form.frequency === "semi-monthly" && !form.due_day_2) {
       return "Semi-monthly bills require a second due day.";
@@ -123,10 +136,14 @@ export default function Bills() {
     setSaving(true);
 
     const isPayday = form.frequency === "payday";
+    const isOneTime = form.frequency === "one-time";
+    // One-time bills store the full date; due_day (NOT NULL) mirrors its day.
+    const oneTimeDay = isOneTime && form.due_date ? parseInt(form.due_date.slice(8, 10)) : null;
     const payload = {
       name: form.name,
       amount: parseFloat(form.amount),
-      due_day: isPayday ? 0 : parseInt(form.due_day),
+      due_day: isPayday ? 0 : isOneTime ? oneTimeDay : parseInt(form.due_day),
+      due_date: isOneTime ? form.due_date : null,
       payment_method: form.payment_method || null,
       category: form.category || null,
       owner: form.owner,
@@ -176,6 +193,7 @@ export default function Bills() {
   }
 
   const isPayday = form.frequency === "payday";
+  const isOneTime = form.frequency === "one-time";
   const needsMonth = form.frequency === "quarterly" || form.frequency === "annually";
 
   return (
@@ -257,7 +275,13 @@ export default function Bills() {
                 />
               </Field>
 
-              {!isPayday && (
+              {isOneTime && (
+                <Field label="Date" required hint="This payment lands in the pay period containing this date.">
+                  <DateField value={form.due_date} onChange={(v) => setForm({ ...form, due_date: v })} />
+                </Field>
+              )}
+
+              {!isPayday && !isOneTime && (
                 <Field
                   label={form.frequency === "semi-monthly" ? "First Due Day" : "Due Day"}
                   required

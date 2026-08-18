@@ -83,7 +83,8 @@ create table bills (
   amount numeric(10,2) not null,
   due_day integer not null,
   due_day_2 integer,                 -- second due day for semi-monthly bills
-  frequency text not null default 'monthly',  -- 'monthly' | 'semi-monthly' | 'biweekly' | 'quarterly' | 'annually'
+  due_date date,                     -- exact date for a one-time payment (frequency = 'one-time')
+  frequency text not null default 'monthly',  -- 'monthly' | 'semi-monthly' | 'biweekly' | 'quarterly' | 'annually' | 'one-time'
   payment_method text not null,
   category text not null,
   owner text not null default 'joint',

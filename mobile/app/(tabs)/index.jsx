@@ -397,6 +397,8 @@ function BillRow({ bill, periodKey, d, run, carryOver }) {
             ? "Every Pay Day"
             : freq === "biweekly"
               ? "Biweekly"
+              : freq === "one-time"
+                ? `One-time · ${bill.due_date ? new Date(bill.due_date + "T12:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric" }) : "no date"}`
               : bill.due_day
                 ? `Due the ${bill.due_day}${ordinalSuffix(bill.due_day)}`
                 : "";
