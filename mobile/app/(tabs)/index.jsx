@@ -1,10 +1,12 @@
 import { useState } from "react";
-import { View, Text, ScrollView, Pressable, RefreshControl, Alert, TextInput, StyleSheet } from "react-native";
+import { View, Text, ScrollView, Pressable, RefreshControl, Alert, TextInput, StyleSheet, Share } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
+import * as Clipboard from "expo-clipboard";
 import {
   fmtDate, getBillsToTransfer, getPeriodTransferGroups, getCarryOverBills,
   isBillPaidInPeriod, getBillPaidAmount, ordinalSuffix, canMarkIncomeReceived,
+  buildFinancialSummary,
 } from "@stryde/shared";
 import {
   useStrydeData, markBillPaid, undoBillPaid, skipBill, restoreBill,
@@ -54,6 +56,26 @@ export default function Dashboard() {
     }
   }
 
+  // Export a summary of the household's finances for AI planning or records.
+  function exportSummary() {
+    const { markdown, csv } = buildFinancialSummary({
+      accounts: d.accounts, income: d.income, bills: d.bills, debts: d.debts,
+      rows: d.rows, snapshot: d.projection, generatedAt: new Date(),
+    });
+    Alert.alert("Export financial summary", "For AI planning, paste into Claude or ChatGPT. CSV opens in a spreadsheet.", [
+      {
+        text: "Copy for AI",
+        onPress: async () => {
+          await Clipboard.setStringAsync(markdown);
+          Alert.alert("Copied", "Paste it into Claude or ChatGPT and ask for help planning.");
+        },
+      },
+      { text: "Share summary", onPress: () => Share.share({ message: markdown }) },
+      { text: "Share CSV", onPress: () => Share.share({ message: csv }) },
+      { text: "Cancel", style: "cancel" },
+    ]);
+  }
+
   const greeting = () => {
     const h = new Date().getHours();
     return h < 12 ? "Good morning" : h < 18 ? "Good afternoon" : "Good evening";
@@ -80,6 +102,10 @@ export default function Dashboard() {
               {new Date().toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })}
             </Text>
           </View>
+          <Pressable onPress={exportSummary} style={s.exportBtn} hitSlop={8}>
+            <Ionicons name="share-outline" size={16} color={c.accent} />
+            <Text style={s.exportText}>Export</Text>
+          </Pressable>
         </View>
 
         <Text style={s.pageTitle}>Monthly Projection</Text>
@@ -510,6 +536,12 @@ const s = StyleSheet.create({
   greeting: { color: c.text, fontSize: 17, fontWeight: "700" },
   date: { color: c.textMuted, fontSize: 12, marginTop: 1 },
   pageTitle: { color: c.text, fontSize: 22, fontWeight: "700", marginBottom: 12 },
+  exportBtn: {
+    flexDirection: "row", alignItems: "center", gap: 5,
+    paddingHorizontal: 10, paddingVertical: 7, borderRadius: 8,
+    backgroundColor: "rgba(108,99,255,0.12)", borderWidth: 1, borderColor: "rgba(108,99,255,0.35)",
+  },
+  exportText: { color: c.accent, fontSize: 12, fontWeight: "700" },
   tileRow: { flexDirection: "row", gap: 8 },
   rowBetween: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
   periodTitle: { color: c.text, fontSize: 14, fontWeight: "600" },

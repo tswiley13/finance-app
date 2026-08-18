@@ -390,3 +390,32 @@ import { isBillDueInPeriod, isOneTimeBillDone } from "../src/index.js";
 }
 
 console.log("✓ one-time payment tests passed");
+
+// ── Financial summary export (markdown + csv) ────────────────────────────────
+import { buildFinancialSummary } from "../src/index.js";
+{
+  const summary = buildFinancialSummary({
+    accounts,
+    income,
+    bills: [...bills, { id: "repair", name: "Car Repair", amount: 400, frequency: "one-time", due_date: "2026-07-20", account_id: "billsacct" }],
+    debts: [{ id: "cc", name: "Visa", balance: 1200, interest_rate: 0.199, minimum_payment: 35, is_paid_off: false }],
+    rows,
+    snapshot: getMonthlyProjection(rows, ctx),
+    generatedAt: "2026-07-09",
+  });
+
+  assert.ok(summary.markdown.includes("# Stryde Financial Summary"), "markdown has a title");
+  assert.ok(summary.markdown.includes("## Accounts") && summary.markdown.includes("## Debts"), "markdown has sections");
+  assert.ok(summary.markdown.includes("Spending") && summary.markdown.includes("Visa"), "markdown lists real records");
+  assert.ok(summary.markdown.includes("Car Repair"), "one-time bill appears under upcoming payments");
+  assert.ok(/Available now:/.test(summary.markdown), "snapshot present");
+
+  // CSV: header + one row per record, quoting fields that contain commas.
+  const lines = summary.csv.split("\n");
+  assert.equal(lines[0], "Category,Name,Amount,Detail,Balance", "csv header");
+  assert.ok(lines.some((l) => l.startsWith("Account,Spending,")), "csv has account rows");
+  assert.ok(lines.some((l) => l.startsWith("Debt,Visa,")), "csv has debt rows");
+  assert.ok(lines.length > 6, "csv has multiple line items");
+}
+
+console.log("✓ financial summary export tests passed");

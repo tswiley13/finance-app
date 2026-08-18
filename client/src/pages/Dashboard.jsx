@@ -1,5 +1,6 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
+import { buildFinancialSummary } from "../financialSummary";
 import { usePlaidLink } from "react-plaid-link";
 import { supabase } from "../supabase";
 import { QRCodeSVG as QRCode } from "qrcode.react";
@@ -20,6 +21,10 @@ import {
   Menu,
   X,
   RefreshCw,
+  Download,
+  Copy,
+  FileText,
+  Table,
 } from "lucide-react";
 
 const css = `
@@ -278,6 +283,11 @@ function Dashboard() {
   const [billFrequency, setBillFrequency] = useState("");
   const [billDueDay2, setBillDueDay2] = useState("");
   const [billDueDate, setBillDueDate] = useState(""); // exact date for a one-time payment
+  // Latest dashboard projection, captured during render so Export can reuse the
+  // exact numbers shown on the tiles (no re-deriving the pay-period chain).
+  const exportRef = useRef({ rows: [], snapshot: null });
+  const [showExportMenu, setShowExportMenu] = useState(false);
+  const [exportToast, setExportToast] = useState("");
   const [billDueMonth, setBillDueMonth] = useState("");
   const [quickEditBillAmountId, setQuickEditBillAmountId] = useState(null);
   const [quickEditBillAmountVal, setQuickEditBillAmountVal] = useState("");
@@ -872,6 +882,46 @@ function Dashboard() {
     setBillFrequency("monthly");
     setBillDueDay2("");
     setIsSaving(false);
+  }
+
+  // ── Export: a downloadable / copyable financial summary for AI planning ──────
+  const exportItemStyle = { display: "flex", alignItems: "center", gap: "10px", width: "100%", textAlign: "left", background: "none", border: "none", padding: "9px 10px", borderRadius: "7px", cursor: "pointer", color: "#F0F6FC" };
+  const exportItemTitle = { fontSize: "13px", fontWeight: 600, fontFamily: "'Inter', sans-serif" };
+  const exportItemSub = { fontSize: "11px", color: "#8B8FA8", fontFamily: "'Inter', sans-serif", marginTop: "1px" };
+  function buildSummary() {
+    const { rows = [], snapshot = null } = exportRef.current || {};
+    return buildFinancialSummary({ accounts, income, bills, debts, rows, snapshot, generatedAt: new Date() });
+  }
+  function downloadFile(filename, text, mime) {
+    const blob = new Blob([text], { type: mime });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+  async function exportCopy() {
+    const { markdown } = buildSummary();
+    try {
+      await navigator.clipboard.writeText(markdown);
+      setExportToast("Summary copied — paste it into Claude or ChatGPT.");
+    } catch {
+      downloadFile("stryde-financial-summary.md", markdown, "text/markdown");
+      setExportToast("Clipboard blocked — downloaded the summary instead.");
+    }
+    setShowExportMenu(false);
+    setTimeout(() => setExportToast(""), 4000);
+  }
+  function exportMarkdown() {
+    downloadFile("stryde-financial-summary.md", buildSummary().markdown, "text/markdown");
+    setShowExportMenu(false);
+  }
+  function exportCsv() {
+    downloadFile("stryde-financial-summary.csv", buildSummary().csv, "text/csv");
+    setShowExportMenu(false);
   }
 
   async function deleteBill(billId) {
@@ -2131,19 +2181,64 @@ function Dashboard() {
       // Available This Month: what's left after this month's *unfunded* bills.
       const availableThisMonth = primaryBalance + monthIncome - monthBills + fundedThisPeriod;
 
+      // Snapshot for the Export feature — same numbers as the tiles below.
+      exportRef.current = {
+        rows,
+        snapshot: {
+          availableNow: primaryBalance,
+          incomeThisMonth: monthIncome,
+          billsRemaining: monthBills,
+          availableThisMonth,
+        },
+      };
+
       return (
         <div className="content-area">
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "20px" }}>
             <h2 style={{ fontFamily: "'Syne', sans-serif", fontSize: "24px", margin: 0 }}>Monthly Projection</h2>
-            <button
-              className="mobile-only"
-              onClick={() => window.location.reload()}
-              title="Reload"
-              style={{ display: "flex", alignItems: "center", justifyContent: "center", width: "34px", height: "34px", borderRadius: "8px", background: "none", border: "1px solid rgba(255,255,255,0.08)", color: "#8B8FA8", cursor: "pointer", flexShrink: 0 }}
-            >
-              <RefreshCw size={15} />
-            </button>
+            <div style={{ display: "flex", alignItems: "center", gap: "8px", position: "relative" }}>
+              <button
+                onClick={() => setShowExportMenu((v) => !v)}
+                title="Export a summary for AI planning"
+                style={{ display: "flex", alignItems: "center", gap: "6px", height: "34px", padding: "0 12px", borderRadius: "8px", background: "rgba(108,99,255,0.12)", border: "1px solid rgba(108,99,255,0.35)", color: "#A99DFF", cursor: "pointer", fontSize: "13px", fontFamily: "'Inter', sans-serif", fontWeight: 600, flexShrink: 0 }}
+              >
+                <Download size={14} /> Export
+              </button>
+              {showExportMenu && (
+                <>
+                  <div onClick={() => setShowExportMenu(false)} style={{ position: "fixed", inset: 0, zIndex: 40 }} />
+                  <div style={{ position: "absolute", top: "40px", right: 0, zIndex: 41, background: "#211F36", border: "1px solid rgba(255,255,255,0.12)", borderRadius: "10px", padding: "6px", minWidth: "240px", boxShadow: "0 12px 32px rgba(0,0,0,0.45)" }}>
+                    <div style={{ fontSize: "11px", color: "#8B8FA8", padding: "8px 10px 6px", letterSpacing: "0.04em", textTransform: "uppercase" }}>Financial summary</div>
+                    <button onClick={exportCopy} style={exportItemStyle}>
+                      <Copy size={15} style={{ color: "#A99DFF" }} />
+                      <div><div style={exportItemTitle}>Copy for AI</div><div style={exportItemSub}>Paste into Claude / ChatGPT</div></div>
+                    </button>
+                    <button onClick={exportMarkdown} style={exportItemStyle}>
+                      <FileText size={15} style={{ color: "#A99DFF" }} />
+                      <div><div style={exportItemTitle}>Download Markdown</div><div style={exportItemSub}>AI-ready .md briefing</div></div>
+                    </button>
+                    <button onClick={exportCsv} style={exportItemStyle}>
+                      <Table size={15} style={{ color: "#A99DFF" }} />
+                      <div><div style={exportItemTitle}>Download CSV</div><div style={exportItemSub}>Open in a spreadsheet</div></div>
+                    </button>
+                  </div>
+                </>
+              )}
+              <button
+                className="mobile-only"
+                onClick={() => window.location.reload()}
+                title="Reload"
+                style={{ display: "flex", alignItems: "center", justifyContent: "center", width: "34px", height: "34px", borderRadius: "8px", background: "none", border: "1px solid rgba(255,255,255,0.08)", color: "#8B8FA8", cursor: "pointer", flexShrink: 0 }}
+              >
+                <RefreshCw size={15} />
+              </button>
+            </div>
           </div>
+          {exportToast && (
+            <div style={{ marginBottom: "16px", padding: "10px 14px", borderRadius: "8px", background: "rgba(74,222,128,0.1)", border: "1px solid rgba(74,222,128,0.3)", color: "#4ADE80", fontSize: "13px", fontFamily: "'Inter', sans-serif" }}>
+              {exportToast}
+            </div>
+          )}
 
           {/* Monthly summary */}
           <div className="stat-row-4">
