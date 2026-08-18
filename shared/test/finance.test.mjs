@@ -419,3 +419,19 @@ import { buildFinancialSummary } from "../src/index.js";
 }
 
 console.log("✓ financial summary export tests passed");
+
+// ── Debt term / months-remaining → estimated payoff date in the export ───────
+{
+  const summary = buildFinancialSummary({
+    accounts, income, bills, rows,
+    debts: [{ id: "auto", name: "Auto Loan", balance: 18000, interest_rate: 0.069, minimum_payment: 420, term_months: 60, months_remaining: 5, is_paid_off: false }],
+    snapshot: getMonthlyProjection(rows, ctx),
+    generatedAt: "2026-07-09", // + 5 months → Dec 2026
+  });
+  assert.ok(/Est\. payoff/.test(summary.markdown), "debt table has a payoff column");
+  assert.ok(summary.markdown.includes("5 / 60"), "shows months remaining of term");
+  assert.ok(summary.markdown.includes("Dec 2026"), "payoff date = generated month + months remaining");
+  assert.ok(summary.csv.split("\n").some((l) => l.includes("payoff Dec 2026")), "csv debt row includes payoff date");
+}
+
+console.log("✓ debt payoff-date tests passed");

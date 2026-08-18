@@ -107,6 +107,8 @@ create table debts (
   balance numeric(10,2) not null,
   interest_rate numeric(5,4),        -- stored as decimal (e.g. 0.2499 = 24.99%)
   minimum_payment numeric(10,2),
+  term_months integer,               -- original loan term in months (loans, not revolving credit)
+  months_remaining integer,          -- months left until paid off; drives the estimated payoff date
   payoff_order integer,
   is_paid_off boolean default false,
   paid_off_date date,

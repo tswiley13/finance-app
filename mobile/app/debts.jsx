@@ -32,7 +32,17 @@ const CATEGORIES = [
 const blank = {
   name: "", balance: "", interest_rate: "", minimum_payment: "",
   owner: "joint", category: "credit_card", payoff_order: "",
+  term_months: "", months_remaining: "",
 };
+
+// Estimated payoff month = today + N months, as "Mon YYYY".
+function payoffMonthLabel(monthsRemaining) {
+  const m = parseInt(monthsRemaining);
+  if (!m || m <= 0) return "—";
+  const now = new Date();
+  const d = new Date(now.getFullYear(), now.getMonth() + m, 1);
+  return d.toLocaleDateString("en-US", { month: "short", year: "numeric" });
+}
 
 export default function Debts() {
   const d = useStrydeData();
@@ -59,6 +69,8 @@ export default function Debts() {
       owner: x.owner || "joint",
       category: x.category || "credit_card",
       payoff_order: x.payoff_order == null ? "" : String(x.payoff_order),
+      term_months: x.term_months == null ? "" : String(x.term_months),
+      months_remaining: x.months_remaining == null ? "" : String(x.months_remaining),
     });
     setError("");
     setEditing(x);
@@ -79,6 +91,8 @@ export default function Debts() {
       interest_rate: form.interest_rate ? parseFloat(form.interest_rate) / 100 : null,
       minimum_payment: parseFloat(form.minimum_payment),
       payoff_order: form.payoff_order ? parseInt(form.payoff_order) : null,
+      term_months: form.term_months ? parseInt(form.term_months) : null,
+      months_remaining: form.months_remaining ? parseInt(form.months_remaining) : null,
     };
 
     let dbError;
@@ -165,6 +179,11 @@ export default function Debts() {
                     {x.interest_rate ? ` · ${(x.interest_rate * 100).toFixed(2)}% APR` : ""}
                   </Text>
                   <Text style={s.faintSm}>Min ${(x.minimum_payment || 0).toFixed(2)}/mo</Text>
+                  {x.months_remaining > 0 && (
+                    <Text style={s.faintSm}>
+                      {x.months_remaining} mo left{x.term_months ? ` of ${x.term_months}` : ""} · payoff {payoffMonthLabel(x.months_remaining)}
+                    </Text>
+                  )}
                 </View>
                 <Money value={x.balance} color={c.danger} size={15} weight="600" />
                 <Ionicons name="chevron-forward" size={15} color={c.textDim} style={{ marginLeft: 8 }} />
@@ -236,6 +255,30 @@ export default function Debts() {
               <Field label="Category">
                 <Select value={form.category} onChange={(v) => setForm({ ...form, category: v })} options={CATEGORIES} />
               </Field>
+
+              {form.category !== "credit_card" && (
+                <>
+                  <Field label="Loan Term (months)" hint="The full length of the loan, e.g. 60.">
+                    <Input
+                      value={form.term_months}
+                      onChangeText={(t) => setForm({ ...form, term_months: t.replace(/[^0-9]/g, "") })}
+                      placeholder="60"
+                      keyboardType="number-pad"
+                    />
+                  </Field>
+                  <Field
+                    label="Months Remaining"
+                    hint={form.months_remaining > 0 ? `Estimated payoff: ${payoffMonthLabel(form.months_remaining)}` : "Drives the estimated payoff date."}
+                  >
+                    <Input
+                      value={form.months_remaining}
+                      onChangeText={(t) => setForm({ ...form, months_remaining: t.replace(/[^0-9]/g, "") })}
+                      placeholder="48"
+                      keyboardType="number-pad"
+                    />
+                  </Field>
+                </>
+              )}
 
               <Field label="Owner">
                 <Select value={form.owner} onChange={(v) => setForm({ ...form, owner: v })} options={OWNERS} />

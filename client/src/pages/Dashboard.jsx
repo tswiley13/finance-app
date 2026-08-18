@@ -346,6 +346,8 @@ function Dashboard() {
   const [debtBalance, setDebtBalance] = useState("");
   const [debtInterestRate, setDebtInterestRate] = useState("");
   const [debtMinPayment, setDebtMinPayment] = useState("");
+  const [debtTermMonths, setDebtTermMonths] = useState("");        // original loan term
+  const [debtMonthsRemaining, setDebtMonthsRemaining] = useState(""); // months left → payoff date
   const [debtPayoffOrder, setDebtPayoffOrder] = useState("");
   const [confirmDeleteDebtId, setConfirmDeleteDebtId] = useState(null);
   const [confirmPayoffDebtId, setConfirmPayoffDebtId] = useState(null);
@@ -1606,6 +1608,14 @@ function Dashboard() {
     setCategories(categories.filter((c) => c.id !== categoryId));
   }
 
+  // Estimated payoff month from "months remaining" (today + N months).
+  function payoffDateLabel(months, from = new Date()) {
+    const m = parseInt(months);
+    if (!m || m <= 0) return "—";
+    const dt = new Date(from.getFullYear(), from.getMonth() + m, 1);
+    return dt.toLocaleDateString("en-US", { month: "short", year: "numeric" });
+  }
+
   async function addDebt() {
     if (isSaving) return;
     if (!debtName || !debtBalance || !debtMinPayment) {
@@ -1628,6 +1638,8 @@ function Dashboard() {
           ? parseFloat(debtInterestRate) / 100
           : null,
         minimum_payment: parseFloat(debtMinPayment),
+        term_months: debtTermMonths ? parseInt(debtTermMonths) : null,
+        months_remaining: debtMonthsRemaining ? parseInt(debtMonthsRemaining) : null,
         payoff_order: debtPayoffOrder ? parseInt(debtPayoffOrder) : null,
         is_paid_off: false,
       })
@@ -1646,6 +1658,8 @@ function Dashboard() {
     setDebtBalance("");
     setDebtInterestRate("");
     setDebtMinPayment("");
+    setDebtTermMonths("");
+    setDebtMonthsRemaining("");
     setDebtPayoffOrder("");
     setShowDebtForm(false);
     setIsSaving(false);
@@ -1669,6 +1683,8 @@ function Dashboard() {
           ? parseFloat(debtInterestRate) / 100
           : null,
         minimum_payment: parseFloat(debtMinPayment),
+        term_months: debtTermMonths ? parseInt(debtTermMonths) : null,
+        months_remaining: debtMonthsRemaining ? parseInt(debtMonthsRemaining) : null,
         payoff_order: debtPayoffOrder ? parseInt(debtPayoffOrder) : null,
       })
       .eq("id", editingDebt.id);
@@ -1691,6 +1707,8 @@ function Dashboard() {
                 ? parseFloat(debtInterestRate) / 100
                 : null,
               minimum_payment: parseFloat(debtMinPayment),
+              term_months: debtTermMonths ? parseInt(debtTermMonths) : null,
+              months_remaining: debtMonthsRemaining ? parseInt(debtMonthsRemaining) : null,
               payoff_order: debtPayoffOrder ? parseInt(debtPayoffOrder) : null,
             }
           : d,
@@ -1704,6 +1722,8 @@ function Dashboard() {
     setDebtBalance("");
     setDebtInterestRate("");
     setDebtMinPayment("");
+    setDebtTermMonths("");
+    setDebtMonthsRemaining("");
     setDebtPayoffOrder("");
     setIsSaving(false);
   }
@@ -3019,7 +3039,18 @@ function Dashboard() {
                 <input type="number" placeholder="Current balance" value={debtBalance} onChange={(e) => setDebtBalance(e.target.value)} style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", color: "#F2F0EB", padding: "8px 12px", borderRadius: "6px", fontSize: "13px", fontFamily: "'Inter', sans-serif" }} />
                 <input type="number" placeholder="Minimum payment" value={debtMinPayment} onChange={(e) => setDebtMinPayment(e.target.value)} style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", color: "#F2F0EB", padding: "8px 12px", borderRadius: "6px", fontSize: "13px", fontFamily: "'Inter', sans-serif" }} />
                 <input type="number" placeholder="Interest rate (e.g. 24.99)" value={debtInterestRate} onChange={(e) => setDebtInterestRate(e.target.value)} style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", color: "#F2F0EB", padding: "8px 12px", borderRadius: "6px", fontSize: "13px", fontFamily: "'Inter', sans-serif" }} />
+                {debtCategory !== "Credit Card" && (
+                  <>
+                    <input type="number" placeholder="Loan term (months)" value={debtTermMonths} onChange={(e) => setDebtTermMonths(e.target.value)} style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", color: "#F2F0EB", padding: "8px 12px", borderRadius: "6px", fontSize: "13px", fontFamily: "'Inter', sans-serif" }} />
+                    <input type="number" placeholder="Months remaining" value={debtMonthsRemaining} onChange={(e) => setDebtMonthsRemaining(e.target.value)} style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", color: "#F2F0EB", padding: "8px 12px", borderRadius: "6px", fontSize: "13px", fontFamily: "'Inter', sans-serif" }} />
+                  </>
+                )}
               </div>
+              {debtCategory !== "Credit Card" && debtMonthsRemaining > 0 && (
+                <div style={{ fontSize: "12px", color: "#8B8FA8", marginTop: "8px" }}>
+                  Estimated payoff: <span style={{ color: "#A99DFF", fontWeight: 600 }}>{payoffDateLabel(debtMonthsRemaining)}</span>
+                </div>
+              )}
               <div style={{ display: "flex", gap: "8px", marginTop: "12px" }}>
                 <button onClick={addDebt} disabled={isSaving} style={{ background: isSaving ? "#4a4470" : "#6C63FF", border: "none", color: "#F0F6FC", padding: "8px 16px", borderRadius: "6px", cursor: isSaving ? "not-allowed" : "pointer", fontSize: "13px", fontWeight: "600", fontFamily: "'Inter', sans-serif" }}>{isSaving ? "Saving..." : "Add Debt"}</button>
                 <button onClick={() => setShowDebtForm(false)} style={{ background: "none", border: "1px solid rgba(255,255,255,0.1)", color: "#8B8FA8", padding: "8px 16px", borderRadius: "6px", cursor: "pointer", fontSize: "13px", fontFamily: "'Inter', sans-serif" }}>Cancel</button>
@@ -3062,6 +3093,8 @@ function Dashboard() {
                         {debt.category} · {debt.owner}
                         {debt.interest_rate &&
                           ` · ${(debt.interest_rate * 100).toFixed(2)}% APR`}
+                        {debt.months_remaining > 0 &&
+                          ` · ${debt.months_remaining} mo left${debt.term_months ? ` of ${debt.term_months}` : ""} · payoff ${payoffDateLabel(debt.months_remaining)}`}
                       </div>
                     </div>
                     <div
@@ -3099,6 +3132,8 @@ function Dashboard() {
                                 : "",
                             );
                             setDebtMinPayment(debt.minimum_payment);
+                            setDebtTermMonths(debt.term_months || "");
+                            setDebtMonthsRemaining(debt.months_remaining || "");
                             setDebtPayoffOrder(debt.payoff_order || "");
                           }
                         }}
@@ -3334,7 +3369,30 @@ function Dashboard() {
                             fontFamily: "'Inter', sans-serif",
                           }}
                         />
+                        {debtCategory !== "Credit Card" && (
+                          <>
+                            <input
+                              type="number"
+                              placeholder="Loan term (months)"
+                              value={debtTermMonths}
+                              onChange={(e) => setDebtTermMonths(e.target.value)}
+                              style={{ background: "#2D2B45", border: "1px solid rgba(255,255,255,0.1)", color: "#F0F6FC", padding: "8px 12px", borderRadius: "6px", fontSize: "13px", fontFamily: "'Inter', sans-serif" }}
+                            />
+                            <input
+                              type="number"
+                              placeholder="Months remaining"
+                              value={debtMonthsRemaining}
+                              onChange={(e) => setDebtMonthsRemaining(e.target.value)}
+                              style={{ background: "#2D2B45", border: "1px solid rgba(255,255,255,0.1)", color: "#F0F6FC", padding: "8px 12px", borderRadius: "6px", fontSize: "13px", fontFamily: "'Inter', sans-serif" }}
+                            />
+                          </>
+                        )}
                       </div>
+                      {debtCategory !== "Credit Card" && debtMonthsRemaining > 0 && (
+                        <div style={{ fontSize: "12px", color: "#8B8FA8", marginTop: "8px" }}>
+                          Estimated payoff: <span style={{ color: "#A99DFF", fontWeight: 600 }}>{payoffDateLabel(debtMonthsRemaining)}</span>
+                        </div>
+                      )}
                       <div
                         style={{
                           display: "flex",
