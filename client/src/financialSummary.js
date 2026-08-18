@@ -26,16 +26,20 @@ function fmtShort(dateStr) {
   return `${MONTHS_SHORT[d.getMonth()]} ${d.getDate()}`;
 }
 
+// True monthly average of a recurring amount. Biweekly = 26 checks/yr ÷ 12
+// (NOT ×2 — that drops the two extra-paycheck months a biweekly earner gets
+// each year, understating annual income by a full check).
 function incomePerMonth(i) {
   const f = i.frequency;
-  const m = f === "biweekly" ? 2 : f === "weekly" ? 4 : f === "semi-monthly" ? 2 : 1;
+  const m = f === "biweekly" ? 26 / 12 : f === "weekly" ? 52 / 12 : f === "semi-monthly" ? 2 : 1;
   return (i.fixed_amount || 0) * m;
 }
 function billPerMonth(b) {
   const f = b.frequency || "monthly";
   if (f === "one-time") return 0;
   const m =
-    f === "payday" || f === "biweekly" ? 2 :
+    f === "payday" || f === "biweekly" ? 26 / 12 :
+    f === "weekly" ? 52 / 12 :
     f === "semi-monthly" ? 2 :
     f === "quarterly" ? 1 / 3 :
     f === "annually" ? 1 / 12 : 1;
@@ -105,8 +109,10 @@ export function buildFinancialSummary({
   md.push(`- **Total across accounts:** ${fmtMoney(totalAccounts)}`);
   md.push(`- **Total debt (open):** ${fmtMoney(totalDebt)}`);
   md.push(`- **Net position:** ${fmtMoney(totalAccounts - totalDebt)}`);
-  md.push(`- **Recurring monthly income:** ${fmtMoney(monthlyIncome)}`);
-  md.push(`- **Recurring monthly bills:** ${fmtMoney(monthlyBills)}`);
+  md.push(`- **Recurring monthly income (avg):** ${fmtMoney(monthlyIncome)}`);
+  md.push(`- **Recurring monthly bills (avg):** ${fmtMoney(monthlyBills)}`);
+  md.push("");
+  md.push("> **Important — this export covers scheduled income and bills only. It does NOT include discretionary/variable spending (groceries beyond a set amount, dining, shopping, fuel, subscriptions not listed, cash, etc.).** If recurring income minus recurring bills looks like a large surplus but account balances are low, that gap is real spending happening outside these categories. Please account for it before advising how much is free to save or pay toward debt — ask me for a spending estimate rather than assuming the surplus is available.");
   md.push("");
 
   md.push("## Accounts");
@@ -170,13 +176,14 @@ export function buildFinancialSummary({
 
   if (rows.length) {
     md.push("## Pay-period projection");
-    md.push("Each period: starting balance + income − bills = projected end balance.");
+    md.push("Each period: starting balance + income − bills = projected end balance. **This is a bills-only projection — it assumes $0 of discretionary spending, so the end balances are a ceiling, not a realistic forecast.** For the current period, bills already paid or pre-funded from a separate account aren't subtracted again, so its Bills figure may be lower than the total still due this period.");
     md.push("");
     md.push("| Period | Start | Income | Bills | End balance |");
     md.push("|---|---|---|---|---|");
     rows.forEach((r) => {
       const label = `${fmtShort(r.period.start_date)}–${fmtShort(r.period.end_date)}${r.isCurrent || r.isCurrentPeriod ? " (current)" : ""}`;
-      md.push(`| ${label} | ${fmtMoney(r.startBalance)} | ${fmtMoney(r.pendingIncome != null ? r.pendingIncome : r.income)} | ${fmtMoney(r.billsDeducted)} | ${fmtMoney(r.endBalance)} |`);
+      const billsOut = r.billsForEndBalance != null ? r.billsForEndBalance : r.billsDeducted;
+      md.push(`| ${label} | ${fmtMoney(r.startBalance)} | ${fmtMoney(r.pendingIncome != null ? r.pendingIncome : r.income)} | ${fmtMoney(billsOut)} | ${fmtMoney(r.endBalance)} |`);
     });
     md.push("");
   }
@@ -197,7 +204,8 @@ export function buildFinancialSummary({
   });
   rows.forEach((r) => {
     const label = `${fmtShort(r.period.start_date)}-${fmtShort(r.period.end_date)}${r.isCurrent || r.isCurrentPeriod ? " (current)" : ""}`;
-    csvRows.push(["Period", label, "", `start ${num(r.startBalance)}, income ${num(r.pendingIncome != null ? r.pendingIncome : r.income)}, bills ${num(r.billsDeducted)}`, num(r.endBalance)]);
+    const billsOut = r.billsForEndBalance != null ? r.billsForEndBalance : r.billsDeducted;
+    csvRows.push(["Period", label, "", `start ${num(r.startBalance)}, income ${num(r.pendingIncome != null ? r.pendingIncome : r.income)}, bills ${num(billsOut)}`, num(r.endBalance)]);
   });
   const csv = csvRows.map((row) => row.map(csvCell).join(",")).join("\n");
 

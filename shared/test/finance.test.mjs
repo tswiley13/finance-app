@@ -410,6 +410,19 @@ import { buildFinancialSummary } from "../src/index.js";
   assert.ok(summary.markdown.includes("Car Repair"), "one-time bill appears under upcoming payments");
   assert.ok(/Available now:/.test(summary.markdown), "snapshot present");
 
+  // Biweekly income averages 26/12, not ×2 (2977 * 26/12 = 6450.17).
+  assert.ok(summary.markdown.includes("$6,450.17"), "biweekly income averaged as 26/12, not doubled");
+  // Discretionary-spending blindness is called out so an AI won't treat surplus as free.
+  assert.ok(/discretionary/i.test(summary.markdown), "export warns it omits discretionary spending");
+
+  // Every projection row must reconcile: start + income - bills = end.
+  const projRows = enrichBreakdown(getPayPeriodBreakdown(ctx), ctx);
+  projRows.forEach((r) => {
+    const end = r.startBalance + (r.pendingIncome || 0) - (r.billsForEndBalance || 0);
+    assert.equal(Number(end.toFixed(2)), Number(r.endBalance.toFixed(2)),
+      `projection row ${r.period.start_date} reconciles start+income-bills=end`);
+  });
+
   // CSV: header + one row per record, quoting fields that contain commas.
   const lines = summary.csv.split("\n");
   assert.equal(lines[0], "Category,Name,Amount,Detail,Balance", "csv header");
