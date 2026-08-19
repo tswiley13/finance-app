@@ -448,3 +448,35 @@ console.log("✓ financial summary export tests passed");
 }
 
 console.log("✓ debt payoff-date tests passed");
+
+// ── Discretionary estimate, original balance, honest account labels ──────────
+{
+  const withDisc = buildFinancialSummary({
+    accounts: [
+      { id: "sp", name: "Spending", current_balance: 500, is_primary: true, account_type: "checking" },
+      { id: "sav", name: "Travis Savings", current_balance: 10, account_type: "savings" },
+      { id: "esc", name: "Mortgage", current_balance: 55, is_accumulating: true, accumulation_target: 2000, account_type: "savings" },
+    ],
+    income, bills, rows,
+    debts: [{ id: "auto", name: "Auto Loan", balance: 18000, original_balance: 30000, interest_rate: 0.069, minimum_payment: 420, term_months: 60, months_remaining: 40, is_paid_off: false }],
+    snapshot: getMonthlyProjection(rows, ctx),
+    generatedAt: "2026-07-09",
+    monthlyDiscretionary: 2500,
+  });
+  // Account labels must reflect the account's own type, not a "bills" guess.
+  assert.ok(withDisc.markdown.includes("| Travis Savings | $10.00 | savings |"), "savings account labeled savings, not bills");
+  assert.ok(/Mortgage \| \$55\.00 \| sinking fund/.test(withDisc.markdown), "accumulating account labeled sinking fund");
+  assert.ok(withDisc.markdown.includes("primary checking (spending)"), "primary labeled spending");
+  // Discretionary flows through and produces a free-cash line.
+  assert.ok(withDisc.markdown.includes("Self-reported discretionary spending:"), "discretionary shown");
+  assert.ok(/Estimated monthly free cash/.test(withDisc.markdown), "free-cash line present");
+  assert.ok(withDisc.csv.split("\n").some((l) => l.startsWith("Spending,Discretionary")), "csv has a discretionary row");
+  // Original balance appears in the debts table.
+  assert.ok(withDisc.markdown.includes("$30,000.00"), "original balance shown in debts");
+
+  // Without a discretionary estimate, the strong blindness warning stays.
+  const noDisc = buildFinancialSummary({ accounts, income, bills, debts: [], rows, snapshot: getMonthlyProjection(rows, ctx), generatedAt: "2026-07-09" });
+  assert.ok(/does NOT include discretionary/i.test(noDisc.markdown), "blindness warning present when no estimate given");
+}
+
+console.log("✓ planning-fields export tests passed");

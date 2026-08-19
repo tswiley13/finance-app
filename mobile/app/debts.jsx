@@ -30,7 +30,7 @@ const CATEGORIES = [
 ];
 
 const blank = {
-  name: "", balance: "", interest_rate: "", minimum_payment: "",
+  name: "", balance: "", original_balance: "", interest_rate: "", minimum_payment: "",
   owner: "joint", category: "credit_card", payoff_order: "",
   term_months: "", months_remaining: "",
 };
@@ -63,6 +63,7 @@ export default function Debts() {
     setForm({
       name: x.name || "",
       balance: x.balance == null ? "" : String(x.balance),
+      original_balance: x.original_balance == null ? "" : String(x.original_balance),
       // Stored as a decimal (0.199); shown as a percent (19.9).
       interest_rate: x.interest_rate == null ? "" : String((x.interest_rate * 100).toFixed(2)).replace(/\.00$/, ""),
       minimum_payment: x.minimum_payment == null ? "" : String(x.minimum_payment),
@@ -88,6 +89,7 @@ export default function Debts() {
       owner: form.owner,
       category: form.category,
       balance: parseFloat(form.balance),
+      original_balance: form.original_balance ? parseFloat(form.original_balance) : null,
       interest_rate: form.interest_rate ? parseFloat(form.interest_rate) / 100 : null,
       minimum_payment: parseFloat(form.minimum_payment),
       payoff_order: form.payoff_order ? parseInt(form.payoff_order) : null,
@@ -237,6 +239,10 @@ export default function Debts() {
 
               <Field label="Balance" required>
                 <MoneyInput value={form.balance} onChangeText={(t) => setForm({ ...form, balance: t })} />
+              </Field>
+
+              <Field label="Original Balance" hint="What the loan started at — helps model payoff. Optional.">
+                <MoneyInput value={form.original_balance} onChangeText={(t) => setForm({ ...form, original_balance: t })} />
               </Field>
 
               <Field label="Minimum Payment" required>

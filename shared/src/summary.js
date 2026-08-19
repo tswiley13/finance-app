@@ -56,10 +56,16 @@ function billCadence(b) {
   if (f === "annually") return "annually";
   return b.due_day ? `monthly (due ${b.due_day})` : "monthly";
 }
+// Honest label from the account's own type/flags — never guesses a "purpose"
+// it can't know (the old version labeled every non-primary account "bills").
 function acctKind(a) {
-  if (a.is_accumulating) return "savings/accumulating";
-  if (a.is_primary) return "primary/spending";
-  return "bills";
+  if (a.is_primary && !a.is_accumulating) return "primary checking (spending)";
+  if (a.is_accumulating) return a.accumulation_target ? "sinking fund (saving toward a target)" : "sinking fund";
+  const t = a.account_type;
+  if (t === "savings") return "savings";
+  if (t === "credit") return "credit";
+  if (t === "checking") return "checking";
+  return t || "account";
 }
 function pct(rate) {
   if (rate == null) return "";
@@ -77,7 +83,7 @@ function payoffLabel(monthsRemaining, fromISO) {
 
 export function buildFinancialSummary({
   accounts = [], income = [], bills = [], debts = [], rows = [],
-  snapshot = null, generatedAt = null,
+  snapshot = null, generatedAt = null, monthlyDiscretionary = null,
 } = {}) {
   const openDebts = debts.filter((d) => !d.is_paid_off);
   const recurringBills = bills.filter((b) => b.is_active !== false && (b.frequency || "monthly") !== "one-time");
@@ -88,6 +94,8 @@ export function buildFinancialSummary({
   const totalMinPayments = openDebts.reduce((s, d) => s + (d.minimum_payment || 0), 0);
   const monthlyIncome = income.filter((i) => i.is_active !== false).reduce((s, i) => s + incomePerMonth(i), 0);
   const monthlyBills = recurringBills.reduce((s, b) => s + billPerMonth(b), 0);
+  const disc = Number(monthlyDiscretionary) || 0;
+  const estFree = monthlyIncome - monthlyBills - disc;
   const genISO = generatedAt ? (typeof generatedAt === "string" ? generatedAt.slice(0, 10) : toISO(generatedAt)) : null;
   const genStr = genISO ? fmtDate(genISO) : "";
 
@@ -111,8 +119,14 @@ export function buildFinancialSummary({
   md.push(`- **Net position:** ${fmtMoney(totalAccounts - totalDebt)}`);
   md.push(`- **Recurring monthly income (avg):** ${fmtMoney(monthlyIncome)}`);
   md.push(`- **Recurring monthly bills (avg):** ${fmtMoney(monthlyBills)}`);
+  if (disc > 0) md.push(`- **Self-reported discretionary spending:** ${fmtMoney(disc)}/mo`);
+  md.push(`- **Estimated monthly free cash (income − bills${disc > 0 ? " − discretionary" : ""}):** ${fmtMoney(estFree)}`);
   md.push("");
-  md.push("> **Important — this export covers scheduled income and bills only. It does NOT include discretionary/variable spending (groceries beyond a set amount, dining, shopping, fuel, subscriptions not listed, cash, etc.).** If recurring income minus recurring bills looks like a large surplus but account balances are low, that gap is real spending happening outside these categories. Please account for it before advising how much is free to save or pay toward debt — ask me for a spending estimate rather than assuming the surplus is available.");
+  if (disc > 0) {
+    md.push(`> **Note:** discretionary spending above is a single self-reported estimate (${fmtMoney(disc)}/mo), not transaction data — it may not capture everything. Sanity-check the "free cash" figure against actual account balances before building a plan on it.`);
+  } else {
+    md.push("> **Important — this export covers scheduled income and bills only. It does NOT include discretionary/variable spending (groceries beyond a set amount, dining, shopping, fuel, subscriptions not listed, cash, etc.).** If recurring income minus recurring bills looks like a large surplus but account balances are low, that gap is real spending happening outside these categories. Please account for it before advising how much is free to save or pay toward debt — ask me for a spending estimate rather than assuming the surplus is available.");
+  }
   md.push("");
 
   md.push("## Accounts");
@@ -159,8 +173,8 @@ export function buildFinancialSummary({
 
   md.push("## Debts");
   if (openDebts.length) {
-    md.push("| Debt | Balance | APR | Min payment | Months left | Est. payoff |");
-    md.push("|---|---|---|---|---|---|");
+    md.push("| Debt | Balance | Original | APR | Min payment | Months left | Est. payoff |");
+    md.push("|---|---|---|---|---|---|---|");
     openDebts
       .slice()
       .sort((a, b) => (b.balance || 0) - (a.balance || 0))
@@ -168,9 +182,9 @@ export function buildFinancialSummary({
         const left = d.months_remaining > 0
           ? `${d.months_remaining}${d.term_months ? ` / ${d.term_months}` : ""}`
           : "—";
-        md.push(`| ${d.name} | ${fmtMoney(d.balance)} | ${pct(d.interest_rate) || "—"} | ${fmtMoney(d.minimum_payment)} | ${left} | ${payoffLabel(d.months_remaining, genISO) || "—"} |`);
+        md.push(`| ${d.name} | ${fmtMoney(d.balance)} | ${d.original_balance ? fmtMoney(d.original_balance) : "—"} | ${pct(d.interest_rate) || "—"} | ${fmtMoney(d.minimum_payment)} | ${left} | ${payoffLabel(d.months_remaining, genISO) || "—"} |`);
       });
-    md.push(`| **Total** | **${fmtMoney(totalDebt)}** | | **${fmtMoney(totalMinPayments)}** | | |`);
+    md.push(`| **Total** | **${fmtMoney(totalDebt)}** | | | **${fmtMoney(totalMinPayments)}** | | |`);
   } else md.push("_No open debts_ 🎉");
   md.push("");
 
@@ -197,11 +211,13 @@ export function buildFinancialSummary({
   oneTimeBills.forEach((b) => csvRows.push(["One-time bill", b.name, num(b.amount), b.due_date || "", ""]));
   openDebts.forEach((d) => {
     const parts = [`${pct(d.interest_rate)} APR`, `min ${num(d.minimum_payment)}`];
+    if (d.original_balance) parts.push(`orig ${num(d.original_balance)}`);
     if (d.months_remaining > 0) parts.push(`${d.months_remaining} mo left${d.term_months ? ` of ${d.term_months}` : ""}`);
     const payoff = payoffLabel(d.months_remaining, genISO);
     if (payoff) parts.push(`payoff ${payoff}`);
     csvRows.push(["Debt", d.name, "", parts.join(", "), num(d.balance)]);
   });
+  if (disc > 0) csvRows.push(["Spending", "Discretionary (self-reported)", num(disc), "average per month", ""]);
   rows.forEach((r) => {
     const label = `${fmtShort(r.period.start_date)}-${fmtShort(r.period.end_date)}${r.isCurrent || r.isCurrentPeriod ? " (current)" : ""}`;
     const billsOut = r.billsForEndBalance != null ? r.billsForEndBalance : r.billsDeducted;

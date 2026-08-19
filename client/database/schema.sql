@@ -9,6 +9,7 @@ create table households (
   id uuid default gen_random_uuid() primary key,
   name text not null,
   invite_code text,
+  monthly_discretionary numeric(10,2),  -- self-reported avg monthly discretionary spending (groceries beyond a set line, dining, shopping, etc.)
   created_by uuid references auth.users(id) on delete set null,
   created_at timestamp default now()
 );
@@ -105,6 +106,7 @@ create table debts (
   owner text not null,
   category text not null,
   balance numeric(10,2) not null,
+  original_balance numeric(10,2),    -- what the loan started at, for payoff/amortization modeling
   interest_rate numeric(5,4),        -- stored as decimal (e.g. 0.2499 = 24.99%)
   minimum_payment numeric(10,2),
   term_months integer,               -- original loan term in months (loans, not revolving credit)

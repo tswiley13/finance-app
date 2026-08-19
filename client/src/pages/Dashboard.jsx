@@ -346,6 +346,7 @@ function Dashboard() {
   const [debtBalance, setDebtBalance] = useState("");
   const [debtInterestRate, setDebtInterestRate] = useState("");
   const [debtMinPayment, setDebtMinPayment] = useState("");
+  const [debtOriginalBalance, setDebtOriginalBalance] = useState(""); // what the loan started at
   const [debtTermMonths, setDebtTermMonths] = useState("");        // original loan term
   const [debtMonthsRemaining, setDebtMonthsRemaining] = useState(""); // months left → payoff date
   const [debtPayoffOrder, setDebtPayoffOrder] = useState("");
@@ -892,7 +893,7 @@ function Dashboard() {
   const exportItemSub = { fontSize: "11px", color: "#8B8FA8", fontFamily: "'Inter', sans-serif", marginTop: "1px" };
   function buildSummary() {
     const { rows = [], snapshot = null } = exportRef.current || {};
-    return buildFinancialSummary({ accounts, income, bills, debts, rows, snapshot, generatedAt: new Date() });
+    return buildFinancialSummary({ accounts, income, bills, debts, rows, snapshot, generatedAt: new Date(), monthlyDiscretionary: household?.monthly_discretionary });
   }
   function downloadFile(filename, text, mime) {
     const blob = new Blob([text], { type: mime });
@@ -924,6 +925,11 @@ function Dashboard() {
   function exportCsv() {
     downloadFile("stryde-financial-summary.csv", buildSummary().csv, "text/csv");
     setShowExportMenu(false);
+  }
+  async function saveDiscretionary(val) {
+    const num = val === "" || val == null ? null : parseFloat(val);
+    setHousehold((h) => ({ ...h, monthly_discretionary: num }));
+    await supabase.from("households").update({ monthly_discretionary: num }).eq("id", household.id);
   }
 
   async function deleteBill(billId) {
@@ -1646,6 +1652,7 @@ function Dashboard() {
           ? parseFloat(debtInterestRate) / 100
           : null,
         minimum_payment: parseFloat(debtMinPayment),
+        original_balance: debtOriginalBalance ? parseFloat(debtOriginalBalance) : null,
         term_months: debtTermMonths ? parseInt(debtTermMonths) : null,
         months_remaining: debtMonthsRemaining ? parseInt(debtMonthsRemaining) : null,
         payoff_order: debtPayoffOrder ? parseInt(debtPayoffOrder) : null,
@@ -1666,6 +1673,7 @@ function Dashboard() {
     setDebtBalance("");
     setDebtInterestRate("");
     setDebtMinPayment("");
+    setDebtOriginalBalance("");
     setDebtTermMonths("");
     setDebtMonthsRemaining("");
     setDebtPayoffOrder("");
@@ -1691,6 +1699,7 @@ function Dashboard() {
           ? parseFloat(debtInterestRate) / 100
           : null,
         minimum_payment: parseFloat(debtMinPayment),
+        original_balance: debtOriginalBalance ? parseFloat(debtOriginalBalance) : null,
         term_months: debtTermMonths ? parseInt(debtTermMonths) : null,
         months_remaining: debtMonthsRemaining ? parseInt(debtMonthsRemaining) : null,
         payoff_order: debtPayoffOrder ? parseInt(debtPayoffOrder) : null,
@@ -1715,7 +1724,8 @@ function Dashboard() {
                 ? parseFloat(debtInterestRate) / 100
                 : null,
               minimum_payment: parseFloat(debtMinPayment),
-              term_months: debtTermMonths ? parseInt(debtTermMonths) : null,
+              original_balance: debtOriginalBalance ? parseFloat(debtOriginalBalance) : null,
+        term_months: debtTermMonths ? parseInt(debtTermMonths) : null,
               months_remaining: debtMonthsRemaining ? parseInt(debtMonthsRemaining) : null,
               payoff_order: debtPayoffOrder ? parseInt(debtPayoffOrder) : null,
             }
@@ -1730,6 +1740,7 @@ function Dashboard() {
     setDebtBalance("");
     setDebtInterestRate("");
     setDebtMinPayment("");
+    setDebtOriginalBalance("");
     setDebtTermMonths("");
     setDebtMonthsRemaining("");
     setDebtPayoffOrder("");
@@ -2291,6 +2302,23 @@ function Dashboard() {
               <div className="stat-label">Available This Month</div>
               <div className={`stat-amount ${availableThisMonth < 0 ? "negative" : "neutral"}`}>${fmt(availableThisMonth)}</div>
             </div>
+          </div>
+
+          <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap", marginBottom: "24px", padding: "12px 14px", background: "rgba(108,99,255,0.06)", border: "1px solid rgba(108,99,255,0.18)", borderRadius: "10px" }}>
+            <span style={{ fontSize: "13px", color: "#C9C6E0", fontWeight: 600 }}>Avg. monthly spending beyond bills</span>
+            <div style={{ display: "flex", alignItems: "center", background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: "6px", padding: "0 10px" }}>
+              <span style={{ color: "#8B8FA8", fontSize: "13px" }}>$</span>
+              <input
+                type="number"
+                placeholder="0"
+                defaultValue={household?.monthly_discretionary ?? ""}
+                onFocus={(e) => e.target.select()}
+                onBlur={(e) => saveDiscretionary(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter") e.target.blur(); }}
+                style={{ background: "none", border: "none", outline: "none", color: "#F2F0EB", padding: "7px 4px", fontSize: "13px", fontFamily: "'DM Mono', monospace", width: "90px" }}
+              />
+            </div>
+            <span style={{ fontSize: "12px", color: "#8B8FA8" }}>groceries beyond a set line, dining, shopping, fuel, cash — makes your AI export honest about what's actually free.</span>
           </div>
 
           <div className="dashboard-grid">
@@ -3050,6 +3078,7 @@ function Dashboard() {
                   {members.map((m, i) => <option key={i} value={m.name}>{m.name}</option>)}
                 </select>
                 <input type="number" placeholder="Current balance" value={debtBalance} onChange={(e) => setDebtBalance(e.target.value)} style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", color: "#F2F0EB", padding: "8px 12px", borderRadius: "6px", fontSize: "13px", fontFamily: "'Inter', sans-serif" }} />
+                <input type="number" placeholder="Original balance (optional)" value={debtOriginalBalance} onChange={(e) => setDebtOriginalBalance(e.target.value)} style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", color: "#F2F0EB", padding: "8px 12px", borderRadius: "6px", fontSize: "13px", fontFamily: "'Inter', sans-serif" }} />
                 <input type="number" placeholder="Minimum payment" value={debtMinPayment} onChange={(e) => setDebtMinPayment(e.target.value)} style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", color: "#F2F0EB", padding: "8px 12px", borderRadius: "6px", fontSize: "13px", fontFamily: "'Inter', sans-serif" }} />
                 <input type="number" placeholder="Interest rate (e.g. 24.99)" value={debtInterestRate} onChange={(e) => setDebtInterestRate(e.target.value)} style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", color: "#F2F0EB", padding: "8px 12px", borderRadius: "6px", fontSize: "13px", fontFamily: "'Inter', sans-serif" }} />
                 {debtCategory !== "Credit Card" && (
@@ -3145,6 +3174,7 @@ function Dashboard() {
                                 : "",
                             );
                             setDebtMinPayment(debt.minimum_payment);
+                            setDebtOriginalBalance(debt.original_balance || "");
                             setDebtTermMonths(debt.term_months || "");
                             setDebtMonthsRemaining(debt.months_remaining || "");
                             setDebtPayoffOrder(debt.payoff_order || "");
@@ -3342,6 +3372,21 @@ function Dashboard() {
                           placeholder="Current balance"
                           value={debtBalance}
                           onChange={(e) => setDebtBalance(e.target.value)}
+                          style={{
+                            background: "#2D2B45",
+                            border: "1px solid rgba(255,255,255,0.1)",
+                            color: "#F0F6FC",
+                            padding: "8px 12px",
+                            borderRadius: "6px",
+                            fontSize: "13px",
+                            fontFamily: "'Inter', sans-serif",
+                          }}
+                        />
+                        <input
+                          type="number"
+                          placeholder="Original balance (optional)"
+                          value={debtOriginalBalance}
+                          onChange={(e) => setDebtOriginalBalance(e.target.value)}
                           style={{
                             background: "#2D2B45",
                             border: "1px solid rgba(255,255,255,0.1)",

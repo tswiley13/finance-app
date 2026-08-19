@@ -3,6 +3,7 @@ import { View, Text, ScrollView, Pressable, RefreshControl, Alert, TextInput, St
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import * as Clipboard from "expo-clipboard";
+import { supabase } from "../../src/supabase";
 import {
   fmtDate, getBillsToTransfer, getPeriodTransferGroups, getCarryOverBills,
   isBillPaidInPeriod, getBillPaidAmount, ordinalSuffix, canMarkIncomeReceived,
@@ -56,11 +57,21 @@ export default function Dashboard() {
     }
   }
 
+  // Self-reported average monthly discretionary spending — feeds the export so
+  // an AI doesn't treat income-minus-bills as free cash.
+  async function saveDiscretionary(val) {
+    const cleaned = (val || "").replace(/[^0-9.]/g, "");
+    const num = cleaned === "" ? null : parseFloat(cleaned);
+    await supabase.from("households").update({ monthly_discretionary: isNaN(num) ? null : num }).eq("id", d.household.id);
+    d.reload();
+  }
+
   // Export a summary of the household's finances for AI planning or records.
   function exportSummary() {
     const { markdown, csv } = buildFinancialSummary({
       accounts: d.accounts, income: d.income, bills: d.bills, debts: d.debts,
       rows: d.rows, snapshot: d.projection, generatedAt: new Date(),
+      monthlyDiscretionary: d.household?.monthly_discretionary,
     });
     Alert.alert("Export financial summary", "For AI planning, paste into Claude or ChatGPT. CSV opens in a spreadsheet.", [
       {
@@ -119,6 +130,22 @@ export default function Dashboard() {
           <StatTile label="Bills Remaining" value={p.billsRemaining} negative />
           <StatTile label="Available This Month" value={p.availableThisMonth} negative={p.availableThisMonth < 0} />
         </View>
+
+        <View style={s.discRow}>
+          <Text style={s.discLabel}>Avg. spending beyond bills</Text>
+          <View style={s.discInputWrap}>
+            <Text style={{ color: c.textMuted, fontSize: 13 }}>$</Text>
+            <TextInput
+              defaultValue={d.household?.monthly_discretionary != null ? String(d.household.monthly_discretionary) : ""}
+              onEndEditing={(e) => saveDiscretionary(e.nativeEvent.text)}
+              keyboardType="decimal-pad"
+              placeholder="0"
+              placeholderTextColor={c.textDim}
+              style={s.discInput}
+            />
+          </View>
+        </View>
+        <Text style={s.discHint}>Groceries beyond a set line, dining, shopping, fuel, cash — makes your AI export honest about what's free.</Text>
 
         {/* Outstanding transfers for the CURRENT period — the one thing that's
             actually actionable right now, so it sits up top. Disappears once
@@ -542,6 +569,19 @@ const s = StyleSheet.create({
     backgroundColor: "rgba(108,99,255,0.12)", borderWidth: 1, borderColor: "rgba(108,99,255,0.35)",
   },
   exportText: { color: c.accent, fontSize: 12, fontWeight: "700" },
+  discRow: {
+    flexDirection: "row", alignItems: "center", justifyContent: "space-between",
+    marginTop: 14, padding: 12, borderRadius: 10,
+    backgroundColor: "rgba(108,99,255,0.06)", borderWidth: 1, borderColor: "rgba(108,99,255,0.18)",
+  },
+  discLabel: { color: "#C9C6E0", fontSize: 13, fontWeight: "600", flex: 1 },
+  discInputWrap: {
+    flexDirection: "row", alignItems: "center", gap: 2,
+    backgroundColor: "rgba(255,255,255,0.06)", borderWidth: 1, borderColor: "rgba(255,255,255,0.12)",
+    borderRadius: 6, paddingHorizontal: 10,
+  },
+  discInput: { color: c.text, fontSize: 14, fontFamily: mono, paddingVertical: 7, minWidth: 70, textAlign: "right" },
+  discHint: { color: c.textDim, fontSize: 11, marginTop: 6, lineHeight: 15 },
   tileRow: { flexDirection: "row", gap: 8 },
   rowBetween: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
   periodTitle: { color: c.text, fontSize: 14, fontWeight: "600" },
