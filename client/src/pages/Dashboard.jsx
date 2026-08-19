@@ -1181,6 +1181,13 @@ function Dashboard() {
 
         const freq = bill.frequency || "monthly";
 
+        // One-time: only in the single pay period containing its exact date.
+        if (freq === "one-time") {
+          if (!bill.due_date) return false;
+          const d = new Date(bill.due_date + "T12:00:00");
+          return d >= periodStart && d <= periodEnd;
+        }
+
         // Biweekly / Pay Day: appears in every pay period
         if (freq === "biweekly" || freq === "payday") return true;
 
@@ -1223,6 +1230,7 @@ function Dashboard() {
 
       const billActualDate = (bill) => {
         const freq = bill.frequency || "monthly";
+        if (freq === "one-time" && bill.due_date) return new Date(bill.due_date + "T12:00:00");
         if (freq === "payday" || freq === "biweekly") return periodStart;
         if (!bill.due_day) return periodEnd;
         const thisMonth = new Date(periodStart.getFullYear(), periodStart.getMonth(), bill.due_day);
@@ -2014,7 +2022,12 @@ function Dashboard() {
         carryOverBills = bills.filter(bill => {
           const freq = bill.frequency || "monthly";
           let due = false;
-          if (freq === "biweekly" || freq === "payday") due = true;
+          if (freq === "one-time") {
+            if (!bill.due_date) return false;
+            const d = new Date(bill.due_date + "T12:00:00");
+            due = d >= prevStart && d <= prevEnd;
+          }
+          else if (freq === "biweekly" || freq === "payday") due = true;
           else if (freq === "quarterly") {
             if (bill.due_month && bill.due_day) {
               const startMonth = bill.due_month - 1;
@@ -6204,8 +6217,10 @@ function Dashboard() {
                     if (nextIncomeDate) {
                       const freq = b.frequency || "monthly";
                       if (freq === "payday" || freq === "biweekly") return true; // payday bills always go with current check
-                      const dueDate = new Date(wtmgPStart.getFullYear(), wtmgPStart.getMonth(), b.due_day);
-                      if (dueDate < wtmgPStart) dueDate.setMonth(dueDate.getMonth() + 1);
+                      const dueDate = freq === "one-time" && b.due_date
+                        ? new Date(b.due_date + "T12:00:00")
+                        : new Date(wtmgPStart.getFullYear(), wtmgPStart.getMonth(), b.due_day);
+                      if (freq !== "one-time" && dueDate < wtmgPStart) dueDate.setMonth(dueDate.getMonth() + 1);
                       if (dueDate >= nextIncomeDate) return false;
                     }
                     return true;
