@@ -1537,6 +1537,7 @@ function Onboarding({ onComplete }) {
                   <select style={{ ...cardInput, cursor: "pointer" }} value={ai.incomeOwner} onChange={(e) => updateIncomeCard(incomeActiveIndex, { incomeOwner: e.target.value })}>
                     <option value="">Select</option>
                     <option value="joint">Joint</option>
+                    {memberList.length === 0 && <option value="mine">Mine</option>}
                     {memberList.map((m, i) => <option key={i} value={m.name}>{m.name}</option>)}
                   </select>
                 </div>
@@ -1744,6 +1745,7 @@ function Onboarding({ onComplete }) {
                         <select style={{ ...cardInput, cursor: "pointer" }} value={card.incomeOwner} onChange={(e) => updateIncomeCard(index, { incomeOwner: e.target.value })}>
                           <option value="">Select</option>
                           <option value="joint">Joint</option>
+                          {memberList.length === 0 && <option value="mine">Mine</option>}
                           {memberList.map((m, i) => <option key={i} value={m.name}>{m.name}</option>)}
                         </select>
                       </div>
@@ -1972,6 +1974,7 @@ function Onboarding({ onComplete }) {
             <label style={labelStyle}>Owner</label>
             <select style={selectStyle} value={billOwner} onChange={(e) => setBillOwner(e.target.value)}>
               <option value="joint">Joint</option>
+              {memberList.length === 0 && <option value="mine">Mine</option>}
               {memberList.map((m, i) => <option key={i} value={m.name}>{m.name}</option>)}
             </select>
           </div>
@@ -2066,6 +2069,7 @@ function Onboarding({ onComplete }) {
             <label style={labelStyle}>Owner</label>
             <select style={selectStyle} value={debtOwner} onChange={(e) => setDebtOwner(e.target.value)}>
               <option value="joint">Joint</option>
+              {memberList.length === 0 && <option value="mine">Mine</option>}
               {memberList.map((m, i) => <option key={i} value={m.name}>{m.name}</option>)}
             </select>
           </div>
