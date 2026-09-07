@@ -234,13 +234,16 @@ function Onboarding({ onComplete }) {
       return;
     }
 
-    // Auto-add creator to household_members so dashboard can find them
-    await supabase.from("household_members").insert({
+    // Auto-add creator to household_members so dashboard can find them — and
+    // seed the local member list so the owner pickers (income/bills/debt) show
+    // the user by name from the start, without needing to "add a member".
+    const { data: savedMember } = await supabase.from("household_members").insert({
       household_id: created.id,
       user_id: user.id,
       name: yourName.trim() || user.user_metadata?.name || user.email,
       role: "owner",
-    });
+    }).select().single();
+    if (savedMember) setMemberList([savedMember]);
 
     // Seed default categories
     await supabase.from("categories").insert([
