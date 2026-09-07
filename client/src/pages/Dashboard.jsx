@@ -1894,107 +1894,132 @@ function Dashboard() {
     regenLock.current = true;
     setRegenerating(true);
 
-    const householdData = household;
-
-    // Read income FRESH from the DB, not component state. This runs from a
-    // setTimeout whose closure can hold a stale (empty) `income`, which would
-    // otherwise wipe every period and rebuild none. (This was the bug where
-    // re-adding income stopped regenerating pay periods.)
-    const { data: incomeRows } = await supabase
-      .from("income")
-      .select("*")
-      .eq("household_id", householdData.id);
-
-    // Delete all existing pay periods
-    await supabase
-      .from("pay_periods")
-      .delete()
-      .eq("household_id", householdData.id);
-
-    // Rebuild from current income next_pay_date values
-    const paychecks = (incomeRows || []).filter(
-      (i) => i.is_active !== false && i.frequency !== "monthly" && i.next_pay_date,
-    );
-
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-
-    const allDates = [];
-    const endOfYear = new Date(today.getFullYear(), 11, 31, 23, 59, 59);
-    const lookbackDays = 60; // include ~2 months of past periods
-
-    paychecks.forEach((inc) => {
-      const baseDate = new Date(inc.next_pay_date + "T12:00:00");
-      const interval = inc.frequency === "weekly" ? 7 : 14;
-
-      // Walk backwards from baseDate to find earliest date within lookback window
-      const current = new Date(baseDate);
-      while (current > today) {
-        current.setDate(current.getDate() - interval);
-      }
-      while (current > new Date(today.getTime() - lookbackDays * 86400000)) {
-        current.setDate(current.getDate() - interval);
-      }
-      current.setDate(current.getDate() + interval); // step forward once to be in range
-
-      // Walk forward from there through end of year
-      const cursor = new Date(current);
-      while (cursor <= endOfYear) {
-        allDates.push(new Date(cursor));
-        cursor.setDate(cursor.getDate() + interval);
-      }
-    });
-
-    allDates.sort((a, b) => a - b);
-
-    const uniqueDates = allDates.filter(
-      (date, index, self) =>
-        index === 0 || date.toDateString() !== self[index - 1].toDateString(),
-    );
-
-    const periods = [];
-    for (let i = 0; i < uniqueDates.length; i++) {
-      const startDate = new Date(uniqueDates[i]);
-      let endDate;
-      if (i < uniqueDates.length - 1) {
-        endDate = new Date(uniqueDates[i + 1]);
-        endDate.setDate(endDate.getDate() - 1);
-      } else {
-        endDate = new Date(startDate);
-        endDate.setDate(startDate.getDate() + 13);
+    // try/finally so the lock ALWAYS releases — otherwise one failed run would
+    // silently block every future regenerate until a full page reload.
+    try {
+      const householdData = household;
+      if (!householdData?.id) {
+        alert("Still loading your household — give it a second and try again.");
+        return;
       }
 
-      periods.push({
-        name: `Pay Period ${i + 1}`,
-        start_day: startDate.getDate(),
-        end_day: endDate.getDate(),
-        start_date: startDate.toISOString().split("T")[0],
-        end_date: endDate.toISOString().split("T")[0],
+      // Read income FRESH from the DB, not component state. This runs from a
+      // setTimeout whose closure can hold a stale (empty) `income`, which would
+      // otherwise wipe every period and rebuild none. (This was the bug where
+      // re-adding income stopped regenerating pay periods.)
+      const { data: incomeRows, error: incErr } = await supabase
+        .from("income")
+        .select("*")
+        .eq("household_id", householdData.id);
+      if (incErr) {
+        alert("Couldn't read your income to rebuild pay periods: " + incErr.message);
+        return;
+      }
+
+      // Pay periods are built from biweekly/weekly income that has a next pay date.
+      const paychecks = (incomeRows || []).filter(
+        (i) => i.is_active !== false && i.frequency !== "monthly" && i.next_pay_date,
+      );
+
+      // Delete all existing pay periods
+      const { error: delErr } = await supabase
+        .from("pay_periods")
+        .delete()
+        .eq("household_id", householdData.id);
+      if (delErr) {
+        alert("Couldn't clear old pay periods: " + delErr.message);
+        return;
+      }
+
+      if (paychecks.length === 0) {
+        setPayPeriods([]);
+        alert(
+          "No pay periods were generated.\n\nPay periods are built from income that is paid weekly or every 2 weeks and has a \"next pay date\". Go to the Income page and make sure at least one income source has a Biweekly or Weekly frequency and a next pay date set, then regenerate.",
+        );
+        return;
+      }
+
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      const allDates = [];
+      const endOfYear = new Date(today.getFullYear(), 11, 31, 23, 59, 59);
+      const lookbackDays = 60; // include ~2 months of past periods
+
+      paychecks.forEach((inc) => {
+        const baseDate = new Date(inc.next_pay_date + "T12:00:00");
+        const interval = inc.frequency === "weekly" ? 7 : 14;
+
+        // Walk backwards from baseDate to find earliest date within lookback window
+        const current = new Date(baseDate);
+        while (current > today) {
+          current.setDate(current.getDate() - interval);
+        }
+        while (current > new Date(today.getTime() - lookbackDays * 86400000)) {
+          current.setDate(current.getDate() - interval);
+        }
+        current.setDate(current.getDate() + interval); // step forward once to be in range
+
+        // Walk forward from there through end of year
+        const cursor = new Date(current);
+        while (cursor <= endOfYear) {
+          allDates.push(new Date(cursor));
+          cursor.setDate(cursor.getDate() + interval);
+        }
       });
+
+      allDates.sort((a, b) => a - b);
+
+      const uniqueDates = allDates.filter(
+        (date, index, self) =>
+          index === 0 || date.toDateString() !== self[index - 1].toDateString(),
+      );
+
+      const periods = [];
+      for (let i = 0; i < uniqueDates.length; i++) {
+        const startDate = new Date(uniqueDates[i]);
+        let endDate;
+        if (i < uniqueDates.length - 1) {
+          endDate = new Date(uniqueDates[i + 1]);
+          endDate.setDate(endDate.getDate() - 1);
+        } else {
+          endDate = new Date(startDate);
+          endDate.setDate(startDate.getDate() + 13);
+        }
+
+        periods.push({
+          household_id: householdData.id,
+          name: `Pay Period ${i + 1}`,
+          start_day: startDate.getDate(),
+          end_day: endDate.getDate(),
+          start_date: localDateStr(startDate),
+          end_date: localDateStr(endDate),
+        });
+      }
+
+      // One batched insert (was a loop) — fewer round-trips, and a single error
+      // instead of a half-written set.
+      const { error: insErr } = await supabase.from("pay_periods").insert(periods);
+      if (insErr) {
+        alert("Couldn't save the new pay periods: " + insErr.message);
+        return;
+      }
+
+      // Refresh local state
+      const { data: newPeriods } = await supabase
+        .from("pay_periods")
+        .select("*")
+        .eq("household_id", householdData.id)
+        .order("start_date");
+
+      setPayPeriods(newPeriods || []);
+    } catch (e) {
+      alert("Pay period regeneration failed: " + (e?.message || String(e)));
+    } finally {
+      setRegenerating(false);
+      setConfirmRegenerate(false);
+      regenLock.current = false;
     }
-
-    for (const period of periods) {
-      await supabase.from("pay_periods").insert({
-        household_id: householdData.id,
-        name: period.name,
-        start_day: period.start_day,
-        end_day: period.end_day,
-        start_date: period.start_date,
-        end_date: period.end_date,
-      });
-    }
-
-    // Refresh local state
-    const { data: newPeriods } = await supabase
-      .from("pay_periods")
-      .select("*")
-      .eq("household_id", householdData.id)
-      .order("start_date");
-
-    setPayPeriods(newPeriods || []);
-    setRegenerating(false);
-    setConfirmRegenerate(false);
-    regenLock.current = false;
   }
 
   const totalIncome = income.reduce((sum, i) => {
