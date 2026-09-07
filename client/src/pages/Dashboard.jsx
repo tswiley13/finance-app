@@ -286,6 +286,8 @@ function Dashboard() {
   // Latest dashboard projection, captured during render so Export can reuse the
   // exact numbers shown on the tiles (no re-deriving the pay-period chain).
   const exportRef = useRef({ rows: [], snapshot: null });
+  // Prevents two pay-period regenerations from racing (which duplicates periods).
+  const regenLock = useRef(false);
   const [showExportMenu, setShowExportMenu] = useState(false);
   const [exportToast, setExportToast] = useState("");
   const [billDueMonth, setBillDueMonth] = useState("");
@@ -1321,6 +1323,10 @@ function Dashboard() {
     setDepositAccountId("");
     setShowIncomeForm(false);
     setIsSaving(false);
+
+    // Pay periods are built from income — regenerate so they appear immediately
+    // (reads income fresh from the DB, so the just-saved row is included).
+    await regeneratePayPeriods();
   }
 
   async function updateIncome() {
@@ -1374,6 +1380,9 @@ function Dashboard() {
     setNextPayDate("");
     setDepositAccountId("");
     setIsSaving(false);
+
+    // Pay date / frequency drive the periods — rebuild to match.
+    await regeneratePayPeriods();
   }
 
   async function deleteIncome(incomeId) {
@@ -1383,6 +1392,8 @@ function Dashboard() {
       return;
     }
     setIncome(income.filter((i) => i.id !== incomeId));
+    // Periods are built from income — rebuild without the removed source.
+    await regeneratePayPeriods();
   }
 
   async function updateAccount() {
@@ -1877,9 +1888,22 @@ function Dashboard() {
   }
 
   async function regeneratePayPeriods() {
+    // Guard against concurrent runs (e.g. the auto-trigger firing while a manual
+    // regenerate is mid-flight) — interleaved delete/insert duplicates periods.
+    if (regenLock.current) return;
+    regenLock.current = true;
     setRegenerating(true);
 
     const householdData = household;
+
+    // Read income FRESH from the DB, not component state. This runs from a
+    // setTimeout whose closure can hold a stale (empty) `income`, which would
+    // otherwise wipe every period and rebuild none. (This was the bug where
+    // re-adding income stopped regenerating pay periods.)
+    const { data: incomeRows } = await supabase
+      .from("income")
+      .select("*")
+      .eq("household_id", householdData.id);
 
     // Delete all existing pay periods
     await supabase
@@ -1888,8 +1912,8 @@ function Dashboard() {
       .eq("household_id", householdData.id);
 
     // Rebuild from current income next_pay_date values
-    const paychecks = income.filter(
-      (i) => i.frequency !== "monthly" && i.next_pay_date,
+    const paychecks = (incomeRows || []).filter(
+      (i) => i.is_active !== false && i.frequency !== "monthly" && i.next_pay_date,
     );
 
     const today = new Date();
@@ -1970,6 +1994,7 @@ function Dashboard() {
     setPayPeriods(newPeriods || []);
     setRegenerating(false);
     setConfirmRegenerate(false);
+    regenLock.current = false;
   }
 
   const totalIncome = income.reduce((sum, i) => {
