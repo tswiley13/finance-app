@@ -2650,14 +2650,18 @@ function Dashboard() {
       const realMonthlyBills  = bills.reduce((s, b) => s + (b.amount || 0) * billMultiplier(b.frequency || "monthly"), 0);
 
       // ── What-if effective values ─────────────────────────────────────────────
+      // Fall back to the real amount when the override has no amount set. An
+      // override object can exist with ONLY { enabled } (from toggling the
+      // checkbox) — reading ov.amount there gave 0, so re-checking a bill
+      // brought it back at $0 instead of its real amount.
       const wiAmt = (b) => {
-        const ov = whatIfBills[b.id];
-        return ov ? parseFloat(ov.amount) || 0 : (b.amount || 0);
+        const raw = whatIfBills[b.id]?.amount ?? b.amount ?? 0;
+        return parseFloat(raw) || 0;
       };
       const wiEnabled = (b) => whatIfBills[b.id]?.enabled ?? true;
       const wiIncAmt  = (i) => {
-        const ov = whatIfIncome[i.id];
-        return ov ? parseFloat(ov.amount) || 0 : (i.fixed_amount || 0);
+        const raw = whatIfIncome[i.id]?.amount ?? i.fixed_amount ?? 0;
+        return parseFloat(raw) || 0;
       };
       const wiIncEnabled = (i) => whatIfIncome[i.id]?.enabled ?? true;
 
