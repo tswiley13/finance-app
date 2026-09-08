@@ -361,6 +361,9 @@ function Dashboard() {
   const [whatIfExtraBills, setWhatIfExtraBills] = useState([]);   // [{id,name,amount,frequency,due_day}]
   const [whatIfExtraIncome, setWhatIfExtraIncome] = useState([]); // [{id,name,amount,frequency}]
   const [whatIfNextId, setWhatIfNextId] = useState(1);
+  // Draft entry forms for What-If mode — committed to the lists above on "Add".
+  const [whatIfBillDraft, setWhatIfBillDraft] = useState({ name: "", amount: "", frequency: "monthly", due_day: "" });
+  const [whatIfIncomeDraft, setWhatIfIncomeDraft] = useState({ name: "", amount: "", frequency: "biweekly" });
   const [editingHouseholdName, setEditingHouseholdName] = useState(false);
   const [newHouseholdName, setNewHouseholdName] = useState("");
   const [newMemberName, setNewMemberName] = useState("");
@@ -2791,15 +2794,23 @@ function Dashboard() {
         );
       };
 
-      const addExtraBill = () => {
+      // Commit the draft entry to the list above, then clear the form so the
+      // next bill/income can be entered right away.
+      const saveDraftBill = () => {
+        const d = whatIfBillDraft;
+        if (!d.name.trim() || !d.amount) return;
         const id = `extra-bill-${whatIfNextId}`;
         setWhatIfNextId(n => n + 1);
-        setWhatIfExtraBills(prev => [...prev, { id, name: "", amount: "", frequency: "monthly", due_day: "", enabled: true }]);
+        setWhatIfExtraBills(prev => [...prev, { id, name: d.name.trim(), amount: d.amount, frequency: d.frequency || "monthly", due_day: d.due_day || "", enabled: true }]);
+        setWhatIfBillDraft({ name: "", amount: "", frequency: "monthly", due_day: "" });
       };
-      const addExtraIncome = () => {
+      const saveDraftIncome = () => {
+        const d = whatIfIncomeDraft;
+        if (!d.name.trim() || !d.amount) return;
         const id = `extra-inc-${whatIfNextId}`;
         setWhatIfNextId(n => n + 1);
-        setWhatIfExtraIncome(prev => [...prev, { id, name: "", amount: "", frequency: "biweekly", enabled: true }]);
+        setWhatIfExtraIncome(prev => [...prev, { id, name: d.name.trim(), amount: d.amount, frequency: d.frequency || "biweekly", enabled: true }]);
+        setWhatIfIncomeDraft({ name: "", amount: "", frequency: "biweekly" });
       };
 
       const inputStyle = { background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "6px", color: "#F0F6FC", fontFamily: "'Inter', sans-serif", fontSize: "12px", padding: "5px 8px" };
@@ -2811,11 +2822,11 @@ function Dashboard() {
             <h1 className="page-title" style={{ margin: 0 }}>Monthly Overview</h1>
             <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
               {whatIfMode && (
-                <button onClick={() => { setWhatIfBills({}); setWhatIfIncome({}); setWhatIfExtraBills([]); setWhatIfExtraIncome([]); }} style={{ fontSize: "12px", color: "#8B8FA8", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "7px", padding: "7px 14px", cursor: "pointer", fontFamily: "'Inter', sans-serif" }}>
+                <button onClick={() => { setWhatIfBills({}); setWhatIfIncome({}); setWhatIfExtraBills([]); setWhatIfExtraIncome([]); setWhatIfBillDraft({ name: "", amount: "", frequency: "monthly", due_day: "" }); setWhatIfIncomeDraft({ name: "", amount: "", frequency: "biweekly" }); }} style={{ fontSize: "12px", color: "#8B8FA8", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "7px", padding: "7px 14px", cursor: "pointer", fontFamily: "'Inter', sans-serif" }}>
                   Reset
                 </button>
               )}
-              <button onClick={() => { setWhatIfMode(m => !m); if (whatIfMode) { setWhatIfBills({}); setWhatIfIncome({}); setWhatIfExtraBills([]); setWhatIfExtraIncome([]); } }} style={{ fontSize: "12px", fontWeight: "600", color: whatIfMode ? "#13111F" : "#FBBF24", background: whatIfMode ? "#FBBF24" : "rgba(251,191,36,0.1)", border: "1px solid rgba(251,191,36,0.4)", borderRadius: "7px", padding: "7px 16px", cursor: "pointer", fontFamily: "'Inter', sans-serif" }}>
+              <button onClick={() => { setWhatIfMode(m => !m); if (whatIfMode) { setWhatIfBills({}); setWhatIfIncome({}); setWhatIfExtraBills([]); setWhatIfExtraIncome([]); setWhatIfBillDraft({ name: "", amount: "", frequency: "monthly", due_day: "" }); setWhatIfIncomeDraft({ name: "", amount: "", frequency: "biweekly" }); } }} style={{ fontSize: "12px", fontWeight: "600", color: whatIfMode ? "#13111F" : "#FBBF24", background: whatIfMode ? "#FBBF24" : "rgba(251,191,36,0.1)", border: "1px solid rgba(251,191,36,0.4)", borderRadius: "7px", padding: "7px 16px", cursor: "pointer", fontFamily: "'Inter', sans-serif" }}>
                 {whatIfMode ? "✕  Exit What-If" : "⚡ What-If Mode"}
               </button>
             </div>
@@ -2865,9 +2876,16 @@ function Dashboard() {
                       <button onClick={() => setWhatIfExtraBills(prev => prev.filter(x => x.id !== b.id))} style={{ background: "rgba(248,113,113,0.1)", border: "1px solid rgba(248,113,113,0.25)", color: "#F87171", borderRadius: "6px", padding: "5px 10px", cursor: "pointer", fontSize: "12px", fontFamily: "'Inter', sans-serif" }}>Remove</button>
                     </div>
                   ))}
-                  <button onClick={addExtraBill} style={{ fontSize: "12px", color: "#FBBF24", background: "rgba(251,191,36,0.08)", border: "1px dashed rgba(251,191,36,0.35)", borderRadius: "8px", padding: "8px 16px", cursor: "pointer", fontFamily: "'Inter', sans-serif", width: "100%" }}>
-                    + Add Hypothetical Bill
-                  </button>
+                  <div style={{ background: "rgba(251,191,36,0.05)", border: "1px dashed rgba(251,191,36,0.35)", borderRadius: "10px", padding: "12px 16px", display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
+                    <input placeholder="Bill name" value={whatIfBillDraft.name} onChange={e => setWhatIfBillDraft(d => ({ ...d, name: e.target.value }))} onKeyDown={e => { if (e.key === "Enter") saveDraftBill(); }} style={{ ...inputStyle, flex: "1 1 120px" }} />
+                    <input placeholder="Amount" type="number" value={whatIfBillDraft.amount} onChange={e => setWhatIfBillDraft(d => ({ ...d, amount: e.target.value }))} onKeyDown={e => { if (e.key === "Enter") saveDraftBill(); }} style={{ ...inputStyle, width: "90px" }} />
+                    <select value={whatIfBillDraft.frequency} onChange={e => setWhatIfBillDraft(d => ({ ...d, frequency: e.target.value }))} style={{ ...inputStyle }}>
+                      <option value="monthly">Monthly</option>
+                      <option value="payday">Every Payday</option>
+                    </select>
+                    <input placeholder="Due day" type="number" min="1" max="31" value={whatIfBillDraft.due_day} onChange={e => setWhatIfBillDraft(d => ({ ...d, due_day: parseInt(e.target.value) || "" }))} onKeyDown={e => { if (e.key === "Enter") saveDraftBill(); }} style={{ ...inputStyle, width: "70px" }} />
+                    <button onClick={saveDraftBill} disabled={!whatIfBillDraft.name.trim() || !whatIfBillDraft.amount} style={{ fontSize: "12px", fontWeight: 600, color: "#13111F", background: (!whatIfBillDraft.name.trim() || !whatIfBillDraft.amount) ? "rgba(251,191,36,0.4)" : "#FBBF24", border: "none", borderRadius: "6px", padding: "6px 14px", cursor: (!whatIfBillDraft.name.trim() || !whatIfBillDraft.amount) ? "not-allowed" : "pointer", fontFamily: "'Inter', sans-serif" }}>Add bill</button>
+                  </div>
                 </div>
               )}
 
@@ -2955,9 +2973,16 @@ function Dashboard() {
                   );
                 })}
                 {whatIfMode && (
-                  <button onClick={addExtraIncome} style={{ fontSize: "12px", color: "#FBBF24", background: "rgba(251,191,36,0.08)", border: "1px dashed rgba(251,191,36,0.35)", borderRadius: "8px", padding: "7px 14px", cursor: "pointer", fontFamily: "'Inter', sans-serif", width: "100%", marginTop: "10px" }}>
-                    + Add Hypothetical Income
-                  </button>
+                  <div style={{ background: "rgba(251,191,36,0.05)", border: "1px dashed rgba(251,191,36,0.35)", borderRadius: "10px", padding: "12px 16px", marginTop: "10px", display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
+                    <input placeholder="Income name" value={whatIfIncomeDraft.name} onChange={e => setWhatIfIncomeDraft(d => ({ ...d, name: e.target.value }))} onKeyDown={e => { if (e.key === "Enter") saveDraftIncome(); }} style={{ ...inputStyle, flex: "1 1 120px" }} />
+                    <input placeholder="Amount" type="number" value={whatIfIncomeDraft.amount} onChange={e => setWhatIfIncomeDraft(d => ({ ...d, amount: e.target.value }))} onKeyDown={e => { if (e.key === "Enter") saveDraftIncome(); }} style={{ ...inputStyle, width: "90px" }} />
+                    <select value={whatIfIncomeDraft.frequency} onChange={e => setWhatIfIncomeDraft(d => ({ ...d, frequency: e.target.value }))} style={{ ...inputStyle }}>
+                      <option value="biweekly">Biweekly</option>
+                      <option value="weekly">Weekly</option>
+                      <option value="monthly">Monthly</option>
+                    </select>
+                    <button onClick={saveDraftIncome} disabled={!whatIfIncomeDraft.name.trim() || !whatIfIncomeDraft.amount} style={{ fontSize: "12px", fontWeight: 600, color: "#13111F", background: (!whatIfIncomeDraft.name.trim() || !whatIfIncomeDraft.amount) ? "rgba(251,191,36,0.4)" : "#FBBF24", border: "none", borderRadius: "6px", padding: "6px 14px", cursor: (!whatIfIncomeDraft.name.trim() || !whatIfIncomeDraft.amount) ? "not-allowed" : "pointer", fontFamily: "'Inter', sans-serif" }}>Add income</button>
+                  </div>
                 )}
                 <div style={{ display: "grid", gridTemplateColumns: whatIfMode ? "24px 1fr 90px 90px" : "1fr 90px 90px", gap: "8px", paddingTop: "12px", borderTop: "1px solid rgba(255,255,255,0.08)", marginTop: "4px" }}>
                   {whatIfMode && <div />}
