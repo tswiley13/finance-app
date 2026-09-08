@@ -6,7 +6,11 @@ export default defineConfig({
   plugins: [
     react(),
     VitePWA({
-      registerType: 'prompt',
+      // autoUpdate (not 'prompt'): when a new build is deployed, the service
+      // worker installs it and the page refreshes to it on next load instead of
+      // silently serving the old cached bundle until the user clicks a banner.
+      // This was the cause of changes appearing to "not update".
+      registerType: 'autoUpdate',
       includeAssets: ['favicon.svg', 'favicon.ico', 'apple-touch-icon-180x180.png'],
       manifest: {
         name: 'Stryde',
