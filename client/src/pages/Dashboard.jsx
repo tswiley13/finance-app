@@ -2715,7 +2715,11 @@ function Dashboard() {
 
       // ── Real (baseline) totals ───────────────────────────────────────────────
       const realMonthlyIncome = income.reduce((s, i) => s + (i.fixed_amount || 0) * incMultiplier(i.frequency), 0);
-      const realMonthlyBills  = bills.reduce((s, b) => s + (b.amount || 0) * billMultiplier(b.frequency || "monthly"), 0);
+      // One-time payments aren't monthly-recurring, so they must NOT be counted
+      // in a "Monthly Bills" figure (or its ×12 annual). They live in the pay
+      // period they fall in, on the dashboard — not this recurring monthly view.
+      const recurringBills = bills.filter((b) => (b.frequency || "monthly") !== "one-time");
+      const realMonthlyBills  = recurringBills.reduce((s, b) => s + (b.amount || 0) * billMultiplier(b.frequency || "monthly"), 0);
 
       // ── What-if effective values ─────────────────────────────────────────────
       // Fall back to the real amount when the override has no amount set. An
@@ -2739,7 +2743,7 @@ function Dashboard() {
         : realMonthlyIncome;
 
       const wiMonthlyBills = whatIfMode
-        ? bills.reduce((s, b) => wiEnabled(b) ? s + wiAmt(b) * billMultiplier(b.frequency || "monthly") : s, 0)
+        ? recurringBills.reduce((s, b) => wiEnabled(b) ? s + wiAmt(b) * billMultiplier(b.frequency || "monthly") : s, 0)
           + whatIfExtraBills.filter(b => b.enabled !== false).reduce((s, b) => s + (parseFloat(b.amount) || 0) * billMultiplier(b.frequency || "monthly"), 0)
         : realMonthlyBills;
 
