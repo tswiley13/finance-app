@@ -388,6 +388,8 @@ function Dashboard() {
   const [scenarios, setScenarios] = useState([]);
   const [activeScenarioId, setActiveScenarioId] = useState(null);
   const [scenarioName, setScenarioName] = useState("");
+  // Which bill's name is being edited inline in What-If (click-to-edit).
+  const [editingBillNameId, setEditingBillNameId] = useState(null);
   const [editingHouseholdName, setEditingHouseholdName] = useState(false);
   const [newHouseholdName, setNewHouseholdName] = useState("");
   const [newMemberName, setNewMemberName] = useState("");
@@ -2824,17 +2826,24 @@ function Dashboard() {
               </button>
             )}
             <div>
-              {whatIfMode && isExtra ? (
+              {whatIfMode && editingBillNameId === b.id ? (
                 <input
                   type="text"
-                  value={b.name}
+                  autoFocus
+                  value={isExtra ? b.name : (whatIfBills[b.id]?.name ?? b.name)}
                   placeholder="Bill name"
-                  onChange={e => setWhatIfExtraBills(prev => prev.map(x => x.id === b.id ? { ...x, name: e.target.value } : x))}
-                  style={{ width: "100%", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "6px", color: "#F0F6FC", fontFamily: "'Inter', sans-serif", fontSize: "13px", fontWeight: "500", padding: "4px 8px" }}
+                  onChange={e => { if (isExtra) setWhatIfExtraBills(prev => prev.map(x => x.id === b.id ? { ...x, name: e.target.value } : x)); else setBillOverride(b.id, "name", e.target.value); }}
+                  onBlur={() => setEditingBillNameId(null)}
+                  onKeyDown={e => { if (e.key === "Enter" || e.key === "Escape") setEditingBillNameId(null); }}
+                  style={{ width: "100%", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(108,99,255,0.5)", borderRadius: "6px", color: "#F0F6FC", fontFamily: "'Inter', sans-serif", fontSize: "13px", fontWeight: "500", padding: "4px 8px" }}
                 />
               ) : (
-                <div style={{ fontSize: "13px", color: enabled ? "#F0F6FC" : "#8B8FA8", fontWeight: "500", textDecoration: (!whatIfMode || enabled) ? "none" : "line-through" }}>
-                  {b.name}
+                <div
+                  onClick={() => { if (whatIfMode) setEditingBillNameId(b.id); }}
+                  title={whatIfMode ? "Click to rename for this scenario" : undefined}
+                  style={{ fontSize: "13px", color: enabled ? "#F0F6FC" : "#8B8FA8", fontWeight: "500", textDecoration: (!whatIfMode || enabled) ? "none" : "line-through", cursor: whatIfMode ? "text" : "default" }}
+                >
+                  {isExtra ? b.name : (whatIfBills[b.id]?.name ?? b.name)}
                 </div>
               )}
               {(b.frequency || "monthly") === "payday"
