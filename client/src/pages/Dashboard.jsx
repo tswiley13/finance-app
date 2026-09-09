@@ -7163,6 +7163,9 @@ function Dashboard() {
             <LogOut size={16} />
             Sign Out
           </button>
+          <div style={{ fontSize: "10px", color: "#5C6080", textAlign: "center", marginTop: "8px", fontFamily: "'DM Mono', monospace" }}>
+            build {typeof __BUILD_ID__ !== "undefined" ? __BUILD_ID__ : "dev"}
+          </div>
         </div>
       </aside>
 

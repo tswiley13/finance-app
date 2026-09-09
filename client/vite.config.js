@@ -3,6 +3,13 @@ import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
 
 export default defineConfig({
+  // Build stamp so the running build is identifiable in-app (helps confirm a
+  // deploy actually reached the browser vs. a stale service-worker cache).
+  define: {
+    __BUILD_ID__: JSON.stringify(
+      new Date().toISOString().slice(0, 16).replace("T", " ") + " UTC",
+    ),
+  },
   plugins: [
     react(),
     VitePWA({
