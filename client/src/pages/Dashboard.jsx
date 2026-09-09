@@ -2824,16 +2824,26 @@ function Dashboard() {
               </button>
             )}
             <div>
-              <div style={{ fontSize: "13px", color: enabled ? "#F0F6FC" : "#8B8FA8", fontWeight: "500", textDecoration: (!whatIfMode || enabled) ? "none" : "line-through" }}>
-                {b.name}
-                {isExtra && <span style={{ fontSize: "9px", background: "rgba(251,191,36,0.15)", border: "1px solid rgba(251,191,36,0.3)", color: "#FBBF24", borderRadius: "4px", padding: "1px 6px", marginLeft: "6px", fontWeight: "700", letterSpacing: "0.06em", textTransform: "uppercase" }}>hypothetical</span>}
-              </div>
+              {whatIfMode && isExtra ? (
+                <input
+                  type="text"
+                  value={b.name}
+                  placeholder="Bill name"
+                  onChange={e => setWhatIfExtraBills(prev => prev.map(x => x.id === b.id ? { ...x, name: e.target.value } : x))}
+                  style={{ width: "100%", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "6px", color: "#F0F6FC", fontFamily: "'Inter', sans-serif", fontSize: "13px", fontWeight: "500", padding: "4px 8px" }}
+                />
+              ) : (
+                <div style={{ fontSize: "13px", color: enabled ? "#F0F6FC" : "#8B8FA8", fontWeight: "500", textDecoration: (!whatIfMode || enabled) ? "none" : "line-through" }}>
+                  {b.name}
+                </div>
+              )}
               {(b.frequency || "monthly") === "payday"
                 ? <div style={{ fontSize: "11px", color: "#8B8FA8", marginTop: "1px" }}>Every Pay Day</div>
                 : b.due_day > 0 && <div style={{ fontSize: "11px", color: "#8B8FA8", marginTop: "1px" }}>Due the {b.due_day}{["st","nd","rd"][((b.due_day % 10) - 1)] || "th"}</div>
               }
             </div>
-            {/* Per check — editable in what-if mode */}
+            {/* Per check — editable in what-if mode (real overrides, or the
+                hypothetical's own amount) */}
             <div style={{ textAlign: "right" }}>
               {whatIfMode && !isExtra ? (
                 <input
@@ -2841,6 +2851,13 @@ function Dashboard() {
                   value={whatIfBills[b.id]?.amount ?? (b.amount || 0)}
                   onChange={e => setBillOverride(b.id, "amount", e.target.value)}
                   style={{ width: "90px", background: changed ? "rgba(251,191,36,0.08)" : "rgba(255,255,255,0.04)", border: changed ? "1px solid rgba(251,191,36,0.4)" : "1px solid rgba(255,255,255,0.1)", borderRadius: "6px", color: "#F0F6FC", fontFamily: "'DM Mono', monospace", fontSize: "12px", padding: "4px 8px", textAlign: "right" }}
+                />
+              ) : whatIfMode && isExtra ? (
+                <input
+                  type="number"
+                  value={b.amount}
+                  onChange={e => setWhatIfExtraBills(prev => prev.map(x => x.id === b.id ? { ...x, amount: e.target.value } : x))}
+                  style={{ width: "90px", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "6px", color: "#F0F6FC", fontFamily: "'DM Mono', monospace", fontSize: "12px", padding: "4px 8px", textAlign: "right" }}
                 />
               ) : (
                 <span style={{ fontFamily: "'DM Mono', monospace", fontSize: "13px", color: "#8B8FA8" }}>${fmt(amount)}</span>
