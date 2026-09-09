@@ -2808,6 +2808,7 @@ function Dashboard() {
               <div style={{ fontSize: "13px", color: enabled ? "#F0F6FC" : "#8B8FA8", fontWeight: "500", textDecoration: (!whatIfMode || enabled) ? "none" : "line-through" }}>
                 {b.name}
                 {isExtra && <span style={{ fontSize: "9px", background: "rgba(251,191,36,0.15)", border: "1px solid rgba(251,191,36,0.3)", color: "#FBBF24", borderRadius: "4px", padding: "1px 6px", marginLeft: "6px", fontWeight: "700", letterSpacing: "0.06em", textTransform: "uppercase" }}>hypothetical</span>}
+                {isExtra && <button onClick={() => setWhatIfExtraBills(prev => prev.filter(x => x.id !== b.id))} title="Remove hypothetical bill" style={{ background: "none", border: "none", color: "#F87171", cursor: "pointer", fontSize: "12px", marginLeft: "6px", padding: 0, lineHeight: 1 }}>✕</button>}
               </div>
               {(b.frequency || "monthly") === "payday"
                 ? <div style={{ fontSize: "11px", color: "#8B8FA8", marginTop: "1px" }}>Every Pay Day</div>
@@ -2936,18 +2937,6 @@ function Dashboard() {
               {/* Add hypothetical bill */}
               {whatIfMode && (
                 <div style={{ marginBottom: "12px" }}>
-                  {whatIfExtraBills.filter(b => !everyPaycheck.includes(b) && !firstHalf.includes(b) && !secondHalf.includes(b) && !noDueDay.includes(b)).map(b => (
-                    <div key={b.id} style={{ background: "rgba(251,191,36,0.05)", border: "1px solid rgba(251,191,36,0.2)", borderRadius: "10px", padding: "12px 16px", marginBottom: "8px", display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
-                      <input placeholder="Bill name" value={b.name} onChange={e => setWhatIfExtraBills(prev => prev.map(x => x.id === b.id ? { ...x, name: e.target.value } : x))} style={{ ...inputStyle, flex: "1 1 120px" }} />
-                      <input placeholder="Amount" type="number" value={b.amount} onChange={e => setWhatIfExtraBills(prev => prev.map(x => x.id === b.id ? { ...x, amount: e.target.value } : x))} style={{ ...inputStyle, width: "90px" }} />
-                      <select value={b.frequency || "monthly"} onChange={e => setWhatIfExtraBills(prev => prev.map(x => x.id === b.id ? { ...x, frequency: e.target.value } : x))} style={{ ...inputStyle }}>
-                        <option value="monthly">Monthly</option>
-                        <option value="payday">Every Payday</option>
-                      </select>
-                      <input placeholder="Due day" type="number" min="1" max="31" value={b.due_day} onChange={e => setWhatIfExtraBills(prev => prev.map(x => x.id === b.id ? { ...x, due_day: parseInt(e.target.value) || "" } : x))} style={{ ...inputStyle, width: "70px" }} />
-                      <button onClick={() => setWhatIfExtraBills(prev => prev.filter(x => x.id !== b.id))} style={{ background: "rgba(248,113,113,0.1)", border: "1px solid rgba(248,113,113,0.25)", color: "#F87171", borderRadius: "6px", padding: "5px 10px", cursor: "pointer", fontSize: "12px", fontFamily: "'Inter', sans-serif" }}>Remove</button>
-                    </div>
-                  ))}
                   <div style={{ background: "rgba(251,191,36,0.05)", border: "1px dashed rgba(251,191,36,0.35)", borderRadius: "10px", padding: "12px 16px", display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
                     <input placeholder="Bill name" value={whatIfBillDraft.name} onChange={e => setWhatIfBillDraft(d => ({ ...d, name: e.target.value }))} onKeyDown={e => { if (e.key === "Enter") saveDraftBill(); }} style={{ ...inputStyle, flex: "1 1 120px" }} />
                     <input placeholder="Amount" type="number" value={whatIfBillDraft.amount} onChange={e => setWhatIfBillDraft(d => ({ ...d, amount: e.target.value }))} onKeyDown={e => { if (e.key === "Enter") saveDraftBill(); }} style={{ ...inputStyle, width: "90px" }} />
