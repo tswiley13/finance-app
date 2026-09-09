@@ -245,6 +245,26 @@ function localDateStr(d = new Date()) {
   return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 }
 
+// Monthly-average multipliers. Biweekly = 26 checks/yr ÷ 12 (NOT ×2, which drops
+// the two extra-paycheck months a year); weekly = 52/12. Used everywhere a "per
+// month" estimate is shown so the Income page, Bills page and Monthly Overview
+// all agree. billMult returns 0 for one-time so those never count as recurring.
+function billMult(freq) {
+  const f = freq || "monthly";
+  if (f === "payday" || f === "biweekly") return 26 / 12;
+  if (f === "weekly") return 52 / 12;
+  if (f === "semi-monthly") return 2;
+  if (f === "quarterly") return 1 / 3;
+  if (f === "annually") return 1 / 12;
+  if (f === "one-time") return 0;
+  return 1;
+}
+function incMult(freq) {
+  if (freq === "biweekly") return 26 / 12;
+  if (freq === "weekly") return 52 / 12;
+  return 1;
+}
+
 const DEFAULT_CATEGORIES = [
   { name: "Housing" },
   { name: "Utilities" },
@@ -2710,8 +2730,8 @@ function Dashboard() {
 
     if (activeNav === "monthly") {
       // ── Helpers ──────────────────────────────────────────────────────────────
-      const billMultiplier = (freq) => (freq === "payday" || freq === "biweekly") ? 2 : 1;
-      const incMultiplier  = (freq) => freq === "biweekly" ? 2 : freq === "weekly" ? 4 : 1;
+      const billMultiplier = billMult;
+      const incMultiplier  = incMult;
 
       // ── Real (baseline) totals ───────────────────────────────────────────────
       const realMonthlyIncome = income.reduce((s, i) => s + (i.fixed_amount || 0) * incMultiplier(i.frequency), 0);
@@ -2933,7 +2953,7 @@ function Dashboard() {
             {/* Left: bills */}
             <div>
               <div style={{ fontSize: "11px", color: "#8B8FA8", letterSpacing: "0.1em", textTransform: "uppercase", fontWeight: "600", marginBottom: "12px" }}>Bills Breakdown</div>
-              {groupPanel("Every Paycheck", everyPaycheck, 2)}
+              {groupPanel("Every Paycheck", everyPaycheck, billMult("payday"))}
               {groupPanel("Due 1st – 15th", firstHalf, 1)}
               {groupPanel("Due 16th – 31st", secondHalf, 1)}
               {groupPanel("No Due Date", noDueDay, 1)}
@@ -5283,12 +5303,7 @@ function Dashboard() {
           {(() => {
             const monthlyIncomeTotal = income
               .filter(i => i.is_active !== false && i.fixed_amount)
-              .reduce((sum, i) => {
-                const amt = i.fixed_amount || 0;
-                if (i.frequency === "weekly") return sum + amt * (52 / 12);
-                if (i.frequency === "biweekly") return sum + amt * (26 / 12);
-                return sum + amt;
-              }, 0);
+              .reduce((sum, i) => sum + (i.fixed_amount || 0) * incMult(i.frequency), 0);
             return (
               <div style={{ marginBottom: "16px" }}>
                 <div className="panel" style={{ margin: 0 }}>
@@ -5859,13 +5874,7 @@ function Dashboard() {
           {(() => {
             const monthlyBillsTotal = bills
               .filter(b => b.is_active !== false)
-              .reduce((sum, b) => {
-                const f = b.frequency || "monthly";
-                if (f === "monthly") return sum + (b.amount || 0);
-                if (f === "semi-monthly") return sum + (b.amount || 0) * 2;
-                if (f === "biweekly" || f === "payday") return sum + (b.amount || 0) * 2;
-                return sum;
-              }, 0);
+              .reduce((sum, b) => sum + (b.amount || 0) * billMult(b.frequency), 0);
             return (
               <div style={{ display: "flex", gap: "12px", marginBottom: "16px", flexWrap: "wrap" }}>
                 <div className="panel" style={{ flex: "1", minWidth: "160px", margin: 0 }}>
