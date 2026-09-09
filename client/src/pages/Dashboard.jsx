@@ -390,6 +390,7 @@ function Dashboard() {
   const [scenarioName, setScenarioName] = useState("");
   // Which bill's name is being edited inline in What-If (click-to-edit).
   const [editingBillNameId, setEditingBillNameId] = useState(null);
+  const [scenarioSaved, setScenarioSaved] = useState(""); // transient "saved" confirmation
   const [editingHouseholdName, setEditingHouseholdName] = useState(false);
   const [newHouseholdName, setNewHouseholdName] = useState("");
   const [newMemberName, setNewMemberName] = useState("");
@@ -1002,6 +1003,7 @@ function Dashboard() {
     setScenarios((prev) => [data, ...prev]);
     setActiveScenarioId(data.id);
     setScenarioName(""); // clear the input after saving
+    flashScenarioSaved(`Saved “${name}”`);
   }
   // Update the currently-loaded scenario's state (keeps its existing name).
   async function saveScenario() {
@@ -1011,6 +1013,11 @@ function Dashboard() {
     const { data, error } = await supabase.from("what_if_scenarios").update(payload).eq("id", active.id).select().single();
     if (error) { alert("Couldn't save changes: " + error.message); return; }
     setScenarios((prev) => prev.map((s) => (s.id === active.id ? data : s)));
+    flashScenarioSaved(`Saved changes to “${active.name}”`);
+  }
+  function flashScenarioSaved(msg) {
+    setScenarioSaved(msg);
+    setTimeout(() => setScenarioSaved(""), 2500);
   }
   async function deleteScenario(id) {
     const { error } = await supabase.from("what_if_scenarios").delete().eq("id", id);
@@ -3175,9 +3182,15 @@ function Dashboard() {
                       <button onClick={saveScenario} title={`Update "${scenarios.find((s) => s.id === activeScenarioId)?.name || ""}"`} style={{ background: "rgba(251,191,36,0.1)", border: "1px solid rgba(251,191,36,0.4)", color: "#FBBF24", borderRadius: "7px", padding: "8px 12px", cursor: "pointer", fontSize: "12px", fontWeight: 600, fontFamily: "'Inter', sans-serif" }}>Save changes</button>
                     )}
                   </div>
-                  <div style={{ fontSize: "11px", color: "#8B8FA8", marginTop: "8px", lineHeight: 1.5 }}>
-                    Saves your current toggles, edited amounts, and hypotheticals. Pick one from the dropdown to reopen it here.
-                  </div>
+                  {scenarioSaved ? (
+                    <div style={{ fontSize: "12px", color: "#4ADE80", marginTop: "10px", fontWeight: 600, display: "flex", alignItems: "center", gap: "6px" }}>
+                      <span>✓</span>{scenarioSaved}
+                    </div>
+                  ) : (
+                    <div style={{ fontSize: "11px", color: "#8B8FA8", marginTop: "8px", lineHeight: 1.5 }}>
+                      Saves your current toggles, edited amounts, and hypotheticals. Pick one from the dropdown to reopen it here.
+                    </div>
+                  )}
                 </div>
               )}
             </div>
