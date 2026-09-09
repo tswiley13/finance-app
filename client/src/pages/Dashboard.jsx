@@ -2996,6 +2996,10 @@ function Dashboard() {
 
             {/* Right: income + summary */}
             <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+              {/* Column header mirrors "Bills Breakdown" so the Income card lines
+                  up with the Every Paycheck card (the 12px flex gap matches the
+                  left header's 12px margin). */}
+              <div style={{ fontSize: "11px", color: "#8B8FA8", letterSpacing: "0.1em", textTransform: "uppercase", fontWeight: "600" }}>Income &amp; Summary</div>
 
               {/* Income panel */}
               <div style={{ background: "#1A1826", border: panelBorder, borderRadius: "12px", padding: "20px" }}>
