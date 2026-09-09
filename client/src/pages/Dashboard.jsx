@@ -987,36 +987,28 @@ function Dashboard() {
     setWhatIfExtraIncome(d.extraIncome || []);
     setWhatIfNextId(Date.now()); // avoid id collisions with loaded hypotheticals
     setActiveScenarioId(id);
-    setScenarioName(s.name || "");
+    setScenarioName(""); // the name field is for naming a NEW scenario, not the loaded one
     setWhatIfMode(true); // loading a scenario turns What-If on so it's visible
   }
-  // Save: updates the loaded scenario if its name is unchanged, otherwise saves
-  // a new one. This lets the name field double as "rename" and "save as new".
-  async function saveScenario() {
-    const name = scenarioName.trim();
-    if (!name) { alert("Give the scenario a name first (e.g. \"Renting a house\")."); return; }
-    const active = scenarios.find((s) => s.id === activeScenarioId);
-    const payload = { name, data: currentScenarioData(), updated_at: new Date().toISOString() };
-    if (active) {
-      const { data, error } = await supabase.from("what_if_scenarios").update(payload).eq("id", active.id).select().single();
-      if (error) { alert("Couldn't save changes: " + error.message); return; }
-      setScenarios((prev) => prev.map((s) => (s.id === active.id ? data : s)));
-    } else {
-      const { data, error } = await supabase.from("what_if_scenarios").insert({ household_id: household.id, ...payload }).select().single();
-      if (error) { alert("Couldn't save scenario: " + error.message); return; }
-      setScenarios((prev) => [data, ...prev]);
-      setActiveScenarioId(data.id);
-    }
-  }
+  // Save the current What-If state as a NEW saved scenario, then clear the field.
   async function saveScenarioAsNew() {
-    setActiveScenarioId(null);
     const name = scenarioName.trim();
-    if (!name) { alert("Type a name for the new scenario first."); return; }
+    if (!name) { alert("Type a name for the scenario first (e.g. \"Renting a house\")."); return; }
     const payload = { household_id: household.id, name, data: currentScenarioData(), updated_at: new Date().toISOString() };
     const { data, error } = await supabase.from("what_if_scenarios").insert(payload).select().single();
     if (error) { alert("Couldn't save scenario: " + error.message); return; }
     setScenarios((prev) => [data, ...prev]);
     setActiveScenarioId(data.id);
+    setScenarioName(""); // clear the input after saving
+  }
+  // Update the currently-loaded scenario's state (keeps its existing name).
+  async function saveScenario() {
+    const active = scenarios.find((s) => s.id === activeScenarioId);
+    if (!active) return saveScenarioAsNew();
+    const payload = { data: currentScenarioData(), updated_at: new Date().toISOString() };
+    const { data, error } = await supabase.from("what_if_scenarios").update(payload).eq("id", active.id).select().single();
+    if (error) { alert("Couldn't save changes: " + error.message); return; }
+    setScenarios((prev) => prev.map((s) => (s.id === active.id ? data : s)));
   }
   async function deleteScenario(id) {
     const { error } = await supabase.from("what_if_scenarios").delete().eq("id", id);
@@ -2751,6 +2743,9 @@ function Dashboard() {
         return parseFloat(raw) || 0;
       };
       const wiEnabled = (b) => whatIfBills[b.id]?.enabled ?? true;
+      // "removed" = deleted from this scenario entirely (the red ✕), vs the
+      // checkbox which just toggles a bill on/off but keeps it visible.
+      const wiRemoved = (b) => !!whatIfBills[b.id]?.removed;
       const wiIncAmt  = (i) => {
         const raw = whatIfIncome[i.id]?.amount ?? i.fixed_amount ?? 0;
         return parseFloat(raw) || 0;
@@ -2763,7 +2758,7 @@ function Dashboard() {
         : realMonthlyIncome;
 
       const wiMonthlyBills = whatIfMode
-        ? recurringBills.reduce((s, b) => wiEnabled(b) ? s + wiAmt(b) * billMultiplier(b.frequency || "monthly") : s, 0)
+        ? recurringBills.reduce((s, b) => (wiEnabled(b) && !wiRemoved(b)) ? s + wiAmt(b) * billMultiplier(b.frequency || "monthly") : s, 0)
           + whatIfExtraBills.filter(b => b.enabled !== false).reduce((s, b) => s + (parseFloat(b.amount) || 0) * billMultiplier(b.frequency || "monthly"), 0)
         : realMonthlyBills;
 
@@ -2775,7 +2770,7 @@ function Dashboard() {
 
       // ── Bill groups (uses what-if amounts when active) ───────────────────────
       const allBillsForView = [
-        ...bills.map(b => ({ ...b, _extra: false })),
+        ...bills.filter(b => !(whatIfMode && whatIfBills[b.id]?.removed)).map(b => ({ ...b, _extra: false })),
         ...(whatIfMode ? whatIfExtraBills.map(b => ({ ...b, _extra: true })) : []),
       ];
       const everyPaycheck = allBillsForView.filter(b => (b.frequency || "monthly") === "payday");
@@ -2816,7 +2811,7 @@ function Dashboard() {
         const changed   = whatIfMode && !isExtra && (parseFloat(whatIfBills[b.id]?.amount) !== undefined && parseFloat(whatIfBills[b.id]?.amount) !== realAmt);
 
         return (
-          <div key={b.id} style={{ display: "grid", gridTemplateColumns: isMobile ? (whatIfMode ? "20px 1fr 72px 76px" : "1fr 72px 80px") : (whatIfMode ? "24px 1fr 110px 110px 110px" : "1fr 100px 110px 110px"), gap: "8px", padding: "10px 0", borderBottom: rowBorder, alignItems: "center", opacity: (!whatIfMode || enabled) ? 1 : 0.35, transition: "opacity 0.2s" }}>
+          <div key={b.id} style={{ display: "grid", gridTemplateColumns: isMobile ? (whatIfMode ? "20px 1fr 72px 76px 22px" : "1fr 72px 80px") : (whatIfMode ? "24px 1fr 110px 110px 110px 24px" : "1fr 100px 110px 110px"), gap: "8px", padding: "10px 0", borderBottom: rowBorder, alignItems: "center", opacity: (!whatIfMode || enabled) ? 1 : 0.35, transition: "opacity 0.2s" }}>
             {whatIfMode && (
               <button onClick={() => {
                 if (isExtra) {
@@ -2832,7 +2827,6 @@ function Dashboard() {
               <div style={{ fontSize: "13px", color: enabled ? "#F0F6FC" : "#8B8FA8", fontWeight: "500", textDecoration: (!whatIfMode || enabled) ? "none" : "line-through" }}>
                 {b.name}
                 {isExtra && <span style={{ fontSize: "9px", background: "rgba(251,191,36,0.15)", border: "1px solid rgba(251,191,36,0.3)", color: "#FBBF24", borderRadius: "4px", padding: "1px 6px", marginLeft: "6px", fontWeight: "700", letterSpacing: "0.06em", textTransform: "uppercase" }}>hypothetical</span>}
-                {isExtra && <button onClick={() => setWhatIfExtraBills(prev => prev.filter(x => x.id !== b.id))} title="Remove hypothetical bill" style={{ background: "none", border: "none", color: "#F87171", cursor: "pointer", fontSize: "12px", marginLeft: "6px", padding: 0, lineHeight: 1 }}>✕</button>}
               </div>
               {(b.frequency || "monthly") === "payday"
                 ? <div style={{ fontSize: "11px", color: "#8B8FA8", marginTop: "1px" }}>Every Pay Day</div>
@@ -2854,6 +2848,13 @@ function Dashboard() {
             </div>
             <div style={{ fontFamily: "'DM Mono', monospace", fontSize: "13px", color: enabled ? "#F87171" : "#4A4F5C", textAlign: "right" }}>{enabled ? `$${fmt(monthly)}` : "—"}</div>
             {!isMobile && <div style={{ fontFamily: "'DM Mono', monospace", fontSize: "13px", color: "#8B8FA8", textAlign: "right" }}>{enabled ? `$${fmt(monthly * 12)}` : "—"}</div>}
+            {whatIfMode && (
+              <button
+                onClick={() => { if (isExtra) setWhatIfExtraBills(prev => prev.filter(x => x.id !== b.id)); else setBillOverride(b.id, "removed", true); }}
+                title="Delete this line from the scenario"
+                style={{ background: "none", border: "none", color: "#F87171", cursor: "pointer", fontSize: "13px", padding: 0, lineHeight: 1, justifySelf: "center" }}
+              >✕</button>
+            )}
           </div>
         );
       };
@@ -2868,8 +2869,8 @@ function Dashboard() {
         if (group.length === 0 && (!whatIfMode || !whatIfExtraBills.some(b => group.includes(b)))) return null;
         if (group.length === 0) return null;
         const cols = isMobile
-          ? (whatIfMode ? "20px 1fr 72px 76px" : "1fr 72px 80px")
-          : (whatIfMode ? "24px 1fr 110px 110px 110px" : "1fr 100px 110px 110px");
+          ? (whatIfMode ? "20px 1fr 72px 76px 22px" : "1fr 72px 80px")
+          : (whatIfMode ? "24px 1fr 110px 110px 110px 24px" : "1fr 100px 110px 110px");
         return (
           <div style={{ background: "#1A1826", border: panelBorder, borderRadius: "12px", padding: "20px", marginBottom: "12px" }}>
             <div style={{ display: "grid", gridTemplateColumns: cols, gap: "8px", marginBottom: "8px" }}>
@@ -2878,6 +2879,7 @@ function Dashboard() {
               <div style={{ fontSize: "10px", color: "#8B8FA8", textAlign: "right", letterSpacing: "0.08em", textTransform: "uppercase" }}>Per Check</div>
               <div style={{ fontSize: "10px", color: "#8B8FA8", textAlign: "right", letterSpacing: "0.08em", textTransform: "uppercase" }}>Monthly</div>
               {!isMobile && <div style={{ fontSize: "10px", color: "#8B8FA8", textAlign: "right", letterSpacing: "0.08em", textTransform: "uppercase" }}>Annual</div>}
+              {whatIfMode && <div />}
             </div>
             {group.map(b => billRow(b, multiplier))}
             <div style={{ display: "grid", gridTemplateColumns: cols, gap: "8px", paddingTop: "12px", marginTop: "4px", borderTop: "1px solid rgba(255,255,255,0.08)" }}>
@@ -2886,6 +2888,7 @@ function Dashboard() {
               <div />
               <div style={{ fontFamily: "'DM Mono', monospace", fontSize: "13px", color: "#F87171", textAlign: "right", fontWeight: "600" }}>${fmt(groupMonthly)}</div>
               {!isMobile && <div style={{ fontFamily: "'DM Mono', monospace", fontSize: "13px", color: "#8B8FA8", textAlign: "right" }}>${fmt(groupMonthly * 12)}</div>}
+              {whatIfMode && <div />}
             </div>
           </div>
         );
@@ -2976,12 +2979,13 @@ function Dashboard() {
 
               {/* Grand total */}
               <div style={{ background: "#1A1826", border: whatIfMode ? "1px solid rgba(251,191,36,0.25)" : panelBorder, borderRadius: "12px", padding: "16px 20px" }}>
-                <div style={{ display: "grid", gridTemplateColumns: isMobile ? (whatIfMode ? "20px 1fr 72px 76px" : "1fr 72px 80px") : (whatIfMode ? "24px 1fr 110px 110px 110px" : "1fr 100px 110px 110px"), gap: "8px", alignItems: "center" }}>
+                <div style={{ display: "grid", gridTemplateColumns: isMobile ? (whatIfMode ? "20px 1fr 72px 76px 22px" : "1fr 72px 80px") : (whatIfMode ? "24px 1fr 110px 110px 110px 24px" : "1fr 100px 110px 110px"), gap: "8px", alignItems: "center" }}>
                   {whatIfMode && <div />}
                   <div style={{ fontSize: "13px", color: "#F0F6FC", fontWeight: "700" }}>Total Bills</div>
                   {!isMobile && <div />}
                   <div style={{ fontFamily: "'DM Mono', monospace", fontSize: "15px", color: "#F87171", textAlign: "right", fontWeight: "600" }}>${fmt(wiMonthlyBills)}</div>
                   {!isMobile && <div style={{ fontFamily: "'DM Mono', monospace", fontSize: "15px", color: "#8B8FA8", textAlign: "right" }}>${fmt(wiMonthlyBills * 12)}</div>}
+                  {whatIfMode && <div />}
                 </div>
                 {whatIfMode && wiMonthlyBills !== realMonthlyBills && (
                   <div style={{ marginTop: "8px", paddingTop: "8px", borderTop: rowBorder, display: "flex", justifyContent: "flex-end", gap: "8px", alignItems: "center" }}>
@@ -3117,30 +3121,36 @@ function Dashboard() {
                 <div style={{ background: "#1A1826", border: "1px solid rgba(251,191,36,0.25)", borderRadius: "12px", padding: "20px 22px", marginTop: "16px" }}>
                   <div style={{ fontSize: "11px", color: "#8B8FA8", letterSpacing: "0.1em", textTransform: "uppercase", fontWeight: "600", marginBottom: "14px" }}>Saved Scenarios</div>
 
+                  {/* Load a saved scenario from a dropdown */}
                   {scenarios.length > 0 && (
-                    <div style={{ display: "flex", flexDirection: "column", gap: "6px", marginBottom: "14px" }}>
-                      {scenarios.map((sc) => (
-                        <div key={sc.id} style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                          <button onClick={() => loadScenario(sc.id)} style={{ flex: 1, textAlign: "left", background: activeScenarioId === sc.id ? "rgba(251,191,36,0.15)" : "rgba(255,255,255,0.04)", border: activeScenarioId === sc.id ? "1px solid rgba(251,191,36,0.5)" : "1px solid rgba(255,255,255,0.08)", borderRadius: "7px", padding: "8px 12px", cursor: "pointer", color: "#F0F6FC", fontSize: "13px", fontFamily: "'Inter', sans-serif" }}>
-                            {sc.name}{activeScenarioId === sc.id ? "  · loaded" : ""}
-                          </button>
-                          <button onClick={() => deleteScenario(sc.id)} title="Delete scenario" style={{ background: "rgba(248,113,113,0.1)", border: "1px solid rgba(248,113,113,0.25)", color: "#F87171", borderRadius: "6px", padding: "6px 9px", cursor: "pointer", fontSize: "12px", fontFamily: "'Inter', sans-serif" }}>✕</button>
-                        </div>
-                      ))}
+                    <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "14px" }}>
+                      <select
+                        value={activeScenarioId || ""}
+                        onChange={(e) => { if (e.target.value) loadScenario(e.target.value); }}
+                        style={{ flex: 1, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "7px", color: "#F0F6FC", fontSize: "13px", fontFamily: "'Inter', sans-serif", padding: "8px 12px", cursor: "pointer" }}
+                      >
+                        <option value="">Load a saved scenario…</option>
+                        {scenarios.map((sc) => (
+                          <option key={sc.id} value={sc.id}>{sc.name}</option>
+                        ))}
+                      </select>
+                      {activeScenarioId && (
+                        <button onClick={() => deleteScenario(activeScenarioId)} title="Delete this scenario" style={{ background: "rgba(248,113,113,0.1)", border: "1px solid rgba(248,113,113,0.25)", color: "#F87171", borderRadius: "6px", padding: "8px 11px", cursor: "pointer", fontSize: "12px", fontFamily: "'Inter', sans-serif" }}>✕</button>
+                      )}
                     </div>
                   )}
 
-                  <input placeholder="Scenario name (e.g. Renting a house)" value={scenarioName} onChange={(e) => setScenarioName(e.target.value)} style={{ width: "100%", boxSizing: "border-box", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "7px", color: "#F0F6FC", fontSize: "13px", fontFamily: "'Inter', sans-serif", padding: "8px 12px", marginBottom: "8px" }} />
+                  <input placeholder="New scenario name (e.g. Renting a house)" value={scenarioName} onChange={(e) => setScenarioName(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") saveScenarioAsNew(); }} style={{ width: "100%", boxSizing: "border-box", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "7px", color: "#F0F6FC", fontSize: "13px", fontFamily: "'Inter', sans-serif", padding: "8px 12px", marginBottom: "8px" }} />
                   <div style={{ display: "flex", gap: "8px" }}>
-                    <button onClick={saveScenario} style={{ flex: 1, background: "#FBBF24", border: "none", color: "#13111F", borderRadius: "7px", padding: "8px 12px", cursor: "pointer", fontSize: "12px", fontWeight: 700, fontFamily: "'Inter', sans-serif" }}>
-                      {activeScenarioId ? "Save changes" : "Save scenario"}
+                    <button onClick={saveScenarioAsNew} style={{ flex: 1, background: "#FBBF24", border: "none", color: "#13111F", borderRadius: "7px", padding: "8px 12px", cursor: "pointer", fontSize: "12px", fontWeight: 700, fontFamily: "'Inter', sans-serif" }}>
+                      Save scenario
                     </button>
                     {activeScenarioId && (
-                      <button onClick={saveScenarioAsNew} style={{ background: "rgba(251,191,36,0.1)", border: "1px solid rgba(251,191,36,0.4)", color: "#FBBF24", borderRadius: "7px", padding: "8px 12px", cursor: "pointer", fontSize: "12px", fontWeight: 600, fontFamily: "'Inter', sans-serif" }}>Save as new</button>
+                      <button onClick={saveScenario} title={`Update "${scenarios.find((s) => s.id === activeScenarioId)?.name || ""}"`} style={{ background: "rgba(251,191,36,0.1)", border: "1px solid rgba(251,191,36,0.4)", color: "#FBBF24", borderRadius: "7px", padding: "8px 12px", cursor: "pointer", fontSize: "12px", fontWeight: 600, fontFamily: "'Inter', sans-serif" }}>Save changes</button>
                     )}
                   </div>
                   <div style={{ fontSize: "11px", color: "#8B8FA8", marginTop: "8px", lineHeight: 1.5 }}>
-                    Saves your current toggles, edited amounts, and hypotheticals. Load one anytime to reopen it here.
+                    Saves your current toggles, edited amounts, and hypotheticals. Pick one from the dropdown to reopen it here.
                   </div>
                 </div>
               )}
