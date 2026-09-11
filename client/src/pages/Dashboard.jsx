@@ -2791,16 +2791,19 @@ function Dashboard() {
       const panelBorder = "1px solid rgba(255,255,255,0.06)";
       const rowBorder   = "1px solid rgba(255,255,255,0.04)";
 
-      const statTile = (label, value, negative, delta = null) => (
+      // deltaInfo: { amount, goodUp, unit }. The arrow always reflects the real
+      // direction of the change (up = ▲); color reflects good/bad (for bills an
+      // increase is bad → red ▲, so it never looks like bills "went down").
+      const statTile = (label, value, negative, deltaInfo = null) => (
         <div style={{ background: "#1A1826", border: whatIfMode ? "1px solid rgba(251,191,36,0.25)" : panelBorder, borderRadius: "12px", padding: isMobile ? "16px 14px" : "20px 22px", position: "relative", overflow: "hidden" }}>
           <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: "1px", background: whatIfMode ? "linear-gradient(90deg, rgba(251,191,36,0.8), transparent)" : "linear-gradient(90deg, rgba(0,212,170,0.8), transparent)" }} />
           <div style={{ fontSize: "10px", color: "#8B8FA8", letterSpacing: "0.1em", textTransform: "uppercase", fontWeight: "600", marginBottom: "10px" }}>{label}</div>
           <div style={{ fontFamily: "'DM Mono', monospace", fontSize: isMobile ? "19px" : "26px", fontWeight: "500", color: negative ? "#F87171" : "#00D4AA", lineHeight: 1.1, whiteSpace: "nowrap" }}>
             {value < 0 ? "-" : ""}${fmt(Math.abs(value))}
           </div>
-          {whatIfMode && delta !== null && delta !== 0 && (
-            <div style={{ fontSize: "11px", color: delta > 0 ? "#4ADE80" : "#F87171", marginTop: "6px", fontFamily: "'DM Mono', monospace" }}>
-              {delta > 0 ? "▲" : "▼"} ${fmt(Math.abs(delta))}/mo vs real
+          {whatIfMode && deltaInfo && deltaInfo.amount !== 0 && (
+            <div style={{ fontSize: "11px", color: (deltaInfo.amount > 0) === deltaInfo.goodUp ? "#4ADE80" : "#F87171", marginTop: "6px", fontFamily: "'DM Mono', monospace" }}>
+              {deltaInfo.amount > 0 ? "▲" : "▼"} ${fmt(Math.abs(deltaInfo.amount))}{deltaInfo.unit || "/mo"} vs real
             </div>
           )}
         </div>
@@ -2978,10 +2981,10 @@ function Dashboard() {
 
           {/* Stat tiles */}
           <div style={{ display: "grid", gridTemplateColumns: isMobile ? "repeat(2,1fr)" : "repeat(4,1fr)", gap: isMobile ? "8px" : "12px", marginBottom: "28px" }}>
-            {statTile("Monthly Income",    wiMonthlyIncome, false, whatIfMode ? wiMonthlyIncome - realMonthlyIncome : null)}
-            {statTile("Monthly Bills",     wiMonthlyBills,  true,  whatIfMode ? -(wiMonthlyBills - realMonthlyBills) : null)}
-            {statTile("Monthly Remaining", wiRemaining,     wiRemaining < 0, whatIfMode ? deltaRemaining : null)}
-            {statTile("Annual Remaining",  wiAnnual,        wiAnnual < 0,    whatIfMode ? deltaRemaining * 12 : null)}
+            {statTile("Monthly Income",    wiMonthlyIncome, false, whatIfMode ? { amount: wiMonthlyIncome - realMonthlyIncome, goodUp: true, unit: "/mo" } : null)}
+            {statTile("Monthly Bills",     wiMonthlyBills,  true,  whatIfMode ? { amount: wiMonthlyBills - realMonthlyBills, goodUp: false, unit: "/mo" } : null)}
+            {statTile("Monthly Remaining", wiRemaining,     wiRemaining < 0, whatIfMode ? { amount: deltaRemaining, goodUp: true, unit: "/mo" } : null)}
+            {statTile("Annual Remaining",  wiAnnual,        wiAnnual < 0,    whatIfMode ? { amount: deltaRemaining * 12, goodUp: true, unit: "/yr" } : null)}
           </div>
 
           <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "58% 40%", gap: "12px", alignItems: "start" }}>
