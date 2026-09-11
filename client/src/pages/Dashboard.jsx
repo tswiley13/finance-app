@@ -78,7 +78,7 @@ const css = `
   .stat-amount.neutral { color: #4ADE80; }
   .stat-amount.negative { color: #F87171; }
 
-  .dashboard-grid { display: grid; grid-template-columns: 58% 40%; gap: 12px; align-items: start; width: 100%; }
+  .dashboard-grid { display: grid; grid-template-columns: 1.45fr 1fr; gap: 12px; align-items: start; width: 100%; }
   .dashboard-left { display: flex; flex-direction: column; gap: 12px; }
   .dashboard-right { display: flex; flex-direction: column; gap: 12px; }
 
@@ -1021,10 +1021,32 @@ function Dashboard() {
     setTimeout(() => setScenarioSaved(""), 2500);
   }
   async function deleteScenario(id) {
+    const s = scenarios.find((x) => x.id === id);
+    if (s && !confirm(`Delete the scenario “${s.name}”? This can't be undone.`)) return;
     const { error } = await supabase.from("what_if_scenarios").delete().eq("id", id);
     if (error) { alert("Couldn't delete scenario: " + error.message); return; }
     setScenarios((prev) => prev.filter((s) => s.id !== id));
     if (activeScenarioId === id) { setActiveScenarioId(null); setScenarioName(""); }
+  }
+  // Make an independent copy of a saved scenario ("… (copy)") and load it.
+  async function duplicateScenario(id) {
+    const s = scenarios.find((x) => x.id === id);
+    if (!s) return;
+    const name = `${s.name} (copy)`;
+    const { data, error } = await supabase.from("what_if_scenarios")
+      .insert({ household_id: household.id, name, data: s.data || {}, updated_at: new Date().toISOString() })
+      .select().single();
+    if (error) { alert("Couldn't duplicate scenario: " + error.message); return; }
+    setScenarios((prev) => [data, ...prev]);
+    const d = data.data || {};
+    setWhatIfBills(d.bills || {});
+    setWhatIfIncome(d.income || {});
+    setWhatIfExtraBills(d.extraBills || []);
+    setWhatIfExtraIncome(d.extraIncome || []);
+    setWhatIfNextId(Date.now());
+    setActiveScenarioId(data.id);
+    setScenarioName("");
+    flashScenarioSaved(`Duplicated “${s.name}”`);
   }
 
   async function deleteBill(billId) {
@@ -2988,7 +3010,7 @@ function Dashboard() {
             {statTile("Annual Remaining",  wiAnnual,        wiAnnual < 0,    whatIfMode ? { amount: deltaRemaining * 12, goodUp: true, unit: "/yr" } : null)}
           </div>
 
-          <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "58% 40%", gap: "12px", alignItems: "start" }}>
+          <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1.45fr 1fr", gap: "12px", alignItems: "start" }}>
 
             {/* Left: bills — one flat monthly list, not broken into groups */}
             <div>
@@ -3187,13 +3209,13 @@ function Dashboard() {
                 <div style={{ background: "#1A1826", border: "1px solid rgba(251,191,36,0.25)", borderRadius: "12px", padding: "20px 22px", marginTop: "16px" }}>
                   <div style={{ fontSize: "11px", color: "#8B8FA8", letterSpacing: "0.1em", textTransform: "uppercase", fontWeight: "600", marginBottom: "14px" }}>Saved Scenarios</div>
 
-                  {/* Load a saved scenario from a dropdown */}
+                  {/* Load + manage the currently-loaded scenario */}
                   {scenarios.length > 0 && (
-                    <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "14px" }}>
+                    <div style={{ marginBottom: "14px" }}>
                       <select
                         value={activeScenarioId || ""}
                         onChange={(e) => { if (e.target.value) loadScenario(e.target.value); }}
-                        style={{ flex: 1, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "7px", color: "#F0F6FC", fontSize: "13px", fontFamily: "'Inter', sans-serif", padding: "8px 12px", cursor: "pointer" }}
+                        style={{ width: "100%", boxSizing: "border-box", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: "8px", color: "#F0F6FC", fontSize: "13px", fontFamily: "'Inter', sans-serif", padding: "9px 12px", cursor: "pointer" }}
                       >
                         <option value="">Load a saved scenario…</option>
                         {scenarios.map((sc) => (
@@ -3201,27 +3223,31 @@ function Dashboard() {
                         ))}
                       </select>
                       {activeScenarioId && (
-                        <button onClick={() => deleteScenario(activeScenarioId)} title="Delete this scenario" style={{ background: "rgba(248,113,113,0.1)", border: "1px solid rgba(248,113,113,0.25)", color: "#F87171", borderRadius: "6px", padding: "8px 11px", cursor: "pointer", fontSize: "12px", fontFamily: "'Inter', sans-serif" }}>✕</button>
+                        <div style={{ display: "flex", gap: "8px", marginTop: "8px" }}>
+                          <button onClick={saveScenario} style={{ flex: 1, background: "#FBBF24", border: "none", color: "#13111F", borderRadius: "8px", padding: "8px 10px", cursor: "pointer", fontSize: "12px", fontWeight: 700, fontFamily: "'Inter', sans-serif" }}>Save changes</button>
+                          <button onClick={() => duplicateScenario(activeScenarioId)} title="Save a copy" style={{ display: "flex", alignItems: "center", gap: "5px", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.14)", color: "#C9C6E0", borderRadius: "8px", padding: "8px 12px", cursor: "pointer", fontSize: "12px", fontWeight: 600, fontFamily: "'Inter', sans-serif" }}><Copy size={13} />Duplicate</button>
+                          <button onClick={() => deleteScenario(activeScenarioId)} title="Delete scenario" style={{ background: "rgba(248,113,113,0.08)", border: "1px solid rgba(248,113,113,0.3)", color: "#F87171", borderRadius: "8px", padding: "8px 12px", cursor: "pointer", fontSize: "12px", fontFamily: "'Inter', sans-serif" }}>Delete</button>
+                        </div>
                       )}
                     </div>
                   )}
 
-                  <input placeholder="New scenario name (e.g. Renting a house)" value={scenarioName} onChange={(e) => setScenarioName(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") saveScenarioAsNew(); }} style={{ width: "100%", boxSizing: "border-box", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "7px", color: "#F0F6FC", fontSize: "13px", fontFamily: "'Inter', sans-serif", padding: "8px 12px", marginBottom: "8px" }} />
-                  <div style={{ display: "flex", gap: "8px" }}>
-                    <button onClick={saveScenarioAsNew} style={{ flex: 1, background: "#FBBF24", border: "none", color: "#13111F", borderRadius: "7px", padding: "8px 12px", cursor: "pointer", fontSize: "12px", fontWeight: 700, fontFamily: "'Inter', sans-serif" }}>
-                      Save scenario
-                    </button>
-                    {activeScenarioId && (
-                      <button onClick={saveScenario} title={`Update "${scenarios.find((s) => s.id === activeScenarioId)?.name || ""}"`} style={{ background: "rgba(251,191,36,0.1)", border: "1px solid rgba(251,191,36,0.4)", color: "#FBBF24", borderRadius: "7px", padding: "8px 12px", cursor: "pointer", fontSize: "12px", fontWeight: 600, fontFamily: "'Inter', sans-serif" }}>Save changes</button>
-                    )}
+                  {/* Save the current what-if as a new scenario */}
+                  <div style={{ borderTop: scenarios.length > 0 ? "1px solid rgba(255,255,255,0.08)" : "none", paddingTop: scenarios.length > 0 ? "14px" : 0 }}>
+                    <div style={{ fontSize: "11px", color: "#8B8FA8", marginBottom: "8px" }}>Save the current what-if as a new scenario</div>
+                    <div style={{ display: "flex", gap: "8px" }}>
+                      <input placeholder="Scenario name (e.g. Renting a house)" value={scenarioName} onChange={(e) => setScenarioName(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") saveScenarioAsNew(); }} style={{ flex: 1, boxSizing: "border-box", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: "8px", color: "#F0F6FC", fontSize: "13px", fontFamily: "'Inter', sans-serif", padding: "9px 12px" }} />
+                      <button onClick={saveScenarioAsNew} disabled={!scenarioName.trim()} style={{ background: scenarioName.trim() ? "#FBBF24" : "rgba(251,191,36,0.35)", border: "none", color: "#13111F", borderRadius: "8px", padding: "9px 18px", cursor: scenarioName.trim() ? "pointer" : "not-allowed", fontSize: "12px", fontWeight: 700, fontFamily: "'Inter', sans-serif", whiteSpace: "nowrap" }}>Save</button>
+                    </div>
                   </div>
+
                   {scenarioSaved ? (
-                    <div style={{ fontSize: "12px", color: "#4ADE80", marginTop: "10px", fontWeight: 600, display: "flex", alignItems: "center", gap: "6px" }}>
+                    <div style={{ fontSize: "12px", color: "#4ADE80", marginTop: "12px", fontWeight: 600, display: "flex", alignItems: "center", gap: "6px" }}>
                       <span>✓</span>{scenarioSaved}
                     </div>
                   ) : (
-                    <div style={{ fontSize: "11px", color: "#8B8FA8", marginTop: "8px", lineHeight: 1.5 }}>
-                      Saves your current toggles, edited amounts, and hypotheticals. Pick one from the dropdown to reopen it here.
+                    <div style={{ fontSize: "11px", color: "#8B8FA8", marginTop: "12px", lineHeight: 1.5 }}>
+                      Saves your current toggles, edited amounts, and hypotheticals.
                     </div>
                   )}
                 </div>
