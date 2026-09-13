@@ -388,7 +388,7 @@ function Dashboard() {
   const [whatIfNextId, setWhatIfNextId] = useState(1);
   // Draft entry forms for What-If mode — committed to the lists above on "Add".
   const [whatIfBillDraft, setWhatIfBillDraft] = useState({ name: "", amount: "", frequency: "monthly", due_day: "" });
-  const [whatIfIncomeDraft, setWhatIfIncomeDraft] = useState({ name: "", amount: "", frequency: "biweekly" });
+  const [whatIfIncomeDraft, setWhatIfIncomeDraft] = useState({ name: "", amount: "", frequency: "monthly" });
   // Saved What-If scenarios (persisted). activeScenarioId = the one currently loaded.
   const [scenarios, setScenarios] = useState([]);
   const [activeScenarioId, setActiveScenarioId] = useState(null);
@@ -396,6 +396,10 @@ function Dashboard() {
   // Which bill's name is being edited inline in What-If (click-to-edit).
   const [editingBillNameId, setEditingBillNameId] = useState(null);
   const [editingIncomeNameId, setEditingIncomeNameId] = useState(null);
+  // While a bill amount is being edited, freeze the list order so the row
+  // doesn't jump around on every keystroke; re-sort on blur/Enter.
+  const [frozenBillOrder, setFrozenBillOrder] = useState(null);
+  const billOrderRef = useRef([]); // latest rendered bill order, captured for freeze-on-focus
   const [scenarioSaved, setScenarioSaved] = useState(""); // transient "saved" confirmation
   const [editingHouseholdName, setEditingHouseholdName] = useState(false);
   const [newHouseholdName, setNewHouseholdName] = useState("");
@@ -2783,6 +2787,25 @@ function Dashboard() {
       // "removed" = deleted from this scenario entirely (the red ✕), vs the
       // checkbox which just toggles a bill on/off but keeps it visible.
       const wiRemoved = (b) => !!whatIfBills[b.id]?.removed;
+      // What-If bills are edited by their MONTHLY amount (not per-check). An
+      // override stores the monthly figure directly; hypothetical amounts are
+      // monthly too. Default (unedited) is the real amount × its cadence.
+      const billMonthly = (b) => {
+        if (b._extra) return parseFloat(b.amount) || 0;
+        const ov = whatIfBills[b.id]?.amount;
+        if (ov !== undefined && ov !== null && String(ov).trim() !== "") return parseFloat(ov) || 0;
+        return (b.amount || 0) * billMultiplier(b.frequency || "monthly");
+      };
+      // The real (baseline) monthly for a bill, for the "changed" highlight.
+      const billRealMonthly = (b) => (b.amount || 0) * billMultiplier(b.frequency || "monthly");
+      // Same idea for income — edited by its MONTHLY amount.
+      const incRealMonthly = (i) => (i.fixed_amount || 0) * incMultiplier(i.frequency);
+      const incMonthly = (i) => {
+        if (i._extra) return parseFloat(i.amount) || 0;
+        const ov = whatIfIncome[i.id]?.amount;
+        if (ov !== undefined && ov !== null && String(ov).trim() !== "") return parseFloat(ov) || 0;
+        return incRealMonthly(i);
+      };
       const wiIncAmt  = (i) => {
         const raw = whatIfIncome[i.id]?.amount ?? i.fixed_amount ?? 0;
         return parseFloat(raw) || 0;
@@ -2790,13 +2813,13 @@ function Dashboard() {
       const wiIncEnabled = (i) => whatIfIncome[i.id]?.enabled ?? true;
 
       const wiMonthlyIncome = whatIfMode
-        ? income.reduce((s, i) => wiIncEnabled(i) ? s + wiIncAmt(i) * incMultiplier(i.frequency) : s, 0)
-          + whatIfExtraIncome.filter(i => i.enabled !== false).reduce((s, i) => s + (parseFloat(i.amount) || 0) * incMultiplier(i.frequency || "biweekly"), 0)
+        ? income.reduce((s, i) => wiIncEnabled(i) ? s + incMonthly(i) : s, 0)
+          + whatIfExtraIncome.filter(i => i.enabled !== false).reduce((s, i) => s + (parseFloat(i.amount) || 0), 0)
         : realMonthlyIncome;
 
       const wiMonthlyBills = whatIfMode
-        ? recurringBills.reduce((s, b) => (wiEnabled(b) && !wiRemoved(b)) ? s + wiAmt(b) * billMultiplier(b.frequency || "monthly") : s, 0)
-          + whatIfExtraBills.filter(b => b.enabled !== false).reduce((s, b) => s + (parseFloat(b.amount) || 0) * billMultiplier(b.frequency || "monthly"), 0)
+        ? recurringBills.reduce((s, b) => (wiEnabled(b) && !wiRemoved(b)) ? s + billMonthly(b) : s, 0)
+          + whatIfExtraBills.filter(b => b.enabled !== false).reduce((s, b) => s + (parseFloat(b.amount) || 0), 0)
         : realMonthlyBills;
 
       const wiRemaining = wiMonthlyIncome - wiMonthlyBills;
@@ -2842,16 +2865,21 @@ function Dashboard() {
       const setIncOverride = (id, field, val) =>
         setWhatIfIncome(prev => ({ ...prev, [id]: { ...(prev[id] || {}), [field]: val } }));
 
-      const billRow = (b, multiplier) => {
+      // Columns (What-If edits by MONTHLY amount, so there's no Per-Check column).
+      const billCols = isMobile
+        ? (whatIfMode ? "18px 1fr 108px 20px" : "1fr 110px")
+        : (whatIfMode ? "24px 1fr 150px 120px 24px" : "1fr 150px 120px");
+
+      const billRow = (b) => {
         const isExtra   = b._extra;
         const enabled   = isExtra ? b.enabled !== false : wiEnabled(b);
-        const amount    = isExtra ? (parseFloat(b.amount) || 0) : wiAmt(b);
-        const monthly   = enabled ? amount * multiplier : 0;
-        const realAmt   = b._extra ? 0 : (b.amount || 0);
-        const changed   = whatIfMode && !isExtra && (parseFloat(whatIfBills[b.id]?.amount) !== undefined && parseFloat(whatIfBills[b.id]?.amount) !== realAmt);
+        const monthly   = enabled ? billMonthly(b) : 0;
+        const changed   = whatIfMode && !isExtra && whatIfBills[b.id]?.amount !== undefined && String(whatIfBills[b.id]?.amount).trim() !== "" && parseFloat(whatIfBills[b.id]?.amount) !== billRealMonthly(b);
+        // Default (unedited) input value = the computed monthly, trimmed of trailing zeros.
+        const monthlyInputValue = isExtra ? b.amount : (whatIfBills[b.id]?.amount ?? String(+billRealMonthly(b).toFixed(2)));
 
         return (
-          <div key={b.id} style={{ display: "grid", gridTemplateColumns: isMobile ? (whatIfMode ? "18px 1fr 82px 66px 18px" : "1fr 72px 80px") : (whatIfMode ? "24px 1fr 110px 110px 110px 24px" : "1fr 100px 110px 110px"), gap: "8px", padding: "10px 0", borderBottom: rowBorder, alignItems: "center", opacity: (!whatIfMode || enabled) ? 1 : 0.35, transition: "opacity 0.2s" }}>
+          <div key={b.id} style={{ display: "grid", gridTemplateColumns: billCols, gap: "8px", padding: "10px 0", borderBottom: rowBorder, alignItems: "center", opacity: (!whatIfMode || enabled) ? 1 : 0.35, transition: "opacity 0.2s" }}>
             {whatIfMode && (
               <button onClick={() => {
                 if (isExtra) {
@@ -2873,7 +2901,7 @@ function Dashboard() {
                   onChange={e => { if (isExtra) setWhatIfExtraBills(prev => prev.map(x => x.id === b.id ? { ...x, name: e.target.value } : x)); else setBillOverride(b.id, "name", e.target.value); }}
                   onBlur={() => setEditingBillNameId(null)}
                   onKeyDown={e => { if (e.key === "Enter" || e.key === "Escape") setEditingBillNameId(null); }}
-                  style={{ width: "100%", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(108,99,255,0.5)", borderRadius: "6px", color: "#F0F6FC", fontFamily: "'Inter', sans-serif", fontSize: "13px", fontWeight: "500", padding: "4px 8px" }}
+                  style={{ width: "100%", boxSizing: "border-box", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(108,99,255,0.5)", borderRadius: "6px", color: "#F0F6FC", fontFamily: "'Inter', sans-serif", fontSize: "13px", fontWeight: "500", padding: "4px 8px" }}
                 />
               ) : (
                 <div
@@ -2889,28 +2917,22 @@ function Dashboard() {
                 : b.due_day > 0 && <div style={{ fontSize: "11px", color: "#8B8FA8", marginTop: "1px" }}>Due the {b.due_day}{["st","nd","rd"][((b.due_day % 10) - 1)] || "th"}</div>
               }
             </div>
-            {/* Per check — editable in what-if mode (real overrides, or the
-                hypothetical's own amount) */}
+            {/* Monthly — the single editable amount in What-If */}
             <div style={{ textAlign: "right" }}>
-              {whatIfMode && !isExtra ? (
+              {whatIfMode ? (
                 <input
                   type="number"
-                  value={whatIfBills[b.id]?.amount ?? (b.amount || 0)}
-                  onChange={e => setBillOverride(b.id, "amount", e.target.value)}
-                  style={{ width: "100%", boxSizing: "border-box", background: changed ? "rgba(251,191,36,0.08)" : "rgba(255,255,255,0.04)", border: changed ? "1px solid rgba(251,191,36,0.4)" : "1px solid rgba(255,255,255,0.1)", borderRadius: "6px", color: "#F0F6FC", fontFamily: "'DM Mono', monospace", fontSize: isMobile ? "11px" : "12px", padding: isMobile ? "4px 3px" : "4px 8px", textAlign: "right" }}
-                />
-              ) : whatIfMode && isExtra ? (
-                <input
-                  type="number"
-                  value={b.amount}
-                  onChange={e => setWhatIfExtraBills(prev => prev.map(x => x.id === b.id ? { ...x, amount: e.target.value } : x))}
-                  style={{ width: "100%", boxSizing: "border-box", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "6px", color: "#F0F6FC", fontFamily: "'DM Mono', monospace", fontSize: isMobile ? "11px" : "12px", padding: isMobile ? "4px 3px" : "4px 8px", textAlign: "right" }}
+                  value={monthlyInputValue}
+                  onChange={e => { if (isExtra) setWhatIfExtraBills(prev => prev.map(x => x.id === b.id ? { ...x, amount: e.target.value } : x)); else setBillOverride(b.id, "amount", e.target.value); }}
+                  onFocus={() => setFrozenBillOrder(billOrderRef.current)}
+                  onBlur={() => setFrozenBillOrder(null)}
+                  onKeyDown={e => { if (e.key === "Enter") e.target.blur(); }}
+                  style={{ width: "100%", boxSizing: "border-box", background: changed ? "rgba(251,191,36,0.08)" : "rgba(255,255,255,0.04)", border: changed ? "1px solid rgba(251,191,36,0.4)" : "1px solid rgba(255,255,255,0.1)", borderRadius: "6px", color: enabled ? "#F0F6FC" : "#4A4F5C", fontFamily: "'DM Mono', monospace", fontSize: isMobile ? "12px" : "13px", padding: "5px 8px", textAlign: "right" }}
                 />
               ) : (
-                <span style={{ fontFamily: "'DM Mono', monospace", fontSize: "13px", color: "#8B8FA8" }}>${fmt(amount)}</span>
+                <span style={{ fontFamily: "'DM Mono', monospace", fontSize: "13px", color: enabled ? "#F87171" : "#4A4F5C" }}>{enabled ? `$${fmt(monthly)}` : "—"}</span>
               )}
             </div>
-            <div style={{ fontFamily: "'DM Mono', monospace", fontSize: isMobile ? "11px" : "13px", color: enabled ? "#F87171" : "#4A4F5C", textAlign: "right" }}>{enabled ? `$${fmt(monthly)}` : "—"}</div>
             {!isMobile && <div style={{ fontFamily: "'DM Mono', monospace", fontSize: "13px", color: "#8B8FA8", textAlign: "right" }}>{enabled ? `$${fmt(monthly * 12)}` : "—"}</div>}
             {whatIfMode && (
               <button
@@ -2974,7 +2996,7 @@ function Dashboard() {
         const id = `extra-inc-${whatIfNextId}`;
         setWhatIfNextId(n => n + 1);
         setWhatIfExtraIncome(prev => [...prev, { id, name: d.name.trim(), amount: d.amount, frequency: d.frequency || "biweekly", enabled: true }]);
-        setWhatIfIncomeDraft({ name: "", amount: "", frequency: "biweekly" });
+        setWhatIfIncomeDraft({ name: "", amount: "", frequency: "monthly" });
       };
 
       const inputStyle = { background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "6px", color: "#F0F6FC", fontFamily: "'Inter', sans-serif", fontSize: "12px", padding: "5px 8px" };
@@ -2986,11 +3008,11 @@ function Dashboard() {
             <h1 className="page-title" style={{ margin: 0 }}>Monthly Overview</h1>
             <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
               {whatIfMode && (
-                <button onClick={() => { setWhatIfBills({}); setWhatIfIncome({}); setWhatIfExtraBills([]); setWhatIfExtraIncome([]); setWhatIfBillDraft({ name: "", amount: "", frequency: "monthly", due_day: "" }); setWhatIfIncomeDraft({ name: "", amount: "", frequency: "biweekly" }); setActiveScenarioId(null); setScenarioName(""); }} style={{ fontSize: "12px", color: "#8B8FA8", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "7px", padding: "7px 14px", cursor: "pointer", fontFamily: "'Inter', sans-serif" }}>
+                <button onClick={() => { setWhatIfBills({}); setWhatIfIncome({}); setWhatIfExtraBills([]); setWhatIfExtraIncome([]); setWhatIfBillDraft({ name: "", amount: "", frequency: "monthly", due_day: "" }); setWhatIfIncomeDraft({ name: "", amount: "", frequency: "monthly" }); setActiveScenarioId(null); setScenarioName(""); }} style={{ fontSize: "12px", color: "#8B8FA8", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "7px", padding: "7px 14px", cursor: "pointer", fontFamily: "'Inter', sans-serif" }}>
                   Reset
                 </button>
               )}
-              <button onClick={() => { setWhatIfMode(m => !m); if (whatIfMode) { setWhatIfBills({}); setWhatIfIncome({}); setWhatIfExtraBills([]); setWhatIfExtraIncome([]); setWhatIfBillDraft({ name: "", amount: "", frequency: "monthly", due_day: "" }); setWhatIfIncomeDraft({ name: "", amount: "", frequency: "biweekly" }); setActiveScenarioId(null); setScenarioName(""); } }} style={{ fontSize: "12px", fontWeight: "600", color: whatIfMode ? "#13111F" : "#FBBF24", background: whatIfMode ? "#FBBF24" : "rgba(251,191,36,0.1)", border: "1px solid rgba(251,191,36,0.4)", borderRadius: "7px", padding: "7px 16px", cursor: "pointer", fontFamily: "'Inter', sans-serif" }}>
+              <button onClick={() => { setWhatIfMode(m => !m); if (whatIfMode) { setWhatIfBills({}); setWhatIfIncome({}); setWhatIfExtraBills([]); setWhatIfExtraIncome([]); setWhatIfBillDraft({ name: "", amount: "", frequency: "monthly", due_day: "" }); setWhatIfIncomeDraft({ name: "", amount: "", frequency: "monthly" }); setActiveScenarioId(null); setScenarioName(""); } }} style={{ fontSize: "12px", fontWeight: "600", color: whatIfMode ? "#13111F" : "#FBBF24", background: whatIfMode ? "#FBBF24" : "rgba(251,191,36,0.1)", border: "1px solid rgba(251,191,36,0.4)", borderRadius: "7px", padding: "7px 16px", cursor: "pointer", fontFamily: "'Inter', sans-serif" }}>
                 {whatIfMode ? "✕  Exit What-If" : "⚡ What-If Mode"}
               </button>
             </div>
@@ -3046,29 +3068,28 @@ function Dashboard() {
             <div>
               <div style={{ fontSize: "11px", color: "#8B8FA8", letterSpacing: "0.1em", textTransform: "uppercase", fontWeight: "600", marginBottom: "12px" }}>Bills</div>
               {(() => {
-                const flatBills = allBillsForView
-                  .filter(b => (b.frequency || "monthly") !== "one-time")
-                  .sort((a, b) => {
-                    const m = (x) => (x._extra ? (parseFloat(x.amount) || 0) : wiAmt(x)) * billMult(x.frequency);
-                    return m(b) - m(a);
-                  });
-                const cols = isMobile
-                  ? (whatIfMode ? "18px 1fr 82px 66px 18px" : "1fr 72px 80px")
-                  : (whatIfMode ? "24px 1fr 110px 110px 110px 24px" : "1fr 100px 110px 110px");
+                let flatBills = allBillsForView.filter(b => (b.frequency || "monthly") !== "one-time");
+                if (frozenBillOrder) {
+                  // Editing an amount — keep the order stable so the row doesn't jump.
+                  const pos = Object.fromEntries(frozenBillOrder.map((id, i) => [id, i]));
+                  flatBills.sort((a, b) => (pos[a.id] ?? 1e9) - (pos[b.id] ?? 1e9));
+                } else {
+                  flatBills.sort((a, b) => billMonthly(b) - billMonthly(a));
+                }
+                billOrderRef.current = flatBills.map(b => b.id);
                 const hdr = { fontSize: "10px", color: "#8B8FA8", textAlign: "right", letterSpacing: "0.08em", textTransform: "uppercase" };
                 return (
                   <div style={{ background: "#1A1826", border: panelBorder, borderRadius: "12px", padding: isMobile ? "14px" : "20px", marginBottom: "12px" }}>
-                    <div style={{ display: "grid", gridTemplateColumns: cols, gap: "8px", marginBottom: "8px" }}>
+                    <div style={{ display: "grid", gridTemplateColumns: billCols, gap: "8px", marginBottom: "8px" }}>
                       {whatIfMode && <div />}
                       <div style={{ fontSize: "10px", color: "#8B8FA8", letterSpacing: "0.08em", textTransform: "uppercase" }}>Bill</div>
-                      <div style={hdr}>Per Check</div>
                       <div style={hdr}>Monthly</div>
                       {!isMobile && <div style={hdr}>Annual</div>}
                       {whatIfMode && <div />}
                     </div>
                     {flatBills.length === 0
                       ? <div style={{ fontSize: "13px", color: "#8B8FA8", padding: "8px 0" }}>No bills.</div>
-                      : flatBills.map(b => billRow(b, billMult(b.frequency)))}
+                      : flatBills.map(b => billRow(b))}
                   </div>
                 );
               })()}
@@ -3080,12 +3101,8 @@ function Dashboard() {
                     <div style={{ fontSize: "10px", color: "#8B8FA8", letterSpacing: "0.08em", textTransform: "uppercase", fontWeight: 600, marginBottom: "8px" }}>Add a bill</div>
                     <input placeholder="Bill name" value={whatIfBillDraft.name} onChange={e => setWhatIfBillDraft(d => ({ ...d, name: e.target.value }))} onKeyDown={e => { if (e.key === "Enter") saveDraftBill(); }} style={{ ...inputStyle, width: "100%", boxSizing: "border-box", marginBottom: "8px" }} />
                     <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", marginBottom: "8px" }}>
-                      <input placeholder="Amount" type="number" value={whatIfBillDraft.amount} onChange={e => setWhatIfBillDraft(d => ({ ...d, amount: e.target.value }))} onKeyDown={e => { if (e.key === "Enter") saveDraftBill(); }} style={{ ...inputStyle, flex: "1 1 90px", minWidth: 0, boxSizing: "border-box" }} />
-                      <select value={whatIfBillDraft.frequency} onChange={e => setWhatIfBillDraft(d => ({ ...d, frequency: e.target.value }))} style={{ ...inputStyle, flex: "1 1 120px", minWidth: 0 }}>
-                        <option value="monthly">Monthly</option>
-                        <option value="payday">Every Payday</option>
-                      </select>
-                      <input placeholder="Due day" type="number" min="1" max="31" value={whatIfBillDraft.due_day} onChange={e => setWhatIfBillDraft(d => ({ ...d, due_day: parseInt(e.target.value) || "" }))} onKeyDown={e => { if (e.key === "Enter") saveDraftBill(); }} style={{ ...inputStyle, flex: "0 0 88px", boxSizing: "border-box" }} />
+                      <input placeholder="Monthly amount" type="number" value={whatIfBillDraft.amount} onChange={e => setWhatIfBillDraft(d => ({ ...d, amount: e.target.value }))} onKeyDown={e => { if (e.key === "Enter") saveDraftBill(); }} style={{ ...inputStyle, flex: "1 1 140px", minWidth: 0, boxSizing: "border-box" }} />
+                      <input placeholder="Due day (optional)" type="number" min="1" max="31" value={whatIfBillDraft.due_day} onChange={e => setWhatIfBillDraft(d => ({ ...d, due_day: parseInt(e.target.value) || "" }))} onKeyDown={e => { if (e.key === "Enter") saveDraftBill(); }} style={{ ...inputStyle, flex: "1 1 120px", minWidth: 0, boxSizing: "border-box" }} />
                     </div>
                     <button onClick={saveDraftBill} disabled={!whatIfBillDraft.name.trim() || !whatIfBillDraft.amount} style={{ width: "100%", fontSize: "13px", fontWeight: 700, color: "#13111F", background: (!whatIfBillDraft.name.trim() || !whatIfBillDraft.amount) ? "rgba(251,191,36,0.4)" : "#FBBF24", border: "none", borderRadius: "7px", padding: "9px", cursor: (!whatIfBillDraft.name.trim() || !whatIfBillDraft.amount) ? "not-allowed" : "pointer", fontFamily: "'Inter', sans-serif" }}>Add bill</button>
                   </div>
@@ -3094,10 +3111,9 @@ function Dashboard() {
 
               {/* Grand total */}
               <div style={{ background: "#1A1826", border: whatIfMode ? "1px solid rgba(251,191,36,0.25)" : panelBorder, borderRadius: "12px", padding: "16px 20px" }}>
-                <div style={{ display: "grid", gridTemplateColumns: isMobile ? (whatIfMode ? "18px 1fr 82px 66px 18px" : "1fr 72px 80px") : (whatIfMode ? "24px 1fr 110px 110px 110px 24px" : "1fr 100px 110px 110px"), gap: "8px", alignItems: "center" }}>
+                <div style={{ display: "grid", gridTemplateColumns: billCols, gap: "8px", alignItems: "center" }}>
                   {whatIfMode && <div />}
                   <div style={{ fontSize: "13px", color: "#F0F6FC", fontWeight: "700" }}>Total Bills</div>
-                  {!isMobile && <div />}
                   <div style={{ fontFamily: "'DM Mono', monospace", fontSize: "15px", color: "#F87171", textAlign: "right", fontWeight: "600" }}>${fmt(wiMonthlyBills)}</div>
                   {!isMobile && <div style={{ fontFamily: "'DM Mono', monospace", fontSize: "15px", color: "#8B8FA8", textAlign: "right" }}>${fmt(wiMonthlyBills * 12)}</div>}
                   {whatIfMode && <div />}
@@ -3122,7 +3138,7 @@ function Dashboard() {
 
               {/* Income panel */}
               <div style={{ background: "#1A1826", border: panelBorder, borderRadius: "12px", padding: "20px" }}>
-                <div style={{ display: "grid", gridTemplateColumns: whatIfMode ? "24px 1fr 90px 90px" : "1fr 90px 90px", gap: "8px", marginBottom: "8px" }}>
+                <div style={{ display: "grid", gridTemplateColumns: whatIfMode ? "24px 1fr 120px 86px" : "1fr 120px 86px", gap: "8px", marginBottom: "8px" }}>
                   {whatIfMode && <div />}
                   <div style={{ fontSize: "11px", color: "#8B8FA8", letterSpacing: "0.1em", textTransform: "uppercase", fontWeight: "600" }}>Income</div>
                   <div style={{ fontSize: "10px", color: "#8B8FA8", textAlign: "right", letterSpacing: "0.08em", textTransform: "uppercase" }}>Monthly</div>
@@ -3134,13 +3150,12 @@ function Dashboard() {
                 ].map(i => {
                   const isExtra  = i._extra;
                   const enabled  = isExtra ? i.enabled !== false : wiIncEnabled(i);
-                  const amt      = isExtra ? (parseFloat(i.amount) || 0) : wiIncAmt(i);
                   const freq     = i.frequency || (isExtra ? "biweekly" : "monthly");
-                  const monthly  = enabled ? amt * incMultiplier(freq) : 0;
-                  const realAmt  = i._extra ? 0 : (i.fixed_amount || 0);
-                  const changed  = whatIfMode && !isExtra && parseFloat(whatIfIncome[i.id]?.amount) !== undefined && parseFloat(whatIfIncome[i.id]?.amount) !== realAmt;
+                  const monthly  = enabled ? incMonthly(i) : 0;
+                  const changed  = whatIfMode && !isExtra && whatIfIncome[i.id]?.amount !== undefined && String(whatIfIncome[i.id]?.amount).trim() !== "" && parseFloat(whatIfIncome[i.id]?.amount) !== incRealMonthly(i);
+                  const monthlyInputValue = isExtra ? i.amount : (whatIfIncome[i.id]?.amount ?? String(+incRealMonthly(i).toFixed(2)));
                   return (
-                    <div key={i.id} style={{ display: "grid", gridTemplateColumns: whatIfMode ? "24px 1fr 90px 90px" : "1fr 90px 90px", gap: "8px", padding: "10px 0", borderBottom: rowBorder, alignItems: "center", opacity: (!whatIfMode || enabled) ? 1 : 0.35, transition: "opacity 0.2s" }}>
+                    <div key={i.id} style={{ display: "grid", gridTemplateColumns: whatIfMode ? "24px 1fr 120px 86px" : "1fr 120px 86px", gap: "8px", padding: "10px 0", borderBottom: rowBorder, alignItems: "center", opacity: (!whatIfMode || enabled) ? 1 : 0.35, transition: "opacity 0.2s" }}>
                       {whatIfMode && (
                         <button onClick={() => {
                           if (isExtra) setWhatIfExtraIncome(prev => prev.map(x => x.id === i.id ? { ...x, enabled: !x.enabled } : x));
@@ -3160,7 +3175,7 @@ function Dashboard() {
                             onChange={e => { if (isExtra) setWhatIfExtraIncome(prev => prev.map(x => x.id === i.id ? { ...x, name: e.target.value } : x)); else setIncOverride(i.id, "name", e.target.value); }}
                             onBlur={() => setEditingIncomeNameId(null)}
                             onKeyDown={e => { if (e.key === "Enter" || e.key === "Escape") setEditingIncomeNameId(null); }}
-                            style={{ width: "100%", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(108,99,255,0.5)", borderRadius: "6px", color: "#F0F6FC", fontFamily: "'Inter', sans-serif", fontSize: "13px", fontWeight: "500", padding: "4px 8px" }}
+                            style={{ width: "100%", boxSizing: "border-box", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(108,99,255,0.5)", borderRadius: "6px", color: "#F0F6FC", fontFamily: "'Inter', sans-serif", fontSize: "13px", fontWeight: "500", padding: "4px 8px" }}
                           />
                         ) : (
                           <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
@@ -3170,17 +3185,21 @@ function Dashboard() {
                             {whatIfMode && isExtra && <button onClick={() => setWhatIfExtraIncome(prev => prev.filter(x => x.id !== i.id))} title="Delete this income" style={{ background: "none", border: "none", color: "#F87171", cursor: "pointer", fontSize: "12px", padding: 0, lineHeight: 1 }}>✕</button>}
                           </div>
                         )}
-                        {/* Detail — freq · per-check (editable in what-if) */}
-                        <div style={{ fontSize: "11px", color: "#8B8FA8", marginTop: "1px", display: "flex", alignItems: "center", gap: "4px", flexWrap: "wrap" }}>
-                          <span style={{ textTransform: "capitalize" }}>{freq}</span><span>·</span>
-                          {whatIfMode ? (
-                            <span style={{ display: "inline-flex", alignItems: "center", gap: "2px" }}>$<input type="number" value={isExtra ? i.amount : (whatIfIncome[i.id]?.amount ?? (i.fixed_amount || 0))} onChange={e => { if (isExtra) setWhatIfExtraIncome(prev => prev.map(x => x.id === i.id ? { ...x, amount: e.target.value } : x)); else setIncOverride(i.id, "amount", e.target.value); }} style={{ width: "86px", background: changed ? "rgba(251,191,36,0.08)" : "rgba(255,255,255,0.04)", border: changed ? "1px solid rgba(251,191,36,0.4)" : "1px solid rgba(255,255,255,0.1)", borderRadius: "5px", color: "#F0F6FC", fontFamily: "'DM Mono', monospace", fontSize: "11px", padding: "2px 6px" }} />/check</span>
-                          ) : <span>${fmt(i.fixed_amount || 0)}/check</span>}
-                        </div>
+                        <div style={{ fontSize: "11px", color: "#8B8FA8", marginTop: "1px", textTransform: "capitalize" }}>{freq}</div>
                       </div>
-                      {/* Monthly total — always the per-month figure, not the per-check amount */}
+                      {/* Monthly — the single editable amount in What-If */}
                       <div style={{ textAlign: "right" }}>
-                        <span style={{ fontFamily: "'DM Mono', monospace", fontSize: "13px", color: enabled ? "#00D4AA" : "#4A4F5C" }}>{enabled ? `$${fmt(monthly)}` : "—"}</span>
+                        {whatIfMode ? (
+                          <input
+                            type="number"
+                            value={monthlyInputValue}
+                            onChange={e => { if (isExtra) setWhatIfExtraIncome(prev => prev.map(x => x.id === i.id ? { ...x, amount: e.target.value } : x)); else setIncOverride(i.id, "amount", e.target.value); }}
+                            onKeyDown={e => { if (e.key === "Enter") e.target.blur(); }}
+                            style={{ width: "100%", boxSizing: "border-box", background: changed ? "rgba(251,191,36,0.08)" : "rgba(255,255,255,0.04)", border: changed ? "1px solid rgba(251,191,36,0.4)" : "1px solid rgba(255,255,255,0.1)", borderRadius: "6px", color: enabled ? "#00D4AA" : "#4A4F5C", fontFamily: "'DM Mono', monospace", fontSize: "13px", padding: "5px 8px", textAlign: "right" }}
+                          />
+                        ) : (
+                          <span style={{ fontFamily: "'DM Mono', monospace", fontSize: "13px", color: enabled ? "#00D4AA" : "#4A4F5C" }}>{enabled ? `$${fmt(monthly)}` : "—"}</span>
+                        )}
                       </div>
                       <div style={{ fontFamily: "'DM Mono', monospace", fontSize: "13px", color: enabled ? "#8B8FA8" : "#4A4F5C", textAlign: "right" }}>{enabled ? `$${fmt(monthly * 12)}` : "—"}</div>
                     </div>
@@ -3189,19 +3208,14 @@ function Dashboard() {
                 {whatIfMode && (
                   <div style={{ background: "rgba(251,191,36,0.05)", border: "1px dashed rgba(251,191,36,0.35)", borderRadius: "10px", padding: "12px 14px", marginTop: "10px" }}>
                     <div style={{ fontSize: "10px", color: "#8B8FA8", letterSpacing: "0.08em", textTransform: "uppercase", fontWeight: 600, marginBottom: "8px" }}>Add income</div>
-                    <input placeholder="Income name" value={whatIfIncomeDraft.name} onChange={e => setWhatIfIncomeDraft(d => ({ ...d, name: e.target.value }))} onKeyDown={e => { if (e.key === "Enter") saveDraftIncome(); }} style={{ ...inputStyle, width: "100%", boxSizing: "border-box", marginBottom: "8px" }} />
                     <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", marginBottom: "8px" }}>
-                      <input placeholder="Amount / check" type="number" value={whatIfIncomeDraft.amount} onChange={e => setWhatIfIncomeDraft(d => ({ ...d, amount: e.target.value }))} onKeyDown={e => { if (e.key === "Enter") saveDraftIncome(); }} style={{ ...inputStyle, flex: "1 1 110px", minWidth: 0, boxSizing: "border-box" }} />
-                      <select value={whatIfIncomeDraft.frequency} onChange={e => setWhatIfIncomeDraft(d => ({ ...d, frequency: e.target.value }))} style={{ ...inputStyle, flex: "1 1 110px", minWidth: 0 }}>
-                        <option value="biweekly">Biweekly</option>
-                        <option value="weekly">Weekly</option>
-                        <option value="monthly">Monthly</option>
-                      </select>
+                      <input placeholder="Income name" value={whatIfIncomeDraft.name} onChange={e => setWhatIfIncomeDraft(d => ({ ...d, name: e.target.value }))} onKeyDown={e => { if (e.key === "Enter") saveDraftIncome(); }} style={{ ...inputStyle, flex: "2 1 140px", minWidth: 0, boxSizing: "border-box" }} />
+                      <input placeholder="Monthly amount" type="number" value={whatIfIncomeDraft.amount} onChange={e => setWhatIfIncomeDraft(d => ({ ...d, amount: e.target.value }))} onKeyDown={e => { if (e.key === "Enter") saveDraftIncome(); }} style={{ ...inputStyle, flex: "1 1 120px", minWidth: 0, boxSizing: "border-box" }} />
                     </div>
                     <button onClick={saveDraftIncome} disabled={!whatIfIncomeDraft.name.trim() || !whatIfIncomeDraft.amount} style={{ width: "100%", fontSize: "13px", fontWeight: 700, color: "#13111F", background: (!whatIfIncomeDraft.name.trim() || !whatIfIncomeDraft.amount) ? "rgba(251,191,36,0.4)" : "#FBBF24", border: "none", borderRadius: "7px", padding: "9px", cursor: (!whatIfIncomeDraft.name.trim() || !whatIfIncomeDraft.amount) ? "not-allowed" : "pointer", fontFamily: "'Inter', sans-serif" }}>Add income</button>
                   </div>
                 )}
-                <div style={{ display: "grid", gridTemplateColumns: whatIfMode ? "24px 1fr 90px 90px" : "1fr 90px 90px", gap: "8px", paddingTop: "12px", borderTop: "1px solid rgba(255,255,255,0.08)", marginTop: "4px" }}>
+                <div style={{ display: "grid", gridTemplateColumns: whatIfMode ? "24px 1fr 120px 86px" : "1fr 120px 86px", gap: "8px", paddingTop: "12px", borderTop: "1px solid rgba(255,255,255,0.08)", marginTop: "4px" }}>
                   {whatIfMode && <div />}
                   <div style={{ fontSize: "12px", color: "#8B8FA8", fontWeight: "600" }}>Total</div>
                   <div style={{ fontFamily: "'DM Mono', monospace", fontSize: "13px", color: "#00D4AA", textAlign: "right", fontWeight: "600" }}>${fmt(wiMonthlyIncome)}</div>
