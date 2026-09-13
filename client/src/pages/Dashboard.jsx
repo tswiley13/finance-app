@@ -2851,7 +2851,7 @@ function Dashboard() {
         const changed   = whatIfMode && !isExtra && (parseFloat(whatIfBills[b.id]?.amount) !== undefined && parseFloat(whatIfBills[b.id]?.amount) !== realAmt);
 
         return (
-          <div key={b.id} style={{ display: "grid", gridTemplateColumns: isMobile ? (whatIfMode ? "20px 1fr 72px 76px 22px" : "1fr 72px 80px") : (whatIfMode ? "24px 1fr 110px 110px 110px 24px" : "1fr 100px 110px 110px"), gap: "8px", padding: "10px 0", borderBottom: rowBorder, alignItems: "center", opacity: (!whatIfMode || enabled) ? 1 : 0.35, transition: "opacity 0.2s" }}>
+          <div key={b.id} style={{ display: "grid", gridTemplateColumns: isMobile ? (whatIfMode ? "18px 1fr 82px 66px 18px" : "1fr 72px 80px") : (whatIfMode ? "24px 1fr 110px 110px 110px 24px" : "1fr 100px 110px 110px"), gap: "8px", padding: "10px 0", borderBottom: rowBorder, alignItems: "center", opacity: (!whatIfMode || enabled) ? 1 : 0.35, transition: "opacity 0.2s" }}>
             {whatIfMode && (
               <button onClick={() => {
                 if (isExtra) {
@@ -2897,20 +2897,20 @@ function Dashboard() {
                   type="number"
                   value={whatIfBills[b.id]?.amount ?? (b.amount || 0)}
                   onChange={e => setBillOverride(b.id, "amount", e.target.value)}
-                  style={{ width: "100%", boxSizing: "border-box", background: changed ? "rgba(251,191,36,0.08)" : "rgba(255,255,255,0.04)", border: changed ? "1px solid rgba(251,191,36,0.4)" : "1px solid rgba(255,255,255,0.1)", borderRadius: "6px", color: "#F0F6FC", fontFamily: "'DM Mono', monospace", fontSize: "12px", padding: "4px 8px", textAlign: "right" }}
+                  style={{ width: "100%", boxSizing: "border-box", background: changed ? "rgba(251,191,36,0.08)" : "rgba(255,255,255,0.04)", border: changed ? "1px solid rgba(251,191,36,0.4)" : "1px solid rgba(255,255,255,0.1)", borderRadius: "6px", color: "#F0F6FC", fontFamily: "'DM Mono', monospace", fontSize: isMobile ? "11px" : "12px", padding: isMobile ? "4px 3px" : "4px 8px", textAlign: "right" }}
                 />
               ) : whatIfMode && isExtra ? (
                 <input
                   type="number"
                   value={b.amount}
                   onChange={e => setWhatIfExtraBills(prev => prev.map(x => x.id === b.id ? { ...x, amount: e.target.value } : x))}
-                  style={{ width: "100%", boxSizing: "border-box", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "6px", color: "#F0F6FC", fontFamily: "'DM Mono', monospace", fontSize: "12px", padding: "4px 8px", textAlign: "right" }}
+                  style={{ width: "100%", boxSizing: "border-box", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "6px", color: "#F0F6FC", fontFamily: "'DM Mono', monospace", fontSize: isMobile ? "11px" : "12px", padding: isMobile ? "4px 3px" : "4px 8px", textAlign: "right" }}
                 />
               ) : (
                 <span style={{ fontFamily: "'DM Mono', monospace", fontSize: "13px", color: "#8B8FA8" }}>${fmt(amount)}</span>
               )}
             </div>
-            <div style={{ fontFamily: "'DM Mono', monospace", fontSize: "13px", color: enabled ? "#F87171" : "#4A4F5C", textAlign: "right" }}>{enabled ? `$${fmt(monthly)}` : "—"}</div>
+            <div style={{ fontFamily: "'DM Mono', monospace", fontSize: isMobile ? "11px" : "13px", color: enabled ? "#F87171" : "#4A4F5C", textAlign: "right" }}>{enabled ? `$${fmt(monthly)}` : "—"}</div>
             {!isMobile && <div style={{ fontFamily: "'DM Mono', monospace", fontSize: "13px", color: "#8B8FA8", textAlign: "right" }}>{enabled ? `$${fmt(monthly * 12)}` : "—"}</div>}
             {whatIfMode && (
               <button
@@ -2933,7 +2933,7 @@ function Dashboard() {
         if (group.length === 0 && (!whatIfMode || !whatIfExtraBills.some(b => group.includes(b)))) return null;
         if (group.length === 0) return null;
         const cols = isMobile
-          ? (whatIfMode ? "20px 1fr 72px 76px 22px" : "1fr 72px 80px")
+          ? (whatIfMode ? "18px 1fr 82px 66px 18px" : "1fr 72px 80px")
           : (whatIfMode ? "24px 1fr 110px 110px 110px 24px" : "1fr 100px 110px 110px");
         return (
           <div style={{ background: "#1A1826", border: panelBorder, borderRadius: "12px", padding: isMobile ? "14px" : "20px", marginBottom: "12px" }}>
@@ -3015,6 +3015,31 @@ function Dashboard() {
             {statTile("Annual Remaining",  wiAnnual,        wiAnnual < 0,    whatIfMode ? { amount: deltaRemaining * 12, goodUp: true, unit: "/yr" } : null)}
           </div>
 
+          {/* Saved scenarios — up top so it's easy to find, not buried below */}
+          {whatIfMode && (
+            <div style={{ background: "#1A1826", border: "1px solid rgba(251,191,36,0.25)", borderRadius: "12px", padding: isMobile ? "12px 14px" : "12px 16px", marginBottom: "12px", display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
+              <span style={{ fontSize: "11px", color: "#8B8FA8", letterSpacing: "0.08em", textTransform: "uppercase", fontWeight: 600, whiteSpace: "nowrap" }}>Saved Scenarios</span>
+              {scenarios.length > 0 && (
+                <select value={activeScenarioId || ""} onChange={(e) => { if (e.target.value) loadScenario(e.target.value); }} style={{ flex: isMobile ? "1 1 100%" : "1 1 180px", minWidth: 0, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: "8px", color: "#F0F6FC", fontSize: "13px", fontFamily: "'Inter', sans-serif", padding: "8px 10px", cursor: "pointer" }}>
+                  <option value="">Load a saved scenario…</option>
+                  {scenarios.map((sc) => <option key={sc.id} value={sc.id}>{sc.name}</option>)}
+                </select>
+              )}
+              {activeScenarioId && (
+                <>
+                  <button onClick={saveScenario} style={{ background: "#FBBF24", border: "none", color: "#13111F", borderRadius: "8px", padding: "8px 12px", cursor: "pointer", fontSize: "12px", fontWeight: 700, fontFamily: "'Inter', sans-serif", whiteSpace: "nowrap" }}>Save changes</button>
+                  <button onClick={() => duplicateScenario(activeScenarioId)} title="Save a copy" style={{ display: "flex", alignItems: "center", gap: "5px", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.14)", color: "#C9C6E0", borderRadius: "8px", padding: "8px 12px", cursor: "pointer", fontSize: "12px", fontWeight: 600, fontFamily: "'Inter', sans-serif", whiteSpace: "nowrap" }}><Copy size={13} />Duplicate</button>
+                  <button onClick={() => deleteScenario(activeScenarioId)} style={{ background: "rgba(248,113,113,0.08)", border: "1px solid rgba(248,113,113,0.3)", color: "#F87171", borderRadius: "8px", padding: "8px 12px", cursor: "pointer", fontSize: "12px", fontFamily: "'Inter', sans-serif" }}>Delete</button>
+                </>
+              )}
+              <div style={{ flex: isMobile ? "1 1 100%" : "1 1 200px", display: "flex", gap: "8px", minWidth: 0 }}>
+                <input placeholder="New scenario name…" value={scenarioName} onChange={(e) => setScenarioName(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") saveScenarioAsNew(); }} style={{ flex: 1, minWidth: 0, boxSizing: "border-box", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: "8px", color: "#F0F6FC", fontSize: "13px", fontFamily: "'Inter', sans-serif", padding: "8px 10px" }} />
+                <button onClick={saveScenarioAsNew} disabled={!scenarioName.trim()} style={{ background: scenarioName.trim() ? "#FBBF24" : "rgba(251,191,36,0.35)", border: "none", color: "#13111F", borderRadius: "8px", padding: "8px 16px", cursor: scenarioName.trim() ? "pointer" : "not-allowed", fontSize: "12px", fontWeight: 700, fontFamily: "'Inter', sans-serif", whiteSpace: "nowrap" }}>Save</button>
+              </div>
+              {scenarioSaved && <span style={{ fontSize: "12px", color: "#4ADE80", fontWeight: 600, whiteSpace: "nowrap" }}>✓ {scenarioSaved}</span>}
+            </div>
+          )}
+
           <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1.45fr 1fr", gap: "12px", alignItems: "start" }}>
 
             {/* Left: bills — one flat monthly list, not broken into groups */}
@@ -3028,7 +3053,7 @@ function Dashboard() {
                     return m(b) - m(a);
                   });
                 const cols = isMobile
-                  ? (whatIfMode ? "20px 1fr 72px 76px 22px" : "1fr 72px 80px")
+                  ? (whatIfMode ? "18px 1fr 82px 66px 18px" : "1fr 72px 80px")
                   : (whatIfMode ? "24px 1fr 110px 110px 110px 24px" : "1fr 100px 110px 110px");
                 const hdr = { fontSize: "10px", color: "#8B8FA8", textAlign: "right", letterSpacing: "0.08em", textTransform: "uppercase" };
                 return (
@@ -3051,22 +3076,25 @@ function Dashboard() {
               {/* Add hypothetical bill */}
               {whatIfMode && (
                 <div style={{ marginBottom: "12px" }}>
-                  <div style={{ background: "rgba(251,191,36,0.05)", border: "1px dashed rgba(251,191,36,0.35)", borderRadius: "10px", padding: "12px 16px", display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
-                    <input placeholder="Bill name" value={whatIfBillDraft.name} onChange={e => setWhatIfBillDraft(d => ({ ...d, name: e.target.value }))} onKeyDown={e => { if (e.key === "Enter") saveDraftBill(); }} style={{ ...inputStyle, flex: "1 1 120px" }} />
-                    <input placeholder="Amount" type="number" value={whatIfBillDraft.amount} onChange={e => setWhatIfBillDraft(d => ({ ...d, amount: e.target.value }))} onKeyDown={e => { if (e.key === "Enter") saveDraftBill(); }} style={{ ...inputStyle, width: "90px" }} />
-                    <select value={whatIfBillDraft.frequency} onChange={e => setWhatIfBillDraft(d => ({ ...d, frequency: e.target.value }))} style={{ ...inputStyle }}>
-                      <option value="monthly">Monthly</option>
-                      <option value="payday">Every Payday</option>
-                    </select>
-                    <input placeholder="Due day" type="number" min="1" max="31" value={whatIfBillDraft.due_day} onChange={e => setWhatIfBillDraft(d => ({ ...d, due_day: parseInt(e.target.value) || "" }))} onKeyDown={e => { if (e.key === "Enter") saveDraftBill(); }} style={{ ...inputStyle, width: "70px" }} />
-                    <button onClick={saveDraftBill} disabled={!whatIfBillDraft.name.trim() || !whatIfBillDraft.amount} style={{ fontSize: "12px", fontWeight: 600, color: "#13111F", background: (!whatIfBillDraft.name.trim() || !whatIfBillDraft.amount) ? "rgba(251,191,36,0.4)" : "#FBBF24", border: "none", borderRadius: "6px", padding: "6px 14px", cursor: (!whatIfBillDraft.name.trim() || !whatIfBillDraft.amount) ? "not-allowed" : "pointer", fontFamily: "'Inter', sans-serif" }}>Add bill</button>
+                  <div style={{ background: "rgba(251,191,36,0.05)", border: "1px dashed rgba(251,191,36,0.35)", borderRadius: "10px", padding: "12px 14px" }}>
+                    <div style={{ fontSize: "10px", color: "#8B8FA8", letterSpacing: "0.08em", textTransform: "uppercase", fontWeight: 600, marginBottom: "8px" }}>Add a bill</div>
+                    <input placeholder="Bill name" value={whatIfBillDraft.name} onChange={e => setWhatIfBillDraft(d => ({ ...d, name: e.target.value }))} onKeyDown={e => { if (e.key === "Enter") saveDraftBill(); }} style={{ ...inputStyle, width: "100%", boxSizing: "border-box", marginBottom: "8px" }} />
+                    <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", marginBottom: "8px" }}>
+                      <input placeholder="Amount" type="number" value={whatIfBillDraft.amount} onChange={e => setWhatIfBillDraft(d => ({ ...d, amount: e.target.value }))} onKeyDown={e => { if (e.key === "Enter") saveDraftBill(); }} style={{ ...inputStyle, flex: "1 1 90px", minWidth: 0, boxSizing: "border-box" }} />
+                      <select value={whatIfBillDraft.frequency} onChange={e => setWhatIfBillDraft(d => ({ ...d, frequency: e.target.value }))} style={{ ...inputStyle, flex: "1 1 120px", minWidth: 0 }}>
+                        <option value="monthly">Monthly</option>
+                        <option value="payday">Every Payday</option>
+                      </select>
+                      <input placeholder="Due day" type="number" min="1" max="31" value={whatIfBillDraft.due_day} onChange={e => setWhatIfBillDraft(d => ({ ...d, due_day: parseInt(e.target.value) || "" }))} onKeyDown={e => { if (e.key === "Enter") saveDraftBill(); }} style={{ ...inputStyle, flex: "0 0 88px", boxSizing: "border-box" }} />
+                    </div>
+                    <button onClick={saveDraftBill} disabled={!whatIfBillDraft.name.trim() || !whatIfBillDraft.amount} style={{ width: "100%", fontSize: "13px", fontWeight: 700, color: "#13111F", background: (!whatIfBillDraft.name.trim() || !whatIfBillDraft.amount) ? "rgba(251,191,36,0.4)" : "#FBBF24", border: "none", borderRadius: "7px", padding: "9px", cursor: (!whatIfBillDraft.name.trim() || !whatIfBillDraft.amount) ? "not-allowed" : "pointer", fontFamily: "'Inter', sans-serif" }}>Add bill</button>
                   </div>
                 </div>
               )}
 
               {/* Grand total */}
               <div style={{ background: "#1A1826", border: whatIfMode ? "1px solid rgba(251,191,36,0.25)" : panelBorder, borderRadius: "12px", padding: "16px 20px" }}>
-                <div style={{ display: "grid", gridTemplateColumns: isMobile ? (whatIfMode ? "20px 1fr 72px 76px 22px" : "1fr 72px 80px") : (whatIfMode ? "24px 1fr 110px 110px 110px 24px" : "1fr 100px 110px 110px"), gap: "8px", alignItems: "center" }}>
+                <div style={{ display: "grid", gridTemplateColumns: isMobile ? (whatIfMode ? "18px 1fr 82px 66px 18px" : "1fr 72px 80px") : (whatIfMode ? "24px 1fr 110px 110px 110px 24px" : "1fr 100px 110px 110px"), gap: "8px", alignItems: "center" }}>
                   {whatIfMode && <div />}
                   <div style={{ fontSize: "13px", color: "#F0F6FC", fontWeight: "700" }}>Total Bills</div>
                   {!isMobile && <div />}
@@ -3146,7 +3174,7 @@ function Dashboard() {
                         <div style={{ fontSize: "11px", color: "#8B8FA8", marginTop: "1px", display: "flex", alignItems: "center", gap: "4px", flexWrap: "wrap" }}>
                           <span style={{ textTransform: "capitalize" }}>{freq}</span><span>·</span>
                           {whatIfMode ? (
-                            <span style={{ display: "inline-flex", alignItems: "center", gap: "2px" }}>$<input type="number" value={isExtra ? i.amount : (whatIfIncome[i.id]?.amount ?? (i.fixed_amount || 0))} onChange={e => { if (isExtra) setWhatIfExtraIncome(prev => prev.map(x => x.id === i.id ? { ...x, amount: e.target.value } : x)); else setIncOverride(i.id, "amount", e.target.value); }} style={{ width: "70px", background: changed ? "rgba(251,191,36,0.08)" : "rgba(255,255,255,0.04)", border: changed ? "1px solid rgba(251,191,36,0.4)" : "1px solid rgba(255,255,255,0.1)", borderRadius: "5px", color: "#F0F6FC", fontFamily: "'DM Mono', monospace", fontSize: "11px", padding: "2px 6px" }} />/check</span>
+                            <span style={{ display: "inline-flex", alignItems: "center", gap: "2px" }}>$<input type="number" value={isExtra ? i.amount : (whatIfIncome[i.id]?.amount ?? (i.fixed_amount || 0))} onChange={e => { if (isExtra) setWhatIfExtraIncome(prev => prev.map(x => x.id === i.id ? { ...x, amount: e.target.value } : x)); else setIncOverride(i.id, "amount", e.target.value); }} style={{ width: "86px", background: changed ? "rgba(251,191,36,0.08)" : "rgba(255,255,255,0.04)", border: changed ? "1px solid rgba(251,191,36,0.4)" : "1px solid rgba(255,255,255,0.1)", borderRadius: "5px", color: "#F0F6FC", fontFamily: "'DM Mono', monospace", fontSize: "11px", padding: "2px 6px" }} />/check</span>
                           ) : <span>${fmt(i.fixed_amount || 0)}/check</span>}
                         </div>
                       </div>
@@ -3159,15 +3187,18 @@ function Dashboard() {
                   );
                 })}
                 {whatIfMode && (
-                  <div style={{ background: "rgba(251,191,36,0.05)", border: "1px dashed rgba(251,191,36,0.35)", borderRadius: "10px", padding: "12px 16px", marginTop: "10px", display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
-                    <input placeholder="Income name" value={whatIfIncomeDraft.name} onChange={e => setWhatIfIncomeDraft(d => ({ ...d, name: e.target.value }))} onKeyDown={e => { if (e.key === "Enter") saveDraftIncome(); }} style={{ ...inputStyle, flex: "1 1 120px" }} />
-                    <input placeholder="Amount" type="number" value={whatIfIncomeDraft.amount} onChange={e => setWhatIfIncomeDraft(d => ({ ...d, amount: e.target.value }))} onKeyDown={e => { if (e.key === "Enter") saveDraftIncome(); }} style={{ ...inputStyle, width: "90px" }} />
-                    <select value={whatIfIncomeDraft.frequency} onChange={e => setWhatIfIncomeDraft(d => ({ ...d, frequency: e.target.value }))} style={{ ...inputStyle }}>
-                      <option value="biweekly">Biweekly</option>
-                      <option value="weekly">Weekly</option>
-                      <option value="monthly">Monthly</option>
-                    </select>
-                    <button onClick={saveDraftIncome} disabled={!whatIfIncomeDraft.name.trim() || !whatIfIncomeDraft.amount} style={{ fontSize: "12px", fontWeight: 600, color: "#13111F", background: (!whatIfIncomeDraft.name.trim() || !whatIfIncomeDraft.amount) ? "rgba(251,191,36,0.4)" : "#FBBF24", border: "none", borderRadius: "6px", padding: "6px 14px", cursor: (!whatIfIncomeDraft.name.trim() || !whatIfIncomeDraft.amount) ? "not-allowed" : "pointer", fontFamily: "'Inter', sans-serif" }}>Add income</button>
+                  <div style={{ background: "rgba(251,191,36,0.05)", border: "1px dashed rgba(251,191,36,0.35)", borderRadius: "10px", padding: "12px 14px", marginTop: "10px" }}>
+                    <div style={{ fontSize: "10px", color: "#8B8FA8", letterSpacing: "0.08em", textTransform: "uppercase", fontWeight: 600, marginBottom: "8px" }}>Add income</div>
+                    <input placeholder="Income name" value={whatIfIncomeDraft.name} onChange={e => setWhatIfIncomeDraft(d => ({ ...d, name: e.target.value }))} onKeyDown={e => { if (e.key === "Enter") saveDraftIncome(); }} style={{ ...inputStyle, width: "100%", boxSizing: "border-box", marginBottom: "8px" }} />
+                    <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", marginBottom: "8px" }}>
+                      <input placeholder="Amount / check" type="number" value={whatIfIncomeDraft.amount} onChange={e => setWhatIfIncomeDraft(d => ({ ...d, amount: e.target.value }))} onKeyDown={e => { if (e.key === "Enter") saveDraftIncome(); }} style={{ ...inputStyle, flex: "1 1 110px", minWidth: 0, boxSizing: "border-box" }} />
+                      <select value={whatIfIncomeDraft.frequency} onChange={e => setWhatIfIncomeDraft(d => ({ ...d, frequency: e.target.value }))} style={{ ...inputStyle, flex: "1 1 110px", minWidth: 0 }}>
+                        <option value="biweekly">Biweekly</option>
+                        <option value="weekly">Weekly</option>
+                        <option value="monthly">Monthly</option>
+                      </select>
+                    </div>
+                    <button onClick={saveDraftIncome} disabled={!whatIfIncomeDraft.name.trim() || !whatIfIncomeDraft.amount} style={{ width: "100%", fontSize: "13px", fontWeight: 700, color: "#13111F", background: (!whatIfIncomeDraft.name.trim() || !whatIfIncomeDraft.amount) ? "rgba(251,191,36,0.4)" : "#FBBF24", border: "none", borderRadius: "7px", padding: "9px", cursor: (!whatIfIncomeDraft.name.trim() || !whatIfIncomeDraft.amount) ? "not-allowed" : "pointer", fontFamily: "'Inter', sans-serif" }}>Add income</button>
                   </div>
                 )}
                 <div style={{ display: "grid", gridTemplateColumns: whatIfMode ? "24px 1fr 90px 90px" : "1fr 90px 90px", gap: "8px", paddingTop: "12px", borderTop: "1px solid rgba(255,255,255,0.08)", marginTop: "4px" }}>
@@ -3209,54 +3240,6 @@ function Dashboard() {
                 )}
               </div>
 
-              {/* Saved What-If scenarios */}
-              {whatIfMode && (
-                <div style={{ background: "#1A1826", border: "1px solid rgba(251,191,36,0.25)", borderRadius: "12px", padding: "20px 22px", marginTop: "16px" }}>
-                  <div style={{ fontSize: "11px", color: "#8B8FA8", letterSpacing: "0.1em", textTransform: "uppercase", fontWeight: "600", marginBottom: "14px" }}>Saved Scenarios</div>
-
-                  {/* Load + manage the currently-loaded scenario */}
-                  {scenarios.length > 0 && (
-                    <div style={{ marginBottom: "14px" }}>
-                      <select
-                        value={activeScenarioId || ""}
-                        onChange={(e) => { if (e.target.value) loadScenario(e.target.value); }}
-                        style={{ width: "100%", boxSizing: "border-box", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: "8px", color: "#F0F6FC", fontSize: "13px", fontFamily: "'Inter', sans-serif", padding: "9px 12px", cursor: "pointer" }}
-                      >
-                        <option value="">Load a saved scenario…</option>
-                        {scenarios.map((sc) => (
-                          <option key={sc.id} value={sc.id}>{sc.name}</option>
-                        ))}
-                      </select>
-                      {activeScenarioId && (
-                        <div style={{ display: "flex", gap: "8px", marginTop: "8px" }}>
-                          <button onClick={saveScenario} style={{ flex: 1, background: "#FBBF24", border: "none", color: "#13111F", borderRadius: "8px", padding: "8px 10px", cursor: "pointer", fontSize: "12px", fontWeight: 700, fontFamily: "'Inter', sans-serif" }}>Save changes</button>
-                          <button onClick={() => duplicateScenario(activeScenarioId)} title="Save a copy" style={{ display: "flex", alignItems: "center", gap: "5px", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.14)", color: "#C9C6E0", borderRadius: "8px", padding: "8px 12px", cursor: "pointer", fontSize: "12px", fontWeight: 600, fontFamily: "'Inter', sans-serif" }}><Copy size={13} />Duplicate</button>
-                          <button onClick={() => deleteScenario(activeScenarioId)} title="Delete scenario" style={{ background: "rgba(248,113,113,0.08)", border: "1px solid rgba(248,113,113,0.3)", color: "#F87171", borderRadius: "8px", padding: "8px 12px", cursor: "pointer", fontSize: "12px", fontFamily: "'Inter', sans-serif" }}>Delete</button>
-                        </div>
-                      )}
-                    </div>
-                  )}
-
-                  {/* Save the current what-if as a new scenario */}
-                  <div style={{ borderTop: scenarios.length > 0 ? "1px solid rgba(255,255,255,0.08)" : "none", paddingTop: scenarios.length > 0 ? "14px" : 0 }}>
-                    <div style={{ fontSize: "11px", color: "#8B8FA8", marginBottom: "8px" }}>Save the current what-if as a new scenario</div>
-                    <div style={{ display: "flex", gap: "8px" }}>
-                      <input placeholder="Scenario name (e.g. Renting a house)" value={scenarioName} onChange={(e) => setScenarioName(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") saveScenarioAsNew(); }} style={{ flex: 1, boxSizing: "border-box", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: "8px", color: "#F0F6FC", fontSize: "13px", fontFamily: "'Inter', sans-serif", padding: "9px 12px" }} />
-                      <button onClick={saveScenarioAsNew} disabled={!scenarioName.trim()} style={{ background: scenarioName.trim() ? "#FBBF24" : "rgba(251,191,36,0.35)", border: "none", color: "#13111F", borderRadius: "8px", padding: "9px 18px", cursor: scenarioName.trim() ? "pointer" : "not-allowed", fontSize: "12px", fontWeight: 700, fontFamily: "'Inter', sans-serif", whiteSpace: "nowrap" }}>Save</button>
-                    </div>
-                  </div>
-
-                  {scenarioSaved ? (
-                    <div style={{ fontSize: "12px", color: "#4ADE80", marginTop: "12px", fontWeight: 600, display: "flex", alignItems: "center", gap: "6px" }}>
-                      <span>✓</span>{scenarioSaved}
-                    </div>
-                  ) : (
-                    <div style={{ fontSize: "11px", color: "#8B8FA8", marginTop: "12px", lineHeight: 1.5 }}>
-                      Saves your current toggles, edited amounts, and hypotheticals.
-                    </div>
-                  )}
-                </div>
-              )}
             </div>
           </div>
         </div>
