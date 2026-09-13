@@ -110,6 +110,11 @@ const css = `
     .stat-amount { font-size: 20px !important; }
   }
 
+  /* Reclaim horizontal room on phones so the dense What-If rows aren't cramped. */
+  @media (max-width: 768px) {
+    .content-area { padding: 16px 12px 40px !important; }
+  }
+
   .desktop-only { display: flex; }
   .mobile-only { display: none; }
 
@@ -2892,14 +2897,14 @@ function Dashboard() {
                   type="number"
                   value={whatIfBills[b.id]?.amount ?? (b.amount || 0)}
                   onChange={e => setBillOverride(b.id, "amount", e.target.value)}
-                  style={{ width: "90px", background: changed ? "rgba(251,191,36,0.08)" : "rgba(255,255,255,0.04)", border: changed ? "1px solid rgba(251,191,36,0.4)" : "1px solid rgba(255,255,255,0.1)", borderRadius: "6px", color: "#F0F6FC", fontFamily: "'DM Mono', monospace", fontSize: "12px", padding: "4px 8px", textAlign: "right" }}
+                  style={{ width: "100%", boxSizing: "border-box", background: changed ? "rgba(251,191,36,0.08)" : "rgba(255,255,255,0.04)", border: changed ? "1px solid rgba(251,191,36,0.4)" : "1px solid rgba(255,255,255,0.1)", borderRadius: "6px", color: "#F0F6FC", fontFamily: "'DM Mono', monospace", fontSize: "12px", padding: "4px 8px", textAlign: "right" }}
                 />
               ) : whatIfMode && isExtra ? (
                 <input
                   type="number"
                   value={b.amount}
                   onChange={e => setWhatIfExtraBills(prev => prev.map(x => x.id === b.id ? { ...x, amount: e.target.value } : x))}
-                  style={{ width: "90px", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "6px", color: "#F0F6FC", fontFamily: "'DM Mono', monospace", fontSize: "12px", padding: "4px 8px", textAlign: "right" }}
+                  style={{ width: "100%", boxSizing: "border-box", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "6px", color: "#F0F6FC", fontFamily: "'DM Mono', monospace", fontSize: "12px", padding: "4px 8px", textAlign: "right" }}
                 />
               ) : (
                 <span style={{ fontFamily: "'DM Mono', monospace", fontSize: "13px", color: "#8B8FA8" }}>${fmt(amount)}</span>
@@ -2931,7 +2936,7 @@ function Dashboard() {
           ? (whatIfMode ? "20px 1fr 72px 76px 22px" : "1fr 72px 80px")
           : (whatIfMode ? "24px 1fr 110px 110px 110px 24px" : "1fr 100px 110px 110px");
         return (
-          <div style={{ background: "#1A1826", border: panelBorder, borderRadius: "12px", padding: "20px", marginBottom: "12px" }}>
+          <div style={{ background: "#1A1826", border: panelBorder, borderRadius: "12px", padding: isMobile ? "14px" : "20px", marginBottom: "12px" }}>
             <div style={{ display: "grid", gridTemplateColumns: cols, gap: "8px", marginBottom: "8px" }}>
               {whatIfMode && <div />}
               <div style={{ fontSize: "11px", color: "#8B8FA8", letterSpacing: "0.1em", textTransform: "uppercase", fontWeight: "600" }}>{title}</div>
@@ -3027,7 +3032,7 @@ function Dashboard() {
                   : (whatIfMode ? "24px 1fr 110px 110px 110px 24px" : "1fr 100px 110px 110px");
                 const hdr = { fontSize: "10px", color: "#8B8FA8", textAlign: "right", letterSpacing: "0.08em", textTransform: "uppercase" };
                 return (
-                  <div style={{ background: "#1A1826", border: panelBorder, borderRadius: "12px", padding: "20px", marginBottom: "12px" }}>
+                  <div style={{ background: "#1A1826", border: panelBorder, borderRadius: "12px", padding: isMobile ? "14px" : "20px", marginBottom: "12px" }}>
                     <div style={{ display: "grid", gridTemplateColumns: cols, gap: "8px", marginBottom: "8px" }}>
                       {whatIfMode && <div />}
                       <div style={{ fontSize: "10px", color: "#8B8FA8", letterSpacing: "0.08em", textTransform: "uppercase" }}>Bill</div>
