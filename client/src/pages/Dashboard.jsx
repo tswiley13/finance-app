@@ -2355,19 +2355,48 @@ function Dashboard() {
         })
         .reduce((sum, inc) => sum + (inc.fixed_amount || 0), 0);
 
-      // Bills Remaining: unpaid bills for the current period plus any upcoming period
-      // that ENDS within the current calendar month, mirroring the per-period BILLS
-      // totals shown on the cards. (Counting periods that merely *start* this month would
-      // pull a spill-over period like Jul 30–Aug 12 — really next month's bills — in.)
+      // Bills Remaining = unpaid bills DUE within the current calendar month.
+      // A period fully inside the month contributes its whole remaining; a
+      // spill-over period (starts this month, ends next) contributes only the
+      // bills whose due date lands on/before month-end — so we don't lose this
+      // month's bills that happen to sit in a period ending in October, nor
+      // pull in next-month bills.
       const monthEndDate = new Date(currentYear, currentMonth + 1, 0, 23, 59, 59);
-      const monthBills = rows
-        .filter(item => {
-          if (item.isCurrent) return true;
-          const pStart = new Date(item.period.start_date + "T00:00:00");
-          const pEnd = new Date(item.period.end_date + "T23:59:59");
-          return pStart > today && pEnd <= monthEndDate;
-        })
-        .reduce((sum, item) => sum + (item.billsDeducted || 0), 0);
+      // The date a bill is due within a given period (null if it doesn't land there).
+      const billDueInPeriod = (bill, pStart, pEnd) => {
+        const freq = bill.frequency || "monthly";
+        if (freq === "payday" || freq === "biweekly") return pStart; // due on the payday
+        if (freq === "one-time") {
+          const d = bill.due_date ? new Date(bill.due_date + "T12:00:00") : null;
+          return d && d >= pStart && d <= pEnd ? d : null;
+        }
+        const days = freq === "semi-monthly" ? [bill.due_day, bill.due_day_2] : [bill.due_day];
+        for (const day of days) {
+          if (!day) continue;
+          for (let mo = 0; mo <= 1; mo++) {
+            const d = new Date(pStart.getFullYear(), pStart.getMonth() + mo, day, 12, 0, 0);
+            if (d >= pStart && d <= pEnd) return d;
+          }
+        }
+        return null;
+      };
+      let monthBills = 0;
+      rows.forEach(item => {
+        const pStart = new Date(item.period.start_date + "T00:00:00");
+        const pEnd = new Date(item.period.end_date + "T23:59:59");
+        if (item.isCurrent) { monthBills += item.billsDeducted || 0; return; }
+        if (pStart > monthEndDate) return;               // starts next month — skip
+        if (pEnd <= monthEndDate) { monthBills += item.billsDeducted || 0; return; } // fully this month
+        // Spill-over period: only the bills due on/before month-end count.
+        item.bills.forEach(b => {
+          const pk = item.period.start_date;
+          if (skippedBillPeriods.has(`${b.id}-${pk}`)) return;
+          const due = billDueInPeriod(b, pStart, pEnd);
+          if (due && due <= monthEndDate) {
+            monthBills += Math.max(0, (b.amount || 0) - getBillPaidAmount(b.id, pk));
+          }
+        });
+      });
 
       // Bills already funded via a confirmed WTMG transfer are paid from the bills
       // account, not primary — and primaryBalance already dropped when that money
