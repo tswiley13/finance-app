@@ -1,30 +1,42 @@
 import SwiftUI
 
 enum Section: String, CaseIterable, Identifiable {
-    case dashboard, bills, income, accounts, categories, debts, payperiods
+    case dashboard, monthly, budget, bills, income, accounts, categories, payperiods, debts
     var id: String { rawValue }
 
     var title: String {
         switch self {
         case .dashboard:  return "Dashboard"
+        case .monthly:    return "Monthly Overview"
+        case .budget:     return "Budget"
         case .bills:      return "Bills"
         case .income:     return "Income"
         case .accounts:   return "Accounts"
         case .categories: return "Categories"
-        case .debts:      return "Debts"
         case .payperiods: return "Pay Periods"
+        case .debts:      return "Debts"
         }
     }
 
     var icon: String {
         switch self {
         case .dashboard:  return "square.grid.2x2"
+        case .monthly:    return "chart.bar"
+        case .budget:     return "chart.pie"
         case .bills:      return "doc.text"
         case .income:     return "wallet.bifold"
         case .accounts:   return "creditcard"
         case .categories: return "tag"
-        case .debts:      return "chart.line.downtrend.xyaxis"
         case .payperiods: return "calendar"
+        case .debts:      return "chart.line.downtrend.xyaxis"
+        }
+    }
+
+    // Sidebar grouping.
+    var group: String {
+        switch self {
+        case .payperiods, .debts: return "Planning"
+        default: return "Main"
         }
     }
 }
@@ -43,6 +55,8 @@ struct MainView: View {
                 Group {
                     switch section {
                     case .dashboard:  DashboardView()
+                    case .monthly:    MonthlyOverviewView()
+                    case .budget:     BudgetView()
                     case .bills:      BillsView()
                     case .income:     IncomeView()
                     case .accounts:   AccountsView()
@@ -76,33 +90,29 @@ struct SidebarView: View {
             .padding(.top, 24)
             .padding(.bottom, 22)
 
-            Text("MAIN")
-                .font(.system(size: 9, weight: .semibold)).tracking(1.2)
-                .foregroundStyle(Color.sMuted)
-                .padding(.horizontal, 18)
-                .padding(.bottom, 6)
+            ForEach(["Main", "Planning"], id: \.self) { grp in
+                Text(grp.uppercased())
+                    .font(.system(size: 9, weight: .semibold)).tracking(1.2)
+                    .foregroundStyle(Color.sMuted)
+                    .padding(.horizontal, 18)
+                    .padding(.top, grp == "Main" ? 0 : 14)
+                    .padding(.bottom, 6)
 
-            ForEach(Section.allCases) { s in
-                Button {
-                    section = s
-                } label: {
-                    HStack(spacing: 10) {
-                        Image(systemName: s.icon)
-                            .font(.system(size: 13))
-                            .frame(width: 18)
-                        Text(s.title)
-                            .font(.system(size: 13, weight: .medium))
-                        Spacer()
+                ForEach(Section.allCases.filter { $0.group == grp }) { s in
+                    Button { section = s } label: {
+                        HStack(spacing: 10) {
+                            Image(systemName: s.icon).font(.system(size: 13)).frame(width: 18)
+                            Text(s.title).font(.system(size: 13, weight: .medium))
+                            Spacer()
+                        }
+                        .foregroundStyle(section == s ? Color.sAccent : Color.sMuted)
+                        .padding(.horizontal, 12).padding(.vertical, 8)
+                        .background(section == s ? Color.sAccent.opacity(0.12) : .clear)
+                        .clipShape(RoundedRectangle(cornerRadius: 8))
                     }
-                    .foregroundStyle(section == s ? Color.sAccent : Color.sMuted)
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 9)
-                    .background(section == s ? Color.sAccent.opacity(0.12) : .clear)
-                    .clipShape(RoundedRectangle(cornerRadius: 8))
+                    .buttonStyle(.plain)
+                    .padding(.horizontal, 10).padding(.vertical, 1)
                 }
-                .buttonStyle(.plain)
-                .padding(.horizontal, 10)
-                .padding(.vertical, 1)
             }
 
             Spacer()
