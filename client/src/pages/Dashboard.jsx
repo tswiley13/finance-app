@@ -4625,10 +4625,10 @@ function Dashboard() {
         </div>
       );
 
-      const cols = isMobile ? "1fr 96px 24px" : "1fr 130px 140px 32px";
+      const cols = isMobile ? "1fr 96px 24px" : "minmax(0,1fr) 120px 150px 28px";
 
       return (
-        <div>
+        <div style={{ maxWidth: "920px" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "12px", marginBottom: "24px", flexWrap: "wrap" }}>
             <div>
               <h2 style={{ fontFamily: "'Syne', sans-serif", fontSize: "24px", margin: 0 }}>Monthly Budget</h2>
@@ -6102,7 +6102,7 @@ function Dashboard() {
 
     if (activeNav === "bills") {
       return (
-        <div>
+        <div style={{ maxWidth: "920px" }}>
           <div
             style={{
               display: "flex",
