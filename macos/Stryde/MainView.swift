@@ -1,7 +1,7 @@
 import SwiftUI
 
 enum Section: String, CaseIterable, Identifiable {
-    case dashboard, bills, income, accounts, debts, payperiods
+    case dashboard, bills, income, accounts, categories, debts, payperiods
     var id: String { rawValue }
 
     var title: String {
@@ -10,6 +10,7 @@ enum Section: String, CaseIterable, Identifiable {
         case .bills:      return "Bills"
         case .income:     return "Income"
         case .accounts:   return "Accounts"
+        case .categories: return "Categories"
         case .debts:      return "Debts"
         case .payperiods: return "Pay Periods"
         }
@@ -21,6 +22,7 @@ enum Section: String, CaseIterable, Identifiable {
         case .bills:      return "doc.text"
         case .income:     return "wallet.bifold"
         case .accounts:   return "creditcard"
+        case .categories: return "tag"
         case .debts:      return "chart.line.downtrend.xyaxis"
         case .payperiods: return "calendar"
         }
@@ -44,6 +46,7 @@ struct MainView: View {
                     case .bills:      BillsView()
                     case .income:     IncomeView()
                     case .accounts:   AccountsView()
+                    case .categories: CategoriesView()
                     case .debts:      DebtsView()
                     case .payperiods: PayPeriodsView()
                     }

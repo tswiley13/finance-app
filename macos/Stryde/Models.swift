@@ -70,6 +70,7 @@ struct Debt: Codable, Identifiable {
     var owner: String?
     var category: String?
     var balance: Double
+    var originalBalance: Double?
     var interestRate: Double?
     var minimumPayment: Double?
     var termMonths: Int?

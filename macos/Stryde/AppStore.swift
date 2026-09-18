@@ -11,6 +11,7 @@ final class AppStore: ObservableObject {
     @Published var loadingData = false
 
     @Published var household: Household?
+    @Published var userId: String = ""
     @Published var accounts: [Account] = []
     @Published var income: [Income] = []
     @Published var bills: [Bill] = []
@@ -91,6 +92,7 @@ final class AppStore: ObservableObject {
         defer { loadingData = false }
         do {
             let uid = try await client.auth.session.user.id.uuidString.lowercased()
+            userId = uid
 
             // Household the user created, else the one they're a member of.
             var resolved: Household?
