@@ -211,6 +211,23 @@ using (household_id in (
   where user_id = auth.uid()
 ));
 
+-- Monthly budget lines (one per household per category). Bills are not copied
+-- here; the Budget page reads each category's monthly bill total from `bills`.
+create table budgets (
+  id uuid default gen_random_uuid() primary key,
+  household_id uuid references households(id) on delete cascade,
+  category text not null,
+  amount numeric(10,2) not null default 0,
+  created_at timestamp default now(),
+  unique (household_id, category)
+);
+alter table budgets enable row level security;
+create policy "household members only" on budgets for all
+using (household_id in (
+  select household_id from household_members
+  where user_id = auth.uid()
+));
+
 
 -- =============================================
 -- MIGRATIONS (columns added after initial schema)

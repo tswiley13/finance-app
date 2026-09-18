@@ -25,6 +25,7 @@ import {
   Copy,
   FileText,
   Table,
+  PieChart,
 } from "lucide-react";
 
 const css = `
@@ -282,6 +283,31 @@ const DEFAULT_CATEGORIES = [
   { name: "Other" },
 ];
 
+// Common household expense categories seeded into a new monthly budget so users
+// aren't staring at a blank page. Bill-backed categories (whatever the user's
+// bills already use) get merged in on top of these when the template is created.
+const BUDGET_TEMPLATE = [
+  "Housing / Rent",
+  "Utilities",
+  "Groceries",
+  "Dining Out",
+  "Transportation",
+  "Auto & Gas",
+  "Insurance",
+  "Health & Medical",
+  "Phone & Internet",
+  "Subscriptions",
+  "Entertainment",
+  "Personal Care",
+  "Clothing",
+  "Childcare",
+  "Pets",
+  "Debt Payments",
+  "Gifts & Donations",
+  "Savings",
+  "Miscellaneous",
+];
+
 function Dashboard() {
   const [household, setHousehold] = useState(null);
   const [payPeriods, setPayPeriods] = useState([]);
@@ -358,6 +384,12 @@ function Dashboard() {
   const [categories, setCategories] = useState([]);
   const [newCategory, setNewCategory] = useState("");
   const [showCategoryForm, setShowCategoryForm] = useState(false);
+  // Monthly budget: one row per category (persisted in the `budgets` table).
+  const [budgets, setBudgets] = useState([]);
+  const [budgetDraftCat, setBudgetDraftCat] = useState("");
+  const [budgetDraftAmt, setBudgetDraftAmt] = useState("");
+  const [seedingBudget, setSeedingBudget] = useState(false);
+  const [showBudgetForm, setShowBudgetForm] = useState(false);
   const [members, setMembers] = useState([]);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [regenerating, setRegenerating] = useState(false);
@@ -441,6 +473,18 @@ function Dashboard() {
     window.addEventListener("resize", onResize);
     return () => window.removeEventListener("resize", onResize);
   }, []);
+
+  // Load the saved monthly budget once we know the household.
+  useEffect(() => {
+    if (!household?.id) return;
+    let cancelled = false;
+    supabase
+      .from("budgets")
+      .select("*")
+      .eq("household_id", household.id)
+      .then(({ data }) => { if (!cancelled) setBudgets(data || []); });
+    return () => { cancelled = true; };
+  }, [household?.id]);
 
   // Auto sign-out after 15 minutes of inactivity
   useEffect(() => {
@@ -1755,6 +1799,86 @@ function Dashboard() {
       return;
     }
     setCategories(categories.filter((c) => c.id !== categoryId));
+  }
+
+  // ---- Monthly budget ----------------------------------------------------
+
+  // Monthly recurring cost of every bill in a category (one-time bills excluded
+  // via billMult). This is what "pulls all the bills from the bills page" — the
+  // user never re-enters a bill here; its category total shows up automatically.
+  function billsMonthlyForCategory(cat) {
+    const key = (cat || "").trim().toLowerCase();
+    return bills
+      .filter((b) => b.is_active !== false && (b.category || "").trim().toLowerCase() === key)
+      .reduce((s, b) => s + (b.amount || 0) * billMult(b.frequency || "monthly"), 0);
+  }
+
+  // Create a starter budget: the common-expense template plus any category the
+  // user's bills already use. Bill-backed lines start funded at their bill total.
+  async function seedBudgetTemplate() {
+    if (!household?.id || seedingBudget) return;
+    setSeedingBudget(true);
+    const existing = new Set(budgets.map((b) => b.category.trim().toLowerCase()));
+    const billCats = [...new Set(bills.map((b) => (b.category || "").trim()).filter(Boolean))];
+    const names = [...BUDGET_TEMPLATE];
+    billCats.forEach((c) => {
+      if (!names.some((n) => n.toLowerCase() === c.toLowerCase())) names.push(c);
+    });
+    const toInsert = names
+      .filter((n) => !existing.has(n.trim().toLowerCase()))
+      .map((n) => ({
+        household_id: household.id,
+        category: n,
+        amount: Math.round(billsMonthlyForCategory(n) * 100) / 100,
+      }));
+    if (toInsert.length === 0) { setSeedingBudget(false); return; }
+    const { data, error } = await supabase.from("budgets").insert(toInsert).select();
+    if (error) { console.log("Error:", error.message); setSeedingBudget(false); return; }
+    setBudgets([...budgets, ...(data || [])]);
+    setSeedingBudget(false);
+  }
+
+  // Persist a budgeted amount (upsert by category) and reflect it locally.
+  async function saveBudgetAmount(row, raw) {
+    const amount = parseFloat(raw);
+    const value = isNaN(amount) ? 0 : amount;
+    if (row.id) {
+      if ((row.amount || 0) === value) return;
+      setBudgets((prev) => prev.map((b) => (b.id === row.id ? { ...b, amount: value } : b)));
+      await supabase.from("budgets").update({ amount: value }).eq("id", row.id);
+    } else {
+      const { data } = await supabase
+        .from("budgets")
+        .insert({ household_id: household.id, category: row.category, amount: value })
+        .select()
+        .single();
+      if (data) setBudgets((prev) => [...prev, data]);
+    }
+  }
+
+  async function addBudgetLine() {
+    const name = budgetDraftCat.trim();
+    if (!name || !household?.id) return;
+    if (budgets.some((b) => b.category.trim().toLowerCase() === name.toLowerCase())) {
+      setBudgetDraftCat("");
+      setBudgetDraftAmt("");
+      return;
+    }
+    const amount = parseFloat(budgetDraftAmt);
+    const { data, error } = await supabase
+      .from("budgets")
+      .insert({ household_id: household.id, category: name, amount: isNaN(amount) ? 0 : amount })
+      .select()
+      .single();
+    if (error) { console.log("Error:", error.message); return; }
+    setBudgets([...budgets, data]);
+    setBudgetDraftCat("");
+    setBudgetDraftAmt("");
+  }
+
+  async function deleteBudgetLine(id) {
+    setBudgets((prev) => prev.filter((b) => b.id !== id));
+    await supabase.from("budgets").delete().eq("id", id);
   }
 
   // Estimated payoff month from "months remaining" (today + N months).
@@ -4462,6 +4586,175 @@ function Dashboard() {
               </button>
             </div>
           </div>
+        </div>
+      );
+    }
+
+    if (activeNav === "budget") {
+      const panelBorder = "1px solid rgba(255,255,255,0.06)";
+      const rowBorder = "1px solid rgba(255,255,255,0.04)";
+
+      const monthlyIncome = income
+        .filter((i) => i.is_active !== false)
+        .reduce((s, i) => s + (i.fixed_amount || 0) * incMult(i.frequency), 0);
+
+      // Union of saved budget lines and any category the user's bills use, so
+      // every bill on the Bills page is represented even before it's budgeted.
+      const rowMap = new Map();
+      budgets.forEach((b) => rowMap.set(b.category.trim().toLowerCase(), { ...b }));
+      [...new Set(bills.filter((b) => b.is_active !== false).map((b) => (b.category || "").trim()).filter(Boolean))]
+        .forEach((c) => {
+          const k = c.toLowerCase();
+          if (!rowMap.has(k)) rowMap.set(k, { id: null, category: c, amount: 0 });
+        });
+      const rows = [...rowMap.values()].sort((a, b) => a.category.localeCompare(b.category));
+
+      const totalBudgeted = budgets.reduce((s, b) => s + (b.amount || 0), 0);
+      const totalBills = bills
+        .filter((b) => b.is_active !== false)
+        .reduce((s, b) => s + (b.amount || 0) * billMult(b.frequency || "monthly"), 0);
+      const leftToBudget = monthlyIncome - totalBudgeted;
+
+      const tile = (label, value, accent, sign) => (
+        <div style={{ background: "#1A1826", border: panelBorder, borderRadius: "12px", padding: isMobile ? "16px 14px" : "20px 22px", position: "relative", overflow: "hidden" }}>
+          <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: "1px", background: `linear-gradient(90deg, ${accent}, transparent)` }} />
+          <div style={{ fontSize: "10px", color: "#8B8FA8", letterSpacing: "0.1em", textTransform: "uppercase", fontWeight: "600", marginBottom: "10px" }}>{label}</div>
+          <div style={{ fontFamily: "'DM Mono', monospace", fontSize: isMobile ? "19px" : "26px", fontWeight: "500", color: accent, lineHeight: 1.1, whiteSpace: "nowrap" }}>
+            {sign && value < 0 ? "-" : ""}${fmt(Math.abs(value))}
+          </div>
+        </div>
+      );
+
+      const cols = isMobile ? "1fr 96px 24px" : "1fr 130px 140px 32px";
+
+      return (
+        <div>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "12px", marginBottom: "24px", flexWrap: "wrap" }}>
+            <div>
+              <h2 style={{ fontFamily: "'Syne', sans-serif", fontSize: "24px", margin: 0 }}>Monthly Budget</h2>
+              <div style={{ fontSize: "12px", color: "#8B8FA8", marginTop: "4px", maxWidth: "620px", lineHeight: 1.5 }}>
+                Plan every dollar for a typical month. Your bills flow in automatically by category — no need to re-enter them. Set a target for everyday spending like groceries and dining, and budget down to $0 left.
+              </div>
+            </div>
+            {budgets.length > 0 && (
+              <button
+                onClick={() => setShowBudgetForm((v) => !v)}
+                style={{ background: "#6C63FF", border: "none", color: "#0F1218", padding: "8px 16px", borderRadius: "8px", cursor: "pointer", fontSize: "13px", fontWeight: "600", fontFamily: "'DM Sans', sans-serif", whiteSpace: "nowrap" }}
+              >
+                + Add Category
+              </button>
+            )}
+          </div>
+
+          {budgets.length === 0 ? (
+            <div style={{ background: "#1A1826", border: panelBorder, borderRadius: "12px", padding: isMobile ? "32px 20px" : "48px 40px", textAlign: "center" }}>
+              <PieChart size={40} color="#6C63FF" style={{ marginBottom: "16px" }} />
+              <div style={{ fontFamily: "'Syne', sans-serif", fontSize: "20px", color: "#F0F6FC", marginBottom: "8px" }}>Start your budget</div>
+              <div style={{ fontSize: "13px", color: "#8B8FA8", maxWidth: "440px", margin: "0 auto 22px", lineHeight: 1.6 }}>
+                We'll set up the most common expense categories for you and pull in your bills automatically — {bills.filter((b) => b.is_active !== false).length} bill{bills.filter((b) => b.is_active !== false).length === 1 ? "" : "s"} totaling <span style={{ color: "#F0F6FC", fontFamily: "'DM Mono', monospace" }}>${fmt(totalBills)}/mo</span>. Adjust the numbers to fit your life.
+              </div>
+              <button
+                onClick={seedBudgetTemplate}
+                disabled={seedingBudget}
+                style={{ background: "#6C63FF", border: "none", color: "#0F1218", padding: "12px 24px", borderRadius: "8px", cursor: seedingBudget ? "default" : "pointer", fontSize: "14px", fontWeight: "600", fontFamily: "'DM Sans', sans-serif", opacity: seedingBudget ? 0.6 : 1 }}
+              >
+                {seedingBudget ? "Setting up…" : "Create my budget"}
+              </button>
+            </div>
+          ) : (
+            <>
+              <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr 1fr" : "repeat(4, 1fr)", gap: "12px", marginBottom: "16px" }}>
+                {tile("Monthly Income", monthlyIncome, "#00D4AA")}
+                {tile("Budgeted", totalBudgeted, "#6C63FF")}
+                {tile("In Bills", totalBills, "#F59E0B")}
+                {tile("Left to Budget", leftToBudget, leftToBudget < 0 ? "#F87171" : "#4ADE80", true)}
+              </div>
+
+              {leftToBudget !== 0 && (
+                <div style={{ fontSize: "12px", color: leftToBudget < 0 ? "#F87171" : "#8B8FA8", marginBottom: "16px" }}>
+                  {leftToBudget < 0
+                    ? `You've budgeted $${fmt(Math.abs(leftToBudget))} more than you bring in this month.`
+                    : `You have $${fmt(leftToBudget)} left to assign. A finished budget gives every dollar a job — aim for $0 left.`}
+                </div>
+              )}
+
+              {showBudgetForm && (
+                <div style={{ background: "#1A1826", border: panelBorder, borderRadius: "12px", padding: "16px", marginBottom: "16px", display: "flex", gap: "8px", flexWrap: "wrap" }}>
+                  <input
+                    placeholder="Category name"
+                    value={budgetDraftCat}
+                    onChange={(e) => setBudgetDraftCat(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === "Enter") addBudgetLine(); }}
+                    style={{ flex: "1 1 160px", background: "#2D2B45", border: "1px solid rgba(255,255,255,0.1)", color: "#E8E6E1", padding: "8px 12px", borderRadius: "6px", fontSize: "13px", fontFamily: "'DM Sans', sans-serif" }}
+                  />
+                  <input
+                    type="number"
+                    placeholder="Monthly amount"
+                    value={budgetDraftAmt}
+                    onChange={(e) => setBudgetDraftAmt(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === "Enter") addBudgetLine(); }}
+                    style={{ width: "140px", background: "#2D2B45", border: "1px solid rgba(255,255,255,0.1)", color: "#E8E6E1", padding: "8px 12px", borderRadius: "6px", fontSize: "13px", fontFamily: "'DM Mono', monospace" }}
+                  />
+                  <button onClick={addBudgetLine} style={{ background: "#6C63FF", border: "none", color: "#0F1218", padding: "8px 16px", borderRadius: "6px", cursor: "pointer", fontSize: "13px", fontWeight: "600", fontFamily: "'DM Sans', sans-serif" }}>Add</button>
+                  <button onClick={() => { setShowBudgetForm(false); setBudgetDraftCat(""); setBudgetDraftAmt(""); }} style={{ background: "none", border: "1px solid rgba(255,255,255,0.1)", color: "#8892A4", padding: "8px 16px", borderRadius: "6px", cursor: "pointer", fontSize: "13px", fontFamily: "'DM Sans', sans-serif" }}>Cancel</button>
+                </div>
+              )}
+
+              <div style={{ background: "#1A1826", border: panelBorder, borderRadius: "12px", padding: isMobile ? "14px" : "20px" }}>
+                <div style={{ display: "grid", gridTemplateColumns: cols, gap: "8px", paddingBottom: "10px", borderBottom: rowBorder }}>
+                  <div style={{ fontSize: "10px", color: "#8B8FA8", letterSpacing: "0.08em", textTransform: "uppercase", fontWeight: "600" }}>Category</div>
+                  {!isMobile && <div style={{ fontSize: "10px", color: "#8B8FA8", letterSpacing: "0.08em", textTransform: "uppercase", fontWeight: "600", textAlign: "right" }}>In Bills</div>}
+                  <div style={{ fontSize: "10px", color: "#8B8FA8", letterSpacing: "0.08em", textTransform: "uppercase", fontWeight: "600", textAlign: "right" }}>Budgeted</div>
+                  <div />
+                </div>
+
+                {rows.map((row) => {
+                  const billAmt = billsMonthlyForCategory(row.category);
+                  const under = row.id && billAmt > (row.amount || 0) + 0.005;
+                  return (
+                    <div key={row.id || `cat:${row.category}`} style={{ display: "grid", gridTemplateColumns: cols, gap: "8px", padding: "10px 0", borderBottom: rowBorder, alignItems: "center" }}>
+                      <div>
+                        <div style={{ fontSize: "13px", color: "#F0F6FC", fontWeight: "500" }}>{row.category}</div>
+                        {billAmt > 0 && (
+                          <div style={{ fontSize: "11px", color: under ? "#F87171" : "#8B8FA8", marginTop: "2px" }}>
+                            {isMobile ? `$${fmt(billAmt)} in bills` : "from bills"}{under ? ` · under by $${fmt(billAmt - (row.amount || 0))}` : ""}
+                          </div>
+                        )}
+                      </div>
+                      {!isMobile && (
+                        <div style={{ fontFamily: "'DM Mono', monospace", fontSize: "13px", color: billAmt > 0 ? "#8B8FA8" : "#4A4F5C", textAlign: "right" }}>
+                          {billAmt > 0 ? `$${fmt(billAmt)}` : "—"}
+                        </div>
+                      )}
+                      <div style={{ textAlign: "right" }}>
+                        <input
+                          key={`amt:${row.id || row.category}`}
+                          type="number"
+                          defaultValue={row.amount ? +(+row.amount).toFixed(2) : ""}
+                          placeholder="0"
+                          onBlur={(e) => saveBudgetAmount(row, e.target.value)}
+                          onKeyDown={(e) => { if (e.key === "Enter") e.target.blur(); }}
+                          style={{ width: "100%", boxSizing: "border-box", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "6px", color: "#F0F6FC", fontFamily: "'DM Mono', monospace", fontSize: isMobile ? "12px" : "13px", padding: "6px 8px", textAlign: "right" }}
+                        />
+                      </div>
+                      <div style={{ textAlign: "center" }}>
+                        {row.id && (
+                          <button onClick={() => deleteBudgetLine(row.id)} title="Remove from budget" style={{ background: "none", border: "none", color: "#F87171", cursor: "pointer", fontSize: "13px", padding: 0, lineHeight: 1 }}>✕</button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+
+                <div style={{ display: "grid", gridTemplateColumns: cols, gap: "8px", paddingTop: "12px", alignItems: "center" }}>
+                  <div style={{ fontSize: "13px", color: "#F0F6FC", fontWeight: "600" }}>Total budgeted</div>
+                  {!isMobile && <div style={{ fontFamily: "'DM Mono', monospace", fontSize: "13px", color: "#8B8FA8", textAlign: "right" }}>${fmt(totalBills)}</div>}
+                  <div style={{ fontFamily: "'DM Mono', monospace", fontSize: "14px", color: "#6C63FF", fontWeight: "600", textAlign: "right" }}>${fmt(totalBudgeted)}</div>
+                  <div />
+                </div>
+              </div>
+            </>
+          )}
         </div>
       );
     }
@@ -7264,6 +7557,7 @@ function Dashboard() {
               icon: <LayoutDashboard size={16} />,
             },
             { key: "monthly", label: "Monthly Overview", icon: <BarChart2 size={16} /> },
+            { key: "budget", label: "Budget", icon: <PieChart size={16} /> },
             { key: "bills", label: "Bills", icon: <Receipt size={16} /> },
             { key: "income", label: "Income", icon: <Wallet size={16} /> },
             {
@@ -7422,6 +7716,7 @@ function Dashboard() {
           {[
             { key: "dashboard", label: "Dashboard", icon: <LayoutDashboard size={16} /> },
             { key: "monthly", label: "Monthly Overview", icon: <BarChart2 size={16} /> },
+            { key: "budget", label: "Budget", icon: <PieChart size={16} /> },
             { key: "bills", label: "Bills", icon: <Receipt size={16} /> },
             { key: "income", label: "Income", icon: <Wallet size={16} /> },
             { key: "accounts", label: "Accounts", icon: <CreditCard size={16} /> },
