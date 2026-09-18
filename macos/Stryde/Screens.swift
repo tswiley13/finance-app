@@ -132,6 +132,8 @@ struct IncomeView: View {
 struct AccountsView: View {
     @EnvironmentObject var store: AppStore
     @State private var editing: Editing<Account>?
+    @State private var linkEditing: Editing<String>?
+    @State private var connecting = false
 
     var body: some View {
         let assets = store.accounts.filter { $0.accountType != "credit" }.reduce(0) { $0 + ($1.currentBalance ?? 0) }
@@ -139,6 +141,7 @@ struct AccountsView: View {
         let sorted = store.accounts.sorted { $0.name < $1.name }
 
         Page(title: "Accounts", subtitle: "Balances across your accounts") { _ in
+            plaidBar
             AddBar(title: "Add account") { editing = Editing(nil) }
 
             HStack(spacing: 12) {
@@ -163,6 +166,51 @@ struct AccountsView: View {
             }
         }
         .sheet(item: $editing) { AccountEditor(existing: $0.value).environmentObject(store) }
+        .sheet(item: $linkEditing) { e in
+            if let t = e.value { PlaidLinkSheet(linkToken: t).environmentObject(store) }
+        }
+    }
+
+    private var plaidBar: some View {
+        HStack(spacing: 10) {
+            Image(systemName: "building.columns.fill").font(.system(size: 14)).foregroundStyle(Color.sAccent)
+            VStack(alignment: .leading, spacing: 1) {
+                Text(store.plaidConnected ? "Bank connected" : "Connect your bank")
+                    .font(.system(size: 13, weight: .semibold)).foregroundStyle(Color.sInk)
+                Text(store.plaidConnected ? "Sync to pull the latest balances." : "Auto-pull balances with Plaid.")
+                    .font(.system(size: 11)).foregroundStyle(Color.sMuted)
+            }
+            Spacer()
+            if store.plaidConnected {
+                pillButton(store.plaidSyncing ? "Syncing…" : "Sync balances", filled: true, disabled: store.plaidSyncing) {
+                    Task { await store.plaidSync() }
+                }
+            }
+            pillButton(connecting ? "Connecting…" : (store.plaidConnected ? "Add bank" : "Connect bank"),
+                       filled: !store.plaidConnected, disabled: connecting) {
+                connecting = true
+                Task {
+                    if let t = await store.plaidCreateLinkToken() { linkEditing = Editing(t) }
+                    connecting = false
+                }
+            }
+        }
+        .padding(16)
+        .background(Color.sPanel)
+        .clipShape(RoundedRectangle(cornerRadius: 12))
+        .overlay(RoundedRectangle(cornerRadius: 12).stroke(Color.sHair, lineWidth: 1))
+    }
+
+    private func pillButton(_ title: String, filled: Bool, disabled: Bool, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Text(title).font(.system(size: 12, weight: .semibold))
+                .foregroundStyle(filled ? .white : Color.sAccent)
+                .padding(.horizontal, 14).padding(.vertical, 8)
+                .background(filled ? Color.sAccent : Color.clear)
+                .overlay(RoundedRectangle(cornerRadius: 8).stroke(filled ? Color.clear : Color.sAccent.opacity(0.5), lineWidth: 1))
+                .clipShape(RoundedRectangle(cornerRadius: 8))
+        }
+        .buttonStyle(.plain).disabled(disabled)
     }
 
     private func subFor(_ a: Account) -> String {

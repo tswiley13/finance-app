@@ -26,6 +26,8 @@ final class AppStore: ObservableObject {
     @Published var billSkips: Set<String> = []
     @Published var earlyPayments: Set<String> = []
     @Published var transfers: [String: Double] = [:]        // current period row_key -> amount
+    @Published var plaidConnected = false
+    @Published var plaidSyncing = false
 
     let client: SupabaseClient
 
@@ -151,6 +153,10 @@ final class AppStore: ObservableObject {
                 .from("income_early_payments").select("income_id, period_start")
                 .eq("user_id", value: uid).execute().value {
                 earlyPayments = Set(rows.map { "\($0.incomeId)-\($0.periodStart)" })
+            }
+            if let rows: [PlaidItemRow] = try? await client
+                .from("plaid_items").select("id").eq("user_id", value: uid).limit(1).execute().value {
+                plaidConnected = !rows.isEmpty
             }
             if let rows: [PeriodTransfer] = try? await client
                 .from("period_transfers").select("row_key, amount, period_start")
