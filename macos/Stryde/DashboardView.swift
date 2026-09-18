@@ -82,6 +82,7 @@ struct DashboardView: View {
 }
 
 struct PeriodCard: View {
+    @EnvironmentObject var store: AppStore
     let row: PeriodRow
 
     var body: some View {
@@ -127,12 +128,7 @@ struct PeriodCard: View {
             if !row.bills.isEmpty {
                 VStack(spacing: 0) {
                     ForEach(row.bills.prefix(row.isCurrent ? 100 : 6)) { b in
-                        HStack {
-                            Text(b.name).font(.system(size: 12)).foregroundStyle(Color.sInk)
-                            Spacer()
-                            Text(money(b.amount)).font(.system(size: 12, design: .monospaced)).foregroundStyle(Color.sMuted)
-                        }
-                        .padding(.vertical, 6)
+                        billRow(b)
                     }
                     if !row.isCurrent && row.bills.count > 6 {
                         Text("+ \(row.bills.count - 6) more")
@@ -147,6 +143,39 @@ struct PeriodCard: View {
         .background(Color.sPanel)
         .clipShape(RoundedRectangle(cornerRadius: 12))
         .overlay(RoundedRectangle(cornerRadius: 12).stroke(row.isCurrent ? Color.sAccent.opacity(0.35) : Color.sHair, lineWidth: 1))
+    }
+
+    @ViewBuilder
+    private func billRow(_ b: Bill) -> some View {
+        let key = "\(b.id)-\(row.start)"
+        let rec = store.billPayments[key]
+        let paid = (rec?.isPaid ?? false) || (rec?.paidAmount ?? 0) > 0
+        let paidAmt = rec?.paidAmount ?? b.amount
+
+        HStack(spacing: 10) {
+            if row.isCurrent {
+                Button {
+                    Task {
+                        if paid { await store.unmarkBillPaid(billId: b.id, periodStart: row.start) }
+                        else { await store.markBillPaid(billId: b.id, periodStart: row.start, amount: b.amount) }
+                    }
+                } label: {
+                    Image(systemName: paid ? "checkmark.circle.fill" : "circle")
+                        .font(.system(size: 15))
+                        .foregroundStyle(paid ? Color.sGood : Color.sMuted.opacity(0.6))
+                }
+                .buttonStyle(.plain)
+            }
+            Text(b.name)
+                .font(.system(size: 12))
+                .foregroundStyle(paid ? Color.sMuted : Color.sInk)
+                .strikethrough(paid, color: Color.sMuted)
+            Spacer()
+            Text(money(paid ? paidAmt : b.amount))
+                .font(.system(size: 12, design: .monospaced))
+                .foregroundStyle(paid ? Color.sGood : Color.sMuted)
+        }
+        .padding(.vertical, 6)
     }
 
     private func miniStat(_ label: String, _ value: String, _ color: Color) -> some View {
