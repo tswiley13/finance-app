@@ -28,7 +28,7 @@ struct RootView: View {
             case .signedOut:
                 AuthView()
             case .signedIn:
-                DashboardView()
+                MainView()
             }
         }
         .task { await store.bootstrap() }

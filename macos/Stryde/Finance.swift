@@ -35,4 +35,33 @@ enum Finance {
             .filter { $0.isActive != false }
             .reduce(0) { $0 + $1.amount * billMult($1.frequency) }
     }
+
+    static func freqLabel(_ f: String?) -> String {
+        switch f ?? "monthly" {
+        case "biweekly", "payday": return "Every 2 weeks"
+        case "weekly":             return "Weekly"
+        case "semi-monthly":       return "Twice a month"
+        case "quarterly":          return "Quarterly"
+        case "annually":           return "Yearly"
+        case "one-time":           return "One-time"
+        default:                   return "Monthly"
+        }
+    }
+
+    // Estimated payoff month from "months remaining" (today + N months).
+    static func payoffLabel(_ months: Int?) -> String? {
+        guard let m = months, m > 0 else { return nil }
+        let dt = Calendar.current.date(byAdding: .month, value: m, to: Date()) ?? Date()
+        let f = DateFormatter()
+        f.dateFormat = "MMM yyyy"
+        return f.string(from: dt)
+    }
+}
+
+// "2026-09-18" -> "Sep 18"
+func shortDate(_ s: String) -> String {
+    let inF = DateFormatter(); inF.dateFormat = "yyyy-MM-dd"
+    guard let d = inF.date(from: String(s.prefix(10))) else { return s }
+    let outF = DateFormatter(); outF.dateFormat = "MMM d"
+    return outF.string(from: d)
 }

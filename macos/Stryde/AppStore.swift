@@ -14,6 +14,8 @@ final class AppStore: ObservableObject {
     @Published var accounts: [Account] = []
     @Published var income: [Income] = []
     @Published var bills: [Bill] = []
+    @Published var debts: [Debt] = []
+    @Published var payPeriods: [PayPeriod] = []
 
     let client: SupabaseClient
 
@@ -26,7 +28,8 @@ final class AppStore: ObservableObject {
             supabaseURL: URL(string: Config.supabaseURL)!,
             supabaseKey: Config.supabaseAnonKey,
             options: SupabaseClientOptions(
-                db: .init(encoder: encoder, decoder: decoder)
+                db: .init(encoder: encoder, decoder: decoder),
+                auth: .init(storage: UserDefaultsLocalStorage())
             )
         )
     }
@@ -61,6 +64,8 @@ final class AppStore: ObservableObject {
         accounts = []
         income = []
         bills = []
+        debts = []
+        payPeriods = []
         phase = .signedOut
     }
 
@@ -99,6 +104,12 @@ final class AppStore: ObservableObject {
                 .from("income").select().eq("household_id", value: hh.id).execute().value
             bills = try await client
                 .from("bills").select().eq("household_id", value: hh.id).execute().value
+            debts = try await client
+                .from("debts").select().eq("household_id", value: hh.id)
+                .order("payoff_order", ascending: true).execute().value
+            payPeriods = try await client
+                .from("pay_periods").select().eq("household_id", value: hh.id)
+                .order("start_date", ascending: true).execute().value
         } catch {
             errorMessage = error.localizedDescription
         }
