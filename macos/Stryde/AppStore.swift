@@ -20,6 +20,12 @@ final class AppStore: ObservableObject {
     @Published var budgets: [Budget] = []
     @Published var members: [Member] = []
 
+    // Per-period state (keyed "id-periodStart"), all scoped by user_id.
+    @Published var billPayments: [String: BillPayment] = [:]
+    @Published var billSkips: Set<String> = []
+    @Published var earlyPayments: Set<String> = []
+    @Published var transfers: [String: Double] = [:]        // current period row_key -> amount
+
     let client: SupabaseClient
 
     init() {
@@ -72,6 +78,10 @@ final class AppStore: ObservableObject {
         categories = []
         budgets = []
         members = []
+        billPayments = [:]
+        billSkips = []
+        earlyPayments = []
+        transfers = [:]
         phase = .signedOut
     }
 
@@ -123,6 +133,34 @@ final class AppStore: ObservableObject {
                 .from("budgets").select().eq("household_id", value: hh.id).execute().value
             members = try await client
                 .from("household_members").select().eq("household_id", value: hh.id).execute().value
+
+            // Per-period tables are scoped by user_id. Tolerate missing tables.
+            if let rows: [BillPayment] = try? await client
+                .from("bill_payments").select("bill_id, period_start, paid_amount, is_paid")
+                .eq("user_id", value: uid).execute().value {
+                billPayments = Dictionary(rows.map { ("\($0.billId)-\($0.periodStart)", $0) }) { a, _ in a }
+            }
+            if let rows: [BillSkip] = try? await client
+                .from("bill_skips").select("bill_id, period_start")
+                .eq("user_id", value: uid).execute().value {
+                billSkips = Set(rows.map { "\($0.billId)-\($0.periodStart)" })
+            }
+            if let rows: [EarlyPayment] = try? await client
+                .from("income_early_payments").select("income_id, period_start")
+                .eq("user_id", value: uid).execute().value {
+                earlyPayments = Set(rows.map { "\($0.incomeId)-\($0.periodStart)" })
+            }
+            if let rows: [PeriodTransfer] = try? await client
+                .from("period_transfers").select("row_key, amount, period_start")
+                .eq("user_id", value: uid).execute().value {
+                let today = localDateStr()
+                let sorted = payPeriods.sorted { $0.startDate < $1.startDate }
+                if let cur = sorted.first(where: { $0.startDate <= today && $0.endDate >= today }) {
+                    transfers = Dictionary(
+                        rows.filter { $0.periodStart == cur.startDate }.map { ($0.rowKey, $0.amount) }
+                    ) { a, _ in a }
+                }
+            }
         } catch {
             errorMessage = error.localizedDescription
         }

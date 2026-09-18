@@ -58,6 +58,14 @@ enum Finance {
     }
 }
 
+// Local YYYY-MM-DD (never UTC) — mirrors the web app's localDateStr.
+func localDateStr(_ date: Date = Date()) -> String {
+    var cal = Calendar(identifier: .gregorian)
+    cal.timeZone = TimeZone.current
+    let c = cal.dateComponents([.year, .month, .day], from: date)
+    return String(format: "%04d-%02d-%02d", c.year ?? 0, c.month ?? 0, c.day ?? 0)
+}
+
 // "2026-09-18" -> "Sep 18"
 func shortDate(_ s: String) -> String {
     let inF = DateFormatter(); inF.dateFormat = "yyyy-MM-dd"

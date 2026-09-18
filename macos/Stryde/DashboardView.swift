@@ -3,175 +3,159 @@ import SwiftUI
 struct DashboardView: View {
     @EnvironmentObject var store: AppStore
 
-    private var monthlyIncome: Double { Finance.monthlyIncome(store.income) }
-    private var monthlyBills: Double { Finance.monthlyBills(store.bills) }
-    private var totalBalances: Double {
-        store.accounts.reduce(0) { sum, a in
-            let bal = a.currentBalance ?? 0
-            return sum + (a.accountType == "credit" ? -bal : bal)
-        }
-    }
-
-    private var totalDebt: Double { store.debts.filter { $0.isPaidOff != true }.reduce(0) { $0 + $1.balance } }
-
     var body: some View {
-        Page(title: store.household?.name ?? "Dashboard", subtitle: "Monthly overview") { w in
-            // Stat tiles
+        let (tiles, rows) = store.projection.compute()
+
+        Page(title: greeting, subtitle: "Monthly projection") { w in
+            // Monthly Projection tiles
             HStack(spacing: 12) {
-                StatTile(label: "Total Balances", value: totalBalances, accent: totalBalances < 0 ? .sBad : .sGood)
-                StatTile(label: "Monthly Income", value: monthlyIncome, accent: .sGood)
-                StatTile(label: "Monthly Bills", value: monthlyBills, accent: .sWarn)
-                StatTile(label: "Left Over / mo", value: monthlyIncome - monthlyBills,
-                         accent: monthlyIncome - monthlyBills < 0 ? .sBad : .sAccent)
+                StatTile(label: "Available Now", value: tiles.availableNow, accent: tiles.availableNow < 0 ? .sBad : .sGood)
+                StatTile(label: "Income This Month", value: tiles.incomeThisMonth, accent: .sGood)
+                StatTile(label: "Bills Remaining", value: tiles.billsRemaining, accent: .sBad)
+                StatTile(label: "Available This Month", value: tiles.availableThisMonth,
+                         accent: tiles.availableThisMonth < 0 ? .sBad : .sAccent)
             }
 
             if let err = store.errorMessage {
                 Text(err).font(.system(size: 12)).foregroundStyle(Color.sBad)
             }
 
-            // Two columns when there's room, stacked otherwise.
-            if w >= 900 {
+            if w >= 940 {
                 HStack(alignment: .top, spacing: 16) {
-                    accountsPanel
-                    billsPanel
+                    periodsColumn(rows).frame(maxWidth: .infinity, alignment: .top)
+                    accountsPanel.frame(width: 360, alignment: .top)
                 }
             } else {
+                periodsColumn(rows)
                 accountsPanel
-                billsPanel
             }
         }
     }
+
+    private var greeting: String {
+        let h = Calendar.current.component(.hour, from: Date())
+        let part = h < 12 ? "Good morning" : (h < 18 ? "Good afternoon" : "Good evening")
+        let name = (store.household?.name).map { $0.split(separator: " ").first.map(String.init) ?? $0 }
+        return name.map { "\(part), \($0)" } ?? part
+    }
+
+    // MARK: Pay-period cards
+
+    @ViewBuilder
+    private func periodsColumn(_ rows: [PeriodRow]) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Pay Periods")
+                .font(.system(size: 10, weight: .semibold)).tracking(1).foregroundStyle(Color.sMuted)
+            if rows.isEmpty {
+                Panel(title: "Pay Periods", count: 0) { EmptyRow(text: "No upcoming pay periods") }
+            } else {
+                ForEach(rows) { PeriodCard(row: $0) }
+            }
+        }
+    }
+
+    // MARK: Accounts
 
     private var accountsPanel: some View {
         Panel(title: "Accounts", count: store.accounts.count) {
             if store.accounts.isEmpty {
                 EmptyRow(text: "No accounts yet")
             } else {
-                ForEach(store.accounts) { a in
+                ForEach(store.accounts.sorted { $0.name < $1.name }) { a in
                     Row(name: a.name,
-                        sub: a.accountType.capitalized + (a.isPrimary == true ? " · Primary" : ""),
-                        amount: (a.accountType == "credit" ? -1 : 1) * (a.currentBalance ?? 0),
-                        amountColor: a.accountType == "credit" ? .sBad : .sInk)
+                        sub: accountSub(a),
+                        amount: a.currentBalance ?? 0,
+                        amountColor: a.accountType == "credit" ? .sBad : .sInk,
+                        badge: a.isAccumulating == true ? "Accumulating" : (a.isPrimary == true ? "Primary" : nil))
                 }
             }
         }
-        .frame(maxWidth: .infinity, alignment: .top)
     }
 
-    private var billsPanel: some View {
-        Panel(title: "Recurring Bills", count: store.bills.filter { $0.isActive != false }.count) {
-            let active = store.bills
-                .filter { $0.isActive != false && Finance.billMult($0.frequency) > 0 }
-                .sorted { $0.amount * Finance.billMult($0.frequency) > $1.amount * Finance.billMult($1.frequency) }
-            if active.isEmpty {
-                EmptyRow(text: "No recurring bills")
-            } else {
-                ForEach(active) { b in
-                    Row(name: b.name,
-                        sub: (b.category ?? "").isEmpty ? Finance.freqLabel(b.frequency) : "\(b.category!) · \(Finance.freqLabel(b.frequency))",
-                        amount: b.amount * Finance.billMult(b.frequency),
-                        amountColor: .sInk)
-                }
-            }
-        }
-        .frame(maxWidth: .infinity, alignment: .top)
+    private func accountSub(_ a: Account) -> String {
+        var parts: [String] = []
+        if let b = a.bankName, !b.isEmpty { parts.append(b) }
+        if let l = a.lastFour, !l.isEmpty { parts.append("••\(l)") }
+        parts.append(a.accountType.capitalized)
+        return parts.joined(separator: " · ")
     }
 }
 
-// MARK: - Building blocks
+struct PeriodCard: View {
+    let row: PeriodRow
 
-struct StatTile: View {
-    let label: String
-    let value: Double
-    let accent: Color
-    var isCount: Bool = false
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Rectangle().fill(accent).frame(height: 2).frame(maxWidth: 40, alignment: .leading)
-            Text(label.uppercased())
-                .font(.system(size: 10, weight: .semibold)).tracking(1)
-                .foregroundStyle(Color.sMuted)
-            Text(isCount ? String(Int(value)) : money(value))
-                .font(.system(size: 24, weight: .medium, design: .monospaced))
-                .foregroundStyle(accent)
-                .lineLimit(1).minimumScaleFactor(0.6)
+        VStack(alignment: .leading, spacing: 0) {
+            HStack(alignment: .top) {
+                VStack(alignment: .leading, spacing: 3) {
+                    HStack(spacing: 8) {
+                        Text("\(shortDate(row.start)) — \(shortDate(row.end))")
+                            .font(.system(size: 14, weight: .semibold)).foregroundStyle(Color.sInk)
+                        if row.isCurrent {
+                            Text("CURRENT")
+                                .font(.system(size: 9, weight: .bold)).tracking(0.5)
+                                .foregroundStyle(Color.sAccent)
+                                .padding(.horizontal, 7).padding(.vertical, 2)
+                                .background(Color.sAccent.opacity(0.15)).clipShape(Capsule())
+                        }
+                    }
+                    Text(row.name).font(.system(size: 11)).foregroundStyle(Color.sMuted)
+                }
+                Spacer()
+                VStack(alignment: .trailing, spacing: 2) {
+                    Text("END BALANCE").font(.system(size: 9, weight: .semibold)).tracking(0.8).foregroundStyle(Color.sMuted)
+                    Text(money(row.endBalance))
+                        .font(.system(size: 20, weight: .medium, design: .monospaced))
+                        .foregroundStyle(row.endBalance < 0 ? Color.sBad : Color.sGood)
+                }
+            }
+            .padding(.bottom, 12)
+
+            // Start / Income / Bills strip
+            HStack(spacing: 0) {
+                miniStat("Start", money(row.startBalance), .sMuted)
+                divider
+                miniStat("Income", "+\(money(row.pendingIncome))", .sGood)
+                divider
+                miniStat("Bills", "-\(money(row.billsDeducted))", .sBad)
+            }
+            .padding(.vertical, 10)
+            .background(Color.white.opacity(0.03))
+            .clipShape(RoundedRectangle(cornerRadius: 8))
+
+            // Bills in this period
+            if !row.bills.isEmpty {
+                VStack(spacing: 0) {
+                    ForEach(row.bills.prefix(row.isCurrent ? 100 : 6)) { b in
+                        HStack {
+                            Text(b.name).font(.system(size: 12)).foregroundStyle(Color.sInk)
+                            Spacer()
+                            Text(money(b.amount)).font(.system(size: 12, design: .monospaced)).foregroundStyle(Color.sMuted)
+                        }
+                        .padding(.vertical, 6)
+                    }
+                    if !row.isCurrent && row.bills.count > 6 {
+                        Text("+ \(row.bills.count - 6) more")
+                            .font(.system(size: 11)).foregroundStyle(Color.sMuted)
+                            .frame(maxWidth: .infinity, alignment: .leading).padding(.top, 4)
+                    }
+                }
+                .padding(.top, 12)
+            }
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
         .padding(18)
         .background(Color.sPanel)
         .clipShape(RoundedRectangle(cornerRadius: 12))
-        .overlay(RoundedRectangle(cornerRadius: 12).stroke(Color.sHair, lineWidth: 1))
+        .overlay(RoundedRectangle(cornerRadius: 12).stroke(row.isCurrent ? Color.sAccent.opacity(0.35) : Color.sHair, lineWidth: 1))
     }
-}
 
-struct Panel<Content: View>: View {
-    let title: String
-    let count: Int
-    @ViewBuilder var content: Content
-    var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            HStack {
-                Text(title).font(.system(size: 14, weight: .semibold)).foregroundStyle(Color.sInk)
-                Spacer()
-                Text("\(count)").font(.system(size: 12)).foregroundStyle(Color.sMuted)
-            }
-            .padding(.bottom, 10)
-            content
+    private func miniStat(_ label: String, _ value: String, _ color: Color) -> some View {
+        VStack(spacing: 3) {
+            Text(label.uppercased()).font(.system(size: 9, weight: .semibold)).tracking(0.6).foregroundStyle(Color.sMuted)
+            Text(value).font(.system(size: 13, weight: .medium, design: .monospaced)).foregroundStyle(color)
         }
-        .padding(20)
-        .background(Color.sPanel)
-        .clipShape(RoundedRectangle(cornerRadius: 12))
-        .overlay(RoundedRectangle(cornerRadius: 12).stroke(Color.sHair, lineWidth: 1))
+        .frame(maxWidth: .infinity)
     }
-}
 
-struct Row: View {
-    let name: String
-    let sub: String
-    var amount: Double? = nil
-    var amountColor: Color = .sInk
-    var trailing: String? = nil
-    var badge: String? = nil
-    var body: some View {
-        HStack(alignment: .center) {
-            VStack(alignment: .leading, spacing: 2) {
-                Text(name).font(.system(size: 13, weight: .medium)).foregroundStyle(Color.sInk)
-                if !sub.isEmpty {
-                    Text(sub).font(.system(size: 11)).foregroundStyle(Color.sMuted)
-                }
-            }
-            Spacer()
-            if let badge {
-                Text(badge)
-                    .font(.system(size: 10, weight: .semibold))
-                    .foregroundStyle(Color.sGood)
-                    .padding(.horizontal, 8).padding(.vertical, 3)
-                    .background(Color.sGood.opacity(0.12))
-                    .clipShape(Capsule())
-            }
-            if let amount {
-                VStack(alignment: .trailing, spacing: 2) {
-                    Text(money(amount))
-                        .font(.system(size: 13, design: .monospaced))
-                        .foregroundStyle(amountColor)
-                    if let trailing {
-                        Text(trailing).font(.system(size: 10, design: .monospaced)).foregroundStyle(Color.sMuted)
-                    }
-                }
-            }
-        }
-        .padding(.vertical, 9)
-        .overlay(Rectangle().fill(Color.white.opacity(0.04)).frame(height: 1), alignment: .bottom)
-    }
-}
-
-struct EmptyRow: View {
-    let text: String
-    var body: some View {
-        Text(text)
-            .font(.system(size: 12))
-            .foregroundStyle(Color.sMuted)
-            .frame(maxWidth: .infinity, alignment: .center)
-            .padding(.vertical, 16)
-    }
+    private var divider: some View { Rectangle().fill(Color.white.opacity(0.06)).frame(width: 1, height: 28) }
 }

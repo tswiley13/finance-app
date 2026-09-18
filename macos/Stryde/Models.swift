@@ -51,6 +51,7 @@ struct Bill: Codable, Identifiable {
     var amount: Double
     var dueDay: Int?
     var dueDay2: Int?
+    var dueMonth: Int?
     var dueDate: String?
     var frequency: String?
     var category: String?
@@ -88,6 +89,18 @@ struct Category: Codable, Identifiable {
     var id: String
     var name: String
 }
+
+// Per-bill, per-period payment record (bill_payments, keyed by user_id).
+struct BillPayment: Codable {
+    var billId: String
+    var periodStart: String
+    var paidAmount: Double?
+    var isPaid: Bool?
+}
+
+struct BillSkip: Codable { var billId: String; var periodStart: String }
+struct EarlyPayment: Codable { var incomeId: String; var periodStart: String }
+struct PeriodTransfer: Codable { var rowKey: String; var amount: Double; var periodStart: String }
 
 struct Budget: Codable, Identifiable {
     var id: String
