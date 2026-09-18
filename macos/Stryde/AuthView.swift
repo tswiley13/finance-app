@@ -2,7 +2,8 @@ import SwiftUI
 
 struct AuthView: View {
     @EnvironmentObject var store: AppStore
-    @State private var email = ""
+    // Remembered across launches so only the password needs typing.
+    @AppStorage("lastEmail") private var email = ""
     @State private var password = ""
     @FocusState private var focus: Field?
 
@@ -24,6 +25,7 @@ struct AuthView: View {
             .frame(width: geo.size.width, height: geo.size.height)
         }
         .background(Color.sBg)
+        .onAppear { focus = email.isEmpty ? .email : .password }
     }
 
     // MARK: Left brand panel
