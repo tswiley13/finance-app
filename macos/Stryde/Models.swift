@@ -99,7 +99,7 @@ struct BillPayment: Codable {
     var isPaid: Bool?
 }
 
-struct PlaidItemRow: Codable { var id: String }
+struct PlaidItem: Codable, Identifiable { var id: String; var institutionName: String? }
 struct BillSkip: Codable { var billId: String; var periodStart: String }
 struct EarlyPayment: Codable { var incomeId: String; var periodStart: String }
 struct PeriodTransfer: Codable { var rowKey: String; var amount: Double; var periodStart: String }

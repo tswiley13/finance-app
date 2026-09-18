@@ -26,6 +26,7 @@ final class AppStore: ObservableObject {
     @Published var billSkips: Set<String> = []
     @Published var earlyPayments: Set<String> = []
     @Published var transfers: [String: Double] = [:]        // current period row_key -> amount
+    @Published var plaidItems: [PlaidItem] = []
     @Published var plaidConnected = false
     @Published var plaidSyncing = false
 
@@ -85,6 +86,8 @@ final class AppStore: ObservableObject {
         billSkips = []
         earlyPayments = []
         transfers = [:]
+        plaidItems = []
+        plaidConnected = false
         phase = .signedOut
     }
 
@@ -154,10 +157,14 @@ final class AppStore: ObservableObject {
                 .eq("user_id", value: uid).execute().value {
                 earlyPayments = Set(rows.map { "\($0.incomeId)-\($0.periodStart)" })
             }
-            if let rows: [PlaidItemRow] = try? await client
-                .from("plaid_items").select("id").eq("user_id", value: uid).limit(1).execute().value {
-                plaidConnected = !rows.isEmpty
+            if let rows: [PlaidItem] = try? await client
+                .from("plaid_items").select("id, institution_name").eq("user_id", value: uid).execute().value {
+                plaidItems = rows
+            } else if let rows: [PlaidItem] = try? await client
+                .from("plaid_items").select("id").eq("user_id", value: uid).execute().value {
+                plaidItems = rows
             }
+            plaidConnected = !plaidItems.isEmpty
             if let rows: [PeriodTransfer] = try? await client
                 .from("period_transfers").select("row_key, amount, period_start")
                 .eq("user_id", value: uid).execute().value {
