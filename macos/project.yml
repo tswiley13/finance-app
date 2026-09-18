@@ -1,0 +1,36 @@
+name: Stryde
+options:
+  bundleIdPrefix: com.blacksheepdevgroup
+  createIntermediateGroups: true
+  deploymentTarget:
+    macOS: "14.0"
+packages:
+  Supabase:
+    url: https://github.com/supabase/supabase-swift
+    from: "2.0.0"
+settings:
+  base:
+    SWIFT_VERSION: "5.0"
+targets:
+  Stryde:
+    type: application
+    platform: macOS
+    sources:
+      - path: Stryde
+    dependencies:
+      - package: Supabase
+        product: Supabase
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.blacksheepdevgroup.stryde
+        PRODUCT_NAME: Stryde
+        MARKETING_VERSION: "0.1.0"
+        CURRENT_PROJECT_VERSION: "1"
+        GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_KEY_NSHumanReadableCopyright: "© 2026 Black Sheep Dev Group LLC"
+        INFOPLIST_KEY_LSApplicationCategoryType: "public.app-category.finance"
+        INFOPLIST_KEY_NSMainStoryboardFile: ""
+        CODE_SIGN_IDENTITY: "-"
+        CODE_SIGN_STYLE: Manual
+        DEVELOPMENT_TEAM: ""
+        SWIFT_VERSION: "5.0"

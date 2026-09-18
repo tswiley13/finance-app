@@ -1,0 +1,10 @@
+# XcodeGen regenerates this from project.yml
+Stryde.xcodeproj/
+
+# Build output & SPM
+build/
+.build/
+DerivedData/
+*.xcuserstate
+xcuserdata/
+.DS_Store
