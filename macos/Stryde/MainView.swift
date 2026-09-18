@@ -1,7 +1,7 @@
 import SwiftUI
 
 enum Section: String, CaseIterable, Identifiable {
-    case dashboard, monthly, budget, bills, income, accounts, categories, payperiods, debts
+    case dashboard, monthly, budget, bills, income, accounts, categories, payperiods, debts, settings
     var id: String { rawValue }
 
     var title: String {
@@ -15,6 +15,7 @@ enum Section: String, CaseIterable, Identifiable {
         case .categories: return "Categories"
         case .payperiods: return "Pay Periods"
         case .debts:      return "Debts"
+        case .settings:   return "Settings"
         }
     }
 
@@ -29,6 +30,7 @@ enum Section: String, CaseIterable, Identifiable {
         case .categories: return "tag"
         case .payperiods: return "calendar"
         case .debts:      return "chart.line.downtrend.xyaxis"
+        case .settings:   return "gearshape"
         }
     }
 
@@ -36,7 +38,8 @@ enum Section: String, CaseIterable, Identifiable {
     var group: String {
         switch self {
         case .payperiods, .debts: return "Planning"
-        default: return "Main"
+        case .settings:           return "Account"
+        default:                  return "Main"
         }
     }
 }
@@ -63,6 +66,7 @@ struct MainView: View {
                     case .categories: CategoriesView()
                     case .debts:      DebtsView()
                     case .payperiods: PayPeriodsView()
+                    case .settings:   SettingsView()
                     }
                 }
             }
@@ -90,7 +94,7 @@ struct SidebarView: View {
             .padding(.top, 24)
             .padding(.bottom, 22)
 
-            ForEach(["Main", "Planning"], id: \.self) { grp in
+            ForEach(["Main", "Planning", "Account"], id: \.self) { grp in
                 Text(grp.uppercased())
                     .font(.system(size: 9, weight: .semibold)).tracking(1.2)
                     .foregroundStyle(Color.sMuted)

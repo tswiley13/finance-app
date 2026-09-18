@@ -6,6 +6,8 @@ import Foundation
 struct Household: Codable, Identifiable {
     var id: String
     var name: String
+    var inviteCode: String?
+    var monthlyDiscretionary: Double?
 }
 
 struct Member: Codable, Identifiable {
