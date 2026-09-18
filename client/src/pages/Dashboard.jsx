@@ -3033,8 +3033,13 @@ function Dashboard() {
       return (
         <div className="content-area">
           {/* Header */}
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "20px" }}>
-            <h1 className="page-title" style={{ margin: 0 }}>Monthly Overview</h1>
+          <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: "20px", gap: "12px" }}>
+            <div>
+              <h1 className="page-title" style={{ margin: 0 }}>Monthly Overview</h1>
+              <div style={{ fontSize: "12px", color: "#8B8FA8", marginTop: "4px", maxWidth: "620px", lineHeight: 1.5 }}>
+                A full, typical month — every recurring bill and income source, before anything's marked paid. Use it to plan and run What-If scenarios. For what's still left to pay this month, see the <span onClick={() => setActiveNav("dashboard")} style={{ color: "#6C63FF", cursor: "pointer" }}>Dashboard</span>.
+              </div>
+            </div>
             <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
               {whatIfMode && (
                 <button onClick={() => { setWhatIfBills({}); setWhatIfIncome({}); setWhatIfExtraBills([]); setWhatIfExtraIncome([]); setWhatIfBillDraft({ name: "", amount: "", frequency: "monthly", due_day: "" }); setWhatIfIncomeDraft({ name: "", amount: "", frequency: "monthly" }); setActiveScenarioId(null); setScenarioName(""); }} style={{ fontSize: "12px", color: "#8B8FA8", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "7px", padding: "7px 14px", cursor: "pointer", fontFamily: "'Inter', sans-serif" }}>
