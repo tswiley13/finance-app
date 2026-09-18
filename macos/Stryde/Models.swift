@@ -17,31 +17,49 @@ struct Member: Codable, Identifiable {
 struct Account: Codable, Identifiable {
     var id: String
     var name: String
+    var bankName: String?
+    var lastFour: String?
     var accountType: String
     var currentBalance: Double?
     var isPrimary: Bool?
+    var isAccumulating: Bool?
+    var accumulationTarget: Double?
+    var accumulationCurrent: Double?
+    var dueDay: Int?
+    var resetType: String?
+    var resetDay: Int?
+    var minimumBuffer: Double?
 }
 
 struct Income: Codable, Identifiable {
     var id: String
     var name: String
     var owner: String?
-    var fixedAmount: Double?
+    var type: String?
     var frequency: String
+    var fixedAmount: Double?
+    var nextPayDate: String?
+    var depositAccountId: String?
     var isActive: Bool?
 }
 
 struct Bill: Codable, Identifiable {
     var id: String
     var name: String
+    var accountId: String?
+    var transferToAccountId: String?
     var amount: Double
     var dueDay: Int?
+    var dueDay2: Int?
+    var dueDate: String?
     var frequency: String?
     var category: String?
     var owner: String?
     var paymentMethod: String?
-    var isPaid: Bool?
+    var isVariable: Bool?
     var isActive: Bool?
+    var isPaid: Bool?
+    var paidDate: String?
     var paidAmount: Double?
 }
 
@@ -64,4 +82,15 @@ struct PayPeriod: Codable, Identifiable {
     var name: String
     var startDate: String
     var endDate: String
+}
+
+struct Category: Codable, Identifiable {
+    var id: String
+    var name: String
+}
+
+struct Budget: Codable, Identifiable {
+    var id: String
+    var category: String
+    var amount: Double
 }

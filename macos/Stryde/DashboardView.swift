@@ -15,7 +15,7 @@ struct DashboardView: View {
     private var totalDebt: Double { store.debts.filter { $0.isPaidOff != true }.reduce(0) { $0 + $1.balance } }
 
     var body: some View {
-        Page(title: store.household?.name ?? "Dashboard", subtitle: "Monthly overview") {
+        Page(title: store.household?.name ?? "Dashboard", subtitle: "Monthly overview") { w in
             // Stat tiles
             HStack(spacing: 12) {
                 StatTile(label: "Total Balances", value: totalBalances, accent: totalBalances < 0 ? .sBad : .sGood)
@@ -29,37 +29,52 @@ struct DashboardView: View {
                 Text(err).font(.system(size: 12)).foregroundStyle(Color.sBad)
             }
 
-            // Accounts
-            Panel(title: "Accounts", count: store.accounts.count) {
-                if store.accounts.isEmpty {
-                    EmptyRow(text: "No accounts yet")
-                } else {
-                    ForEach(store.accounts) { a in
-                        Row(name: a.name,
-                            sub: a.accountType.capitalized + (a.isPrimary == true ? " · Primary" : ""),
-                            amount: (a.accountType == "credit" ? -1 : 1) * (a.currentBalance ?? 0),
-                            amountColor: a.accountType == "credit" ? .sBad : .sInk)
-                    }
+            // Two columns when there's room, stacked otherwise.
+            if w >= 900 {
+                HStack(alignment: .top, spacing: 16) {
+                    accountsPanel
+                    billsPanel
                 }
+            } else {
+                accountsPanel
+                billsPanel
             }
+        }
+    }
 
-            // Bills (monthly)
-            Panel(title: "Recurring Bills", count: store.bills.filter { $0.isActive != false }.count) {
-                let active = store.bills
-                    .filter { $0.isActive != false && Finance.billMult($0.frequency) > 0 }
-                    .sorted { $0.amount * Finance.billMult($0.frequency) > $1.amount * Finance.billMult($1.frequency) }
-                if active.isEmpty {
-                    EmptyRow(text: "No recurring bills")
-                } else {
-                    ForEach(active) { b in
-                        Row(name: b.name,
-                            sub: (b.category ?? "").isEmpty ? Finance.freqLabel(b.frequency) : "\(b.category!) · \(Finance.freqLabel(b.frequency))",
-                            amount: b.amount * Finance.billMult(b.frequency),
-                            amountColor: .sInk)
-                    }
+    private var accountsPanel: some View {
+        Panel(title: "Accounts", count: store.accounts.count) {
+            if store.accounts.isEmpty {
+                EmptyRow(text: "No accounts yet")
+            } else {
+                ForEach(store.accounts) { a in
+                    Row(name: a.name,
+                        sub: a.accountType.capitalized + (a.isPrimary == true ? " · Primary" : ""),
+                        amount: (a.accountType == "credit" ? -1 : 1) * (a.currentBalance ?? 0),
+                        amountColor: a.accountType == "credit" ? .sBad : .sInk)
                 }
             }
         }
+        .frame(maxWidth: .infinity, alignment: .top)
+    }
+
+    private var billsPanel: some View {
+        Panel(title: "Recurring Bills", count: store.bills.filter { $0.isActive != false }.count) {
+            let active = store.bills
+                .filter { $0.isActive != false && Finance.billMult($0.frequency) > 0 }
+                .sorted { $0.amount * Finance.billMult($0.frequency) > $1.amount * Finance.billMult($1.frequency) }
+            if active.isEmpty {
+                EmptyRow(text: "No recurring bills")
+            } else {
+                ForEach(active) { b in
+                    Row(name: b.name,
+                        sub: (b.category ?? "").isEmpty ? Finance.freqLabel(b.frequency) : "\(b.category!) · \(Finance.freqLabel(b.frequency))",
+                        amount: b.amount * Finance.billMult(b.frequency),
+                        amountColor: .sInk)
+                }
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .top)
     }
 }
 

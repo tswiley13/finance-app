@@ -126,46 +126,57 @@ struct SidebarView: View {
 }
 
 // Shared page scaffold: a title header with a refresh button, then content.
+// Content is centered and grows with the window up to a comfortable cap, so a
+// wide window fills gracefully instead of leaving dead space on one side.
+// The content builder receives the current content width so a screen can lay
+// itself out in columns when there's room.
 struct Page<Content: View>: View {
     @EnvironmentObject var store: AppStore
     let title: String
     var subtitle: String? = nil
-    @ViewBuilder var content: Content
+    @ViewBuilder var content: (CGFloat) -> Content
+
+    private let hPad: CGFloat = 32
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            HStack(alignment: .center) {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(title)
-                        .font(.system(size: 22, weight: .bold, design: .rounded))
-                        .foregroundStyle(Color.sInk)
-                    if let subtitle {
-                        Text(subtitle).font(.system(size: 12)).foregroundStyle(Color.sMuted)
-                    }
-                }
-                Spacer()
-                if store.loadingData {
-                    ProgressView().controlSize(.small).tint(.sAccent)
-                }
-                Button { Task { await store.loadData() } } label: {
-                    Image(systemName: "arrow.clockwise")
-                        .font(.system(size: 13, weight: .semibold))
-                        .foregroundStyle(Color.sMuted)
-                        .padding(8).background(Color.sPanel)
-                        .clipShape(RoundedRectangle(cornerRadius: 8))
-                }
-                .buttonStyle(.plain).help("Refresh")
-            }
-            .padding(24)
+        GeometryReader { geo in
+            let w = max(geo.size.width - hPad * 2, 0)
 
-            ScrollView {
-                VStack(alignment: .leading, spacing: 16) {
-                    content
+            VStack(spacing: 0) {
+                HStack(alignment: .center) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(title)
+                            .font(.system(size: 24, weight: .bold, design: .rounded))
+                            .foregroundStyle(Color.sInk)
+                        if let subtitle {
+                            Text(subtitle).font(.system(size: 12)).foregroundStyle(Color.sMuted)
+                        }
+                    }
+                    Spacer()
+                    if store.loadingData {
+                        ProgressView().controlSize(.small).tint(.sAccent)
+                    }
+                    Button { Task { await store.loadData() } } label: {
+                        Image(systemName: "arrow.clockwise")
+                            .font(.system(size: 13, weight: .semibold))
+                            .foregroundStyle(Color.sMuted)
+                            .padding(8).background(Color.sPanel)
+                            .clipShape(RoundedRectangle(cornerRadius: 8))
+                    }
+                    .buttonStyle(.plain).help("Refresh")
                 }
-                .padding(.horizontal, 24)
-                .padding(.bottom, 32)
-                .frame(maxWidth: 920, alignment: .leading)
+                .padding(.horizontal, hPad)
+                .padding(.top, 24)
+                .padding(.bottom, 12)
+
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 16) { content(w) }
+                        .padding(.horizontal, hPad)
+                        .padding(.bottom, 32)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
             }
+            .frame(width: geo.size.width, height: geo.size.height)
         }
     }
 }

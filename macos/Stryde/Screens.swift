@@ -25,7 +25,7 @@ struct BillsView: View {
             .sorted { $0.amount * Finance.billMult($0.frequency) > $1.amount * Finance.billMult($1.frequency) }
         let oneTime = active.filter { ($0.frequency ?? "") == "one-time" }
 
-        Page(title: "Bills", subtitle: "Everything you owe on a schedule") {
+        Page(title: "Bills", subtitle: "Everything you owe on a schedule") { _ in
             HStack(spacing: 12) {
                 StatTile(label: "Monthly Bills", value: Finance.monthlyBills(active), accent: .sWarn)
                 StatTile(label: "Yearly Bills", value: Finance.monthlyBills(active) * 12, accent: .sWarn)
@@ -74,7 +74,7 @@ struct IncomeView: View {
             ($0.fixedAmount ?? 0) * Finance.incMult($0.frequency) > ($1.fixedAmount ?? 0) * Finance.incMult($1.frequency)
         }
 
-        Page(title: "Income", subtitle: "What comes in each month") {
+        Page(title: "Income", subtitle: "What comes in each month") { _ in
             HStack(spacing: 12) {
                 StatTile(label: "Monthly Income", value: Finance.monthlyIncome(active), accent: .sGood)
                 StatTile(label: "Yearly Income", value: Finance.monthlyIncome(active) * 12, accent: .sGood)
@@ -107,7 +107,7 @@ struct AccountsView: View {
         let credit = store.accounts.filter { $0.accountType == "credit" }.reduce(0) { $0 + ($1.currentBalance ?? 0) }
         let sorted = store.accounts.sorted { $0.name < $1.name }
 
-        Page(title: "Accounts", subtitle: "Balances across your accounts") {
+        Page(title: "Accounts", subtitle: "Balances across your accounts") { _ in
             HStack(spacing: 12) {
                 StatTile(label: "Cash & Savings", value: assets, accent: .sGood)
                 StatTile(label: "Credit Owed", value: credit, accent: credit > 0 ? .sBad : .sMuted)
@@ -146,7 +146,7 @@ struct DebtsView: View {
         let totalBalance = open.reduce(0) { $0 + $1.balance }
         let totalMin = open.reduce(0) { $0 + ($1.minimumPayment ?? 0) }
 
-        Page(title: "Debts", subtitle: "What you're paying down") {
+        Page(title: "Debts", subtitle: "What you're paying down") { _ in
             HStack(spacing: 12) {
                 StatTile(label: "Total Debt", value: totalBalance, accent: .sBad)
                 StatTile(label: "Min Payments / mo", value: totalMin, accent: .sWarn)
@@ -186,7 +186,7 @@ struct PayPeriodsView: View {
     @EnvironmentObject var store: AppStore
 
     var body: some View {
-        Page(title: "Pay Periods", subtitle: "How your month is split up") {
+        Page(title: "Pay Periods", subtitle: "How your month is split up") { _ in
             Panel(title: "Pay Periods", count: store.payPeriods.count) {
                 if store.payPeriods.isEmpty {
                     EmptyRow(text: "No pay periods yet")
