@@ -2,11 +2,23 @@ import SwiftUI
 
 struct DashboardView: View {
     @EnvironmentObject var store: AppStore
+    @State private var exported = ""
 
     var body: some View {
         let (tiles, rows) = store.projection.compute()
 
         Page(title: greeting, subtitle: "Monthly projection") { w in
+            // Export bar
+            HStack(spacing: 8) {
+                Spacer()
+                exportButton(exported == "md" ? "Copied!" : "Copy AI Summary") {
+                    copyToPasteboard(FinancialSummary.build(store: store, tiles: tiles, rows: rows).markdown); flash("md")
+                }
+                exportButton(exported == "csv" ? "Copied!" : "Copy CSV", outline: true) {
+                    copyToPasteboard(FinancialSummary.build(store: store, tiles: tiles, rows: rows).csv); flash("csv")
+                }
+            }
+
             // Monthly Projection tiles
             HStack(spacing: 12) {
                 StatTile(label: "Available Now", value: tiles.availableNow, accent: tiles.availableNow < 0 ? .sBad : .sGood)
@@ -30,6 +42,23 @@ struct DashboardView: View {
                 accountsPanel
             }
         }
+    }
+
+    private func flash(_ w: String) {
+        exported = w
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { if exported == w { exported = "" } }
+    }
+
+    private func exportButton(_ title: String, outline: Bool = false, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Text(title).font(.system(size: 12, weight: .semibold))
+                .foregroundStyle(outline ? Color.sAccent : .white)
+                .padding(.horizontal, 14).padding(.vertical, 7)
+                .background(outline ? Color.clear : Color.sAccent)
+                .overlay(RoundedRectangle(cornerRadius: 8).stroke(outline ? Color.sAccent.opacity(0.5) : Color.clear, lineWidth: 1))
+                .clipShape(RoundedRectangle(cornerRadius: 8))
+        }
+        .buttonStyle(.plain)
     }
 
     private var greeting: String {
