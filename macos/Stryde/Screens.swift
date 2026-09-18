@@ -276,24 +276,13 @@ struct PayPeriodsView: View {
     @EnvironmentObject var store: AppStore
 
     var body: some View {
-        Page(title: "Pay Periods", subtitle: "How your month is split up") { _ in
-            Panel(title: "Pay Periods", count: store.payPeriods.count) {
-                if store.payPeriods.isEmpty {
-                    EmptyRow(text: "No pay periods yet")
-                } else {
-                    ForEach(store.payPeriods) { p in
-                        Row(name: p.name,
-                            sub: "\(shortDate(p.startDate)) – \(shortDate(p.endDate))",
-                            amount: nil,
-                            badge: isCurrent(p) ? "Current" : nil)
-                    }
-                }
+        let rows = store.projection.compute().rows
+        Page(title: "Pay Periods", subtitle: "Each period's income, bills, and projected end balance") { _ in
+            if rows.isEmpty {
+                Panel(title: "Pay Periods", count: 0) { EmptyRow(text: "No upcoming pay periods") }
+            } else {
+                ForEach(rows) { PeriodCard(row: $0) }
             }
         }
-    }
-
-    private func isCurrent(_ p: PayPeriod) -> Bool {
-        let today = localDateStr()
-        return p.startDate <= today && p.endDate >= today
     }
 }
