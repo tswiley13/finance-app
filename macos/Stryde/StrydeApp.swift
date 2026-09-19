@@ -33,18 +33,29 @@ struct RootView: View {
                 MainView()
             }
         }
+        // A real title-bar strip: drag to move, double-click to zoom.
+        .overlay(alignment: .top) {
+            WindowDragZoom().frame(height: 28).frame(maxWidth: .infinity)
+        }
         .task { await store.bootstrap() }
-        .toolbar {
-            ToolbarItem(placement: .navigation) {
-                if store.phase == .signedIn {
-                    Button { Task { await store.loadData() } } label: {
-                        Image(systemName: "arrow.clockwise")
-                    }
-                    .help("Refresh")
-                }
-            }
+    }
+}
+
+// Top strip that behaves like a native title bar even with a hidden title bar:
+// single-click-drag moves the window, double-click zooms ("fit to screen").
+final class DragZoomNSView: NSView {
+    override var mouseDownCanMoveWindow: Bool { true }
+    override func mouseDown(with event: NSEvent) {
+        if event.clickCount == 2 {
+            window?.zoom(nil)
+        } else {
+            super.mouseDown(with: event)
         }
     }
+}
+struct WindowDragZoom: NSViewRepresentable {
+    func makeNSView(context: Context) -> NSView { DragZoomNSView() }
+    func updateNSView(_ nsView: NSView, context: Context) {}
 }
 
 // Keeps the seamless (hidden title bar) look while restoring native window
