@@ -33,23 +33,25 @@ struct RootView: View {
                 MainView()
             }
         }
-        // A real title-bar strip: drag to move, double-click to zoom.
-        .overlay(alignment: .top) {
-            WindowDragZoom().frame(height: 28).frame(maxWidth: .infinity)
+        // A real title-bar strip: drag to move, double-click to zoom. Inset from
+        // the left so the traffic-light buttons stay clickable.
+        .overlay(alignment: .topLeading) {
+            WindowDragZoom().frame(height: 30).frame(maxWidth: .infinity).padding(.leading, 78)
         }
         .task { await store.bootstrap() }
     }
 }
 
-// Top strip that behaves like a native title bar even with a hidden title bar:
-// single-click-drag moves the window, double-click zooms ("fit to screen").
+// Title-bar strip for a hidden-title-bar window. We handle the mouse down
+// ourselves (mouseDownCanMoveWindow stays false so the event is delivered):
+// double-click zooms ("fit to screen"), a plain press starts a window drag.
 final class DragZoomNSView: NSView {
-    override var mouseDownCanMoveWindow: Bool { true }
+    override var mouseDownCanMoveWindow: Bool { false }
     override func mouseDown(with event: NSEvent) {
-        if event.clickCount == 2 {
+        if event.clickCount >= 2 {
             window?.zoom(nil)
         } else {
-            super.mouseDown(with: event)
+            window?.performDrag(with: event)
         }
     }
 }

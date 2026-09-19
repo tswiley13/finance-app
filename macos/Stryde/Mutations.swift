@@ -164,6 +164,13 @@ extension AppStore {
         catch { errorMessage = error.localizedDescription }
     }
 
+    // Re-assign a bill to a different category (moves it between budget groups).
+    struct BillCategoryPayload: Encodable { var category: String }
+    func updateBillCategory(billId: String, category: String) async {
+        do { try await client.from("bills").update(BillCategoryPayload(category: category)).eq("id", value: billId).execute(); await loadData() }
+        catch { errorMessage = error.localizedDescription }
+    }
+
     // Save the household's average discretionary spending.
     struct DiscretionaryPayload: Encodable { var monthlyDiscretionary: Double }
     func saveDiscretionary(_ value: Double) async {

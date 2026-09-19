@@ -54,11 +54,12 @@ struct BudgetView: View {
     @State private var newCat = ""
     @State private var confirmReset = false
 
-    private func billsMonthly(for cat: String) -> Double {
+    private func billsIn(_ cat: String) -> [Bill] {
         let key = cat.trimmingCharacters(in: .whitespaces).lowercased()
-        return store.bills
-            .filter { $0.isActive != false && ($0.category ?? "").trimmingCharacters(in: .whitespaces).lowercased() == key }
-            .reduce(0) { $0 + $1.amount * Finance.billMult($1.frequency) }
+        return store.bills.filter { $0.isActive != false && ($0.category ?? "").trimmingCharacters(in: .whitespaces).lowercased() == key }
+    }
+    private func billsMonthly(for cat: String) -> Double {
+        billsIn(cat).reduce(0) { $0 + $1.amount * Finance.billMult($1.frequency) }
     }
 
     private func linesForGroup(_ g: BudgetGroup) -> [(name: String, budget: Budget?)] {
@@ -209,7 +210,7 @@ struct BudgetView: View {
                     }
                     .padding(.top, 8).padding(.bottom, 2)
                     ForEach(lines, id: \.name) { line in
-                        BudgetLineRow(category: line.name, existing: line.budget, billsAmt: billsMonthly(for: line.name), accent: g.color)
+                        BudgetLineRow(category: line.name, existing: line.budget, billsAmt: billsMonthly(for: line.name), bills: billsIn(line.name), accent: g.color)
                     }
                 }
                 .padding(.horizontal, 14).padding(.bottom, 10)
@@ -273,16 +274,40 @@ struct BudgetLineRow: View {
     let category: String
     let existing: Budget?
     let billsAmt: Double
+    var bills: [Bill] = []
     var accent: Color = .sAccent
     @State private var text = ""
+    @State private var showBills = false
 
     private var budgeted: Double { Double(text.filter { "0123456789.".contains($0) }) ?? 0 }
 
     var body: some View {
+        VStack(spacing: 0) {
+            mainRow
+            if showBills && !bills.isEmpty {
+                VStack(spacing: 0) {
+                    ForEach(bills) { b in billReassignRow(b) }
+                }
+                .padding(.leading, 12).padding(.vertical, 4)
+            }
+        }
+    }
+
+    private var mainRow: some View {
         let diff = budgeted - billsAmt
-        HStack(spacing: 8) {
-            Text(category).font(.system(size: 13, weight: .medium)).foregroundStyle(Color.sInk)
-                .lineLimit(1).truncationMode(.tail)
+        return HStack(spacing: 8) {
+            VStack(alignment: .leading, spacing: 1) {
+                Text(category).font(.system(size: 13, weight: .medium)).foregroundStyle(Color.sInk)
+                    .lineLimit(1).truncationMode(.tail)
+                if !bills.isEmpty {
+                    Button { showBills.toggle() } label: {
+                        HStack(spacing: 3) {
+                            Text("\(bills.count) bill\(bills.count == 1 ? "" : "s")").font(.system(size: 10)).foregroundStyle(accent)
+                            Image(systemName: showBills ? "chevron.up" : "chevron.down").font(.system(size: 7)).foregroundStyle(accent)
+                        }
+                    }.buttonStyle(.plain)
+                }
+            }
             Spacer(minLength: 4)
             Text(billsAmt > 0 ? money(billsAmt) : "—")
                 .font(.system(size: 11, design: .monospaced)).foregroundStyle(billsAmt > 0 ? Color.sMuted : Color.sMuted.opacity(0.4))
@@ -310,6 +335,31 @@ struct BudgetLineRow: View {
         .padding(.vertical, 7)
         .overlay(Rectangle().fill(Color.white.opacity(0.04)).frame(height: 1), alignment: .bottom)
         .onAppear { text = (existing?.amount).map { $0 == $0.rounded() ? String(Int($0)) : String($0) } ?? "" }
+    }
+
+    private func billReassignRow(_ b: Bill) -> some View {
+        HStack(spacing: 6) {
+            Image(systemName: "arrow.turn.down.right").font(.system(size: 9)).foregroundStyle(Color.sMuted.opacity(0.6))
+            Text(b.name).font(.system(size: 11)).foregroundStyle(Color.sMuted).lineLimit(1)
+            Spacer()
+            Text(money(b.amount * Finance.billMult(b.frequency))).font(.system(size: 10, design: .monospaced)).foregroundStyle(Color.sMuted.opacity(0.7))
+            Menu {
+                ForEach(BUDGET_GROUPS) { g in
+                    Menu(g.name) {
+                        ForEach(g.lines, id: \.self) { l in
+                            Button(l) { Task { await store.updateBillCategory(billId: b.id, category: l) } }
+                        }
+                    }
+                }
+            } label: {
+                HStack(spacing: 2) {
+                    Text("Move").font(.system(size: 10, weight: .semibold))
+                    Image(systemName: "chevron.down").font(.system(size: 7))
+                }.foregroundStyle(accent)
+            }
+            .menuStyle(.borderlessButton).fixedSize()
+        }
+        .padding(.vertical, 4)
     }
 
     private func save() {
