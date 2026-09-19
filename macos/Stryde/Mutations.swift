@@ -123,4 +123,45 @@ extension AppStore {
             await loadData()
         } catch { errorMessage = error.localizedDescription }
     }
+
+    // Skip / restore a bill within a period (bill_skips).
+    struct SkipPayload: Encodable { var userId: String; var billId: String; var periodStart: String }
+    func setBillSkipped(billId: String, periodStart: String, skipped: Bool) async {
+        do {
+            try await client.from("bill_skips").delete()
+                .eq("user_id", value: userId).eq("bill_id", value: billId).eq("period_start", value: periodStart).execute()
+            if skipped {
+                try await client.from("bill_skips").insert(SkipPayload(userId: userId, billId: billId, periodStart: periodStart)).execute()
+            }
+            await loadData()
+        } catch { errorMessage = error.localizedDescription }
+    }
+
+    // Mark income received early (income_early_payments).
+    struct EarlyPayload: Encodable { var userId: String; var incomeId: String; var periodStart: String }
+    func setIncomeReceived(incomeId: String, periodStart: String, received: Bool) async {
+        do {
+            try await client.from("income_early_payments").delete()
+                .eq("user_id", value: userId).eq("income_id", value: incomeId).eq("period_start", value: periodStart).execute()
+            if received {
+                try await client.from("income_early_payments").insert(EarlyPayload(userId: userId, incomeId: incomeId, periodStart: periodStart)).execute()
+            }
+            await loadData()
+        } catch { errorMessage = error.localizedDescription }
+    }
+
+    // Inline-edit a bill's template amount.
+    struct AmountPayload: Encodable { var amount: Double }
+    func saveBillAmount(billId: String, amount: Double) async {
+        do { try await client.from("bills").update(AmountPayload(amount: amount)).eq("id", value: billId).execute(); await loadData() }
+        catch { errorMessage = error.localizedDescription }
+    }
+
+    // Save the household's average discretionary spending.
+    struct DiscretionaryPayload: Encodable { var monthlyDiscretionary: Double }
+    func saveDiscretionary(_ value: Double) async {
+        guard let hid = household?.id else { return }
+        do { try await client.from("households").update(DiscretionaryPayload(monthlyDiscretionary: value)).eq("id", value: hid).execute(); await loadData() }
+        catch { errorMessage = error.localizedDescription }
+    }
 }

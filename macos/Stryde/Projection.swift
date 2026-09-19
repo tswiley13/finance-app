@@ -241,6 +241,25 @@ struct Projection {
         return rows.sorted { $0.suggested > $1.suggested }
     }
 
+    // Next period's total "bills to transfer" (pre-fund), matching the web.
+    func nextPeriodPrefund() -> (label: String, total: Double, start: String)? {
+        let t = today
+        let sorted = payPeriods.sorted { $0.startDate < $1.startDate }
+        guard let curIdx = sorted.firstIndex(where: { parse($0.startDate, 0, 0, 0) <= t && parse($0.endDate, 23, 59, 59) >= t }),
+              curIdx + 1 < sorted.count else { return nil }
+        let p = sorted[curIdx + 1]
+        let pStart = parse(p.startDate, 0, 0, 0), pEnd = parse(p.endDate, 23, 59, 59), pk = p.startDate
+        let acct = accountsById
+        let total = bills.filter { isBillDueInPeriod($0, pStart, pEnd) }.reduce(0.0) { sum, b in
+            if isSkipped(b.id, pk) || isPaidInPeriod(b.id, pk) { return sum }
+            if let tid = b.transferToAccountId, acct[tid]?.isAccumulating == true { return sum }
+            if let aid = b.accountId, acct[aid]?.isAccumulating == true { return sum }
+            return sum + b.amount
+        }
+        let label = "\(shortDate(p.startDate)) to \(shortDate(p.endDate))"
+        return (label, total, p.startDate)
+    }
+
     // MARK: main computation
 
     func compute() -> (tiles: ProjectionTiles, rows: [PeriodRow]) {

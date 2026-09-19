@@ -276,6 +276,7 @@ struct PayPeriodsView: View {
     @EnvironmentObject var store: AppStore
     @State private var confirmRegen = false
     @State private var regenerating = false
+    @State private var expanded: Set<String> = []
 
     var body: some View {
         let rows = store.projection.compute().rows
@@ -296,7 +297,7 @@ struct PayPeriodsView: View {
             if rows.isEmpty {
                 Panel(title: "Pay Periods", count: 0) { EmptyRow(text: "No upcoming pay periods — Regenerate to build them") }
             } else {
-                ForEach(rows) { PeriodCard(row: $0) }
+                ForEach(rows) { PayCard(row: $0, expanded: $expanded) }
             }
         }
         .alert("Regenerate pay periods?", isPresented: $confirmRegen) {

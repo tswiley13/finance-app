@@ -27,9 +27,11 @@ final class AppStore: ObservableObject {
     @Published var billSkips: Set<String> = []
     @Published var earlyPayments: Set<String> = []
     @Published var transfers: [String: Double] = [:]        // current period row_key -> amount
+    @Published var nextTransfers: [String: Double] = [:]    // next period row_key -> amount
     @Published var plaidItems: [PlaidItem] = []
     @Published var plaidConnected = false
     @Published var plaidSyncing = false
+    @Published var plaidLastSynced: Date? = UserDefaults.standard.object(forKey: "plaidLastSynced") as? Date
 
     let client: SupabaseClient
 
@@ -88,6 +90,7 @@ final class AppStore: ObservableObject {
         billSkips = []
         earlyPayments = []
         transfers = [:]
+        nextTransfers = [:]
         plaidItems = []
         plaidConnected = false
         phase = .signedOut
@@ -177,10 +180,11 @@ final class AppStore: ObservableObject {
                 .eq("user_id", value: uid).execute().value {
                 let today = localDateStr()
                 let sorted = payPeriods.sorted { $0.startDate < $1.startDate }
-                if let cur = sorted.first(where: { $0.startDate <= today && $0.endDate >= today }) {
-                    transfers = Dictionary(
-                        rows.filter { $0.periodStart == cur.startDate }.map { ($0.rowKey, $0.amount) }
-                    ) { a, _ in a }
+                if let idx = sorted.firstIndex(where: { $0.startDate <= today && $0.endDate >= today }) {
+                    transfers = Dictionary(rows.filter { $0.periodStart == sorted[idx].startDate }.map { ($0.rowKey, $0.amount) }) { a, _ in a }
+                    if idx + 1 < sorted.count {
+                        nextTransfers = Dictionary(rows.filter { $0.periodStart == sorted[idx + 1].startDate }.map { ($0.rowKey, $0.amount) }) { a, _ in a }
+                    }
                 }
             }
         } catch {

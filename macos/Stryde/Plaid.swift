@@ -62,6 +62,8 @@ extension AppStore {
             )
             if r.loginRequired == true { plaidConnected = false }
             else if (r.synced ?? 0) > 0 { plaidConnected = true }
+            plaidLastSynced = Date()
+            UserDefaults.standard.set(plaidLastSynced, forKey: "plaidLastSynced")
             await loadData()
         } catch {
             errorMessage = error.localizedDescription
