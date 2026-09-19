@@ -11,7 +11,6 @@ struct StrydeApp: App {
                 .frame(minWidth: 940, minHeight: 640)
                 .preferredColorScheme(.dark)
         }
-        .windowStyle(.hiddenTitleBar)
         .defaultSize(width: 1100, height: 760)
     }
 }
