@@ -66,6 +66,14 @@ func localDateStr(_ date: Date = Date()) -> String {
     return String(format: "%04d-%02d-%02d", c.year ?? 0, c.month ?? 0, c.day ?? 0)
 }
 
+// Parse "yyyy-MM-dd" in the local calendar at a given hour.
+func parseLocalDate(_ s: String, hour: Int = 12) -> Date {
+    var cal = Calendar(identifier: .gregorian); cal.timeZone = .current
+    let p = s.prefix(10).split(separator: "-").compactMap { Int($0) }
+    guard p.count == 3 else { return Date() }
+    return cal.date(from: DateComponents(year: p[0], month: p[1], day: p[2], hour: hour)) ?? Date()
+}
+
 // "2026-09-18" -> "Sep 18"
 func shortDate(_ s: String) -> String {
     let inF = DateFormatter(); inF.dateFormat = "yyyy-MM-dd"

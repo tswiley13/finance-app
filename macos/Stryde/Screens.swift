@@ -274,15 +274,39 @@ struct DebtsView: View {
 
 struct PayPeriodsView: View {
     @EnvironmentObject var store: AppStore
+    @State private var confirmRegen = false
+    @State private var regenerating = false
 
     var body: some View {
         let rows = store.projection.compute().rows
         Page(title: "Pay Periods", subtitle: "Each period's income, bills, and projected end balance") { _ in
+            HStack(spacing: 8) {
+                Text("Built from your biweekly/weekly income and next pay dates.")
+                    .font(.system(size: 11)).foregroundStyle(Color.sMuted)
+                Spacer()
+                Button { confirmRegen = true } label: {
+                    HStack(spacing: 5) {
+                        Image(systemName: "arrow.triangle.2.circlepath").font(.system(size: 11, weight: .bold))
+                        Text(regenerating ? "Regenerating…" : "Regenerate").font(.system(size: 13, weight: .semibold))
+                    }
+                    .foregroundStyle(Color.sAccent).padding(.horizontal, 14).padding(.vertical, 8)
+                    .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.sAccent.opacity(0.5), lineWidth: 1))
+                }.buttonStyle(.plain).disabled(regenerating)
+            }
             if rows.isEmpty {
-                Panel(title: "Pay Periods", count: 0) { EmptyRow(text: "No upcoming pay periods") }
+                Panel(title: "Pay Periods", count: 0) { EmptyRow(text: "No upcoming pay periods — Regenerate to build them") }
             } else {
                 ForEach(rows) { PeriodCard(row: $0) }
             }
+        }
+        .alert("Regenerate pay periods?", isPresented: $confirmRegen) {
+            Button("Regenerate", role: .destructive) {
+                regenerating = true
+                Task { await store.regeneratePayPeriods(); regenerating = false }
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("This replaces all pay periods with a fresh set built from your income cadence. Any per-period marks are keyed by date and will still line up.")
         }
     }
 }
