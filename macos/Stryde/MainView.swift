@@ -173,14 +173,6 @@ struct Page<Content: View>: View {
                     if store.loadingData {
                         ProgressView().controlSize(.small).tint(.sAccent)
                     }
-                    Button { Task { await store.loadData() } } label: {
-                        Image(systemName: "arrow.clockwise")
-                            .font(.system(size: 13, weight: .semibold))
-                            .foregroundStyle(Color.sMuted)
-                            .padding(8).background(Color.sPanel)
-                            .clipShape(RoundedRectangle(cornerRadius: 8))
-                    }
-                    .buttonStyle(.plain).help("Refresh")
                 }
                 .padding(.horizontal, hPad)
                 .padding(.top, 24)
