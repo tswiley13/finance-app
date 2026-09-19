@@ -20,6 +20,7 @@ final class AppStore: ObservableObject {
     @Published var categories: [Category] = []
     @Published var budgets: [Budget] = []
     @Published var members: [Member] = []
+    @Published var scenarios: [Scenario] = []
 
     // Per-period state (keyed "id-periodStart"), all scoped by user_id.
     @Published var billPayments: [String: BillPayment] = [:]
@@ -82,6 +83,7 @@ final class AppStore: ObservableObject {
         categories = []
         budgets = []
         members = []
+        scenarios = []
         billPayments = [:]
         billSkips = []
         earlyPayments = []
@@ -140,6 +142,11 @@ final class AppStore: ObservableObject {
                 .from("budgets").select().eq("household_id", value: hh.id).execute().value
             members = try await client
                 .from("household_members").select().eq("household_id", value: hh.id).execute().value
+            if let rows: [Scenario] = try? await client
+                .from("what_if_scenarios").select("id, name, data").eq("household_id", value: hh.id)
+                .order("updated_at", ascending: false).execute().value {
+                scenarios = rows
+            }
 
             // Per-period tables are scoped by user_id. Tolerate missing tables.
             if let rows: [BillPayment] = try? await client

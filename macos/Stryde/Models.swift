@@ -111,3 +111,15 @@ struct Budget: Codable, Identifiable {
     var category: String
     var amount: Double
 }
+
+// What-If scenario overrides. Amounts are stored as strings to match the web
+// app's jsonb shape (values come from text inputs there).
+struct WIOverride: Codable { var enabled: Bool?; var amount: String?; var name: String? }
+struct WIExtra: Codable, Identifiable { var id: String; var name: String; var amount: String; var enabled: Bool? }
+struct WhatIfData: Codable {
+    var bills: [String: WIOverride] = [:]
+    var income: [String: WIOverride] = [:]
+    var extraBills: [WIExtra] = []
+    var extraIncome: [WIExtra] = []
+}
+struct Scenario: Codable, Identifiable { var id: String; var name: String; var data: WhatIfData }
