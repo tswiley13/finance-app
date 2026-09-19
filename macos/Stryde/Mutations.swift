@@ -16,6 +16,13 @@ extension AppStore {
         }
     }
 
+    // Batch insert (used to seed the budget template in one round-trip).
+    func insertMany<T: Encodable>(_ table: String, _ rows: [T]) async {
+        guard !rows.isEmpty else { return }
+        do { try await client.from(table).insert(rows).execute(); await loadData() }
+        catch { errorMessage = error.localizedDescription }
+    }
+
     func remove(_ table: String, id: String) async {
         do {
             try await client.from(table).delete().eq("id", value: id).execute()
