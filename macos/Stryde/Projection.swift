@@ -183,6 +183,64 @@ struct Projection {
         return out.filter { seen.insert($0).inserted }
     }
 
+    // Current-period transfers: how much to move from the primary account into
+    // each bill account (grouped), plus per-bill transfers. Accumulating set-
+    // asides are handled separately. Returns (rowKey, label, suggested).
+    struct TransferRow: Identifiable { var id: String { rowKey }; var rowKey: String; var label: String; var suggested: Double }
+
+    func currentPeriodStart() -> String? {
+        let t = today
+        return payPeriods.sorted { $0.startDate < $1.startDate }
+            .first { parse($0.startDate, 0, 0, 0) <= t && parse($0.endDate, 23, 59, 59) >= t }?.startDate
+    }
+
+    func transferRows() -> [TransferRow] {
+        let t = today
+        guard let p = payPeriods.sorted(by: { $0.startDate < $1.startDate })
+            .first(where: { parse($0.startDate, 0, 0, 0) <= t && parse($0.endDate, 23, 59, 59) >= t }) else { return [] }
+        let pStart = parse(p.startDate, 0, 0, 0), pEnd = parse(p.endDate, 23, 59, 59), pk = p.startDate
+        let acct = accountsById
+        let periodBills = bills.filter { isBillDueInPeriod($0, pStart, pEnd) }
+
+        // Earliest future, not-early paycheck in this period.
+        var nextInc: Date? = nil
+        for inc in income {
+            for pd in incomePayDates(inc, pStart, pEnd) where !earlyPayments.contains("\(inc.id)-\(pk)") {
+                let d = parse(pd, 12, 0, 0)
+                if d > t, nextInc == nil || d < nextInc! { nextInc = d }
+            }
+        }
+
+        // Only bills this current paycheck must cover.
+        let relevant = periodBills.filter { b in
+            if isSkipped(b.id, pk) || isPaidInPeriod(b.id, pk) { return false }
+            let f = b.frequency ?? "monthly"
+            if f == "payday" || f == "biweekly" { return true }
+            if let ni = nextInc, let due = billDueDate(b, pStart, pEnd) { return due < ni }
+            return true
+        }
+
+        var rows: [TransferRow] = []
+        // Regular bills grouped by their (non-primary, non-accumulating) account.
+        var groups: [String: Double] = [:]
+        for b in relevant where b.transferToAccountId == nil {
+            guard let aid = b.accountId, let a = acct[aid] else { continue }
+            if a.isAccumulating == true || a.isPrimary == true { continue }
+            groups[aid, default: 0] += b.amount
+        }
+        for (aid, total) in groups {
+            let a = acct[aid]!
+            rows.append(TransferRow(rowKey: aid, label: "Transfer to \(a.name)", suggested: max(0, total + (a.minimumBuffer ?? 0))))
+        }
+        // Per-bill transfers to a non-accumulating destination.
+        for b in relevant {
+            if let tid = b.transferToAccountId, let dest = acct[tid], dest.isAccumulating != true {
+                rows.append(TransferRow(rowKey: "transfer-\(b.id)", label: "Move for \(b.name)", suggested: b.amount))
+            }
+        }
+        return rows.sorted { $0.suggested > $1.suggested }
+    }
+
     // MARK: main computation
 
     func compute() -> (tiles: ProjectionTiles, rows: [PeriodRow]) {

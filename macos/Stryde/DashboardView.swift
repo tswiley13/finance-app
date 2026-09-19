@@ -35,11 +35,12 @@ struct DashboardView: View {
             if w >= 940 {
                 HStack(alignment: .top, spacing: 16) {
                     periodsColumn(rows).frame(maxWidth: .infinity, alignment: .top)
-                    accountsPanel.frame(width: 360, alignment: .top)
+                    VStack(spacing: 16) { accountsPanel; transfersPanel }.frame(width: 360, alignment: .top)
                 }
             } else {
                 periodsColumn(rows)
                 accountsPanel
+                transfersPanel
             }
         }
     }
@@ -96,6 +97,37 @@ struct DashboardView: View {
                         amount: a.currentBalance ?? 0,
                         amountColor: a.accountType == "credit" ? .sBad : .sInk,
                         badge: a.isAccumulating == true ? "Accumulating" : (a.isPrimary == true ? "Primary" : nil))
+                }
+            }
+        }
+    }
+
+    private var transfersPanel: some View {
+        let proj = store.projection
+        let rows = proj.transferRows()
+        let periodStart = proj.currentPeriodStart()
+        return Group {
+            if !rows.isEmpty, let ps = periodStart {
+                Panel(title: "Where the money goes", count: rows.count) {
+                    ForEach(rows) { r in
+                        let transferred = store.transfers[r.rowKey] ?? 0
+                        let done = transferred >= r.suggested - 0.005
+                        HStack(spacing: 10) {
+                            Button {
+                                Task { await store.setTransfer(rowKey: r.rowKey, amount: r.suggested, periodStart: ps, done: !done) }
+                            } label: {
+                                Image(systemName: done ? "checkmark.circle.fill" : "circle")
+                                    .font(.system(size: 15)).foregroundStyle(done ? Color.sGood : Color.sMuted.opacity(0.6))
+                            }.buttonStyle(.plain)
+                            Text(r.label).font(.system(size: 13, weight: .medium))
+                                .foregroundStyle(done ? Color.sMuted : Color.sInk).strikethrough(done, color: Color.sMuted)
+                            Spacer()
+                            Text(money(r.suggested)).font(.system(size: 13, design: .monospaced))
+                                .foregroundStyle(done ? Color.sGood : Color.sInk)
+                        }
+                        .padding(.vertical, 8)
+                        .overlay(Rectangle().fill(Color.white.opacity(0.04)).frame(height: 1), alignment: .bottom)
+                    }
                 }
             }
         }
