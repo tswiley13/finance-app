@@ -96,19 +96,16 @@ struct BudgetView: View {
                         .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.white.opacity(0.12), lineWidth: 1))
                     }.buttonStyle(.plain)
                 }
-                HStack(spacing: 12) {
-                    StatTile(label: "Monthly Income", value: mIncome, accent: .sGreen)
-                    StatTile(label: "Budgeted", value: totalBudgeted, accent: .sAccent)
-                    StatTile(label: "Left to Budget", value: net, accent: net < 0 ? .sBad : .sGood)
-                }
-                if net != 0 {
-                    Text(net < 0
-                         ? "You've budgeted \(money(abs(net))) more than you bring in."
-                         : "\(money(net)) still unassigned — a finished budget lands at $0 left.")
-                        .font(.system(size: 12)).foregroundStyle(net < 0 ? Color.sBad : Color.sMuted)
-                }
 
-                incomeCard(total: mIncome)
+                if w >= 780 {
+                    HStack(alignment: .top, spacing: 14) {
+                        incomeCard(total: mIncome).frame(maxWidth: .infinity, alignment: .top)
+                        budgetOverview(income: mIncome, budgeted: totalBudgeted, net: net).frame(maxWidth: .infinity, alignment: .top)
+                    }
+                } else {
+                    incomeCard(total: mIncome)
+                    budgetOverview(income: mIncome, budgeted: totalBudgeted, net: net)
+                }
 
                 // Two-column masonry of colored group cards.
                 let groups = activeGroups
@@ -175,6 +172,63 @@ struct BudgetView: View {
         .background(Color.sPanel)
         .clipShape(RoundedRectangle(cornerRadius: 12))
         .overlay(RoundedRectangle(cornerRadius: 12).stroke(Color.white.opacity(0.06), lineWidth: 1))
+    }
+
+    // MARK: budget overview card
+
+    private func budgetOverview(income: Double, budgeted: Double, net: Double) -> some View {
+        let inBills = Finance.monthlyBills(store.bills)
+        let over = budgeted > income
+        let pct = income > 0 ? min(1, budgeted / income) : 0
+        return VStack(spacing: 0) {
+            HStack(spacing: 10) {
+                Image(systemName: "chart.pie.fill").font(.system(size: 15)).foregroundStyle(Color.sAccent)
+                Text("Budget Overview").font(.system(size: 15, weight: .bold)).foregroundStyle(Color.sInk)
+                Spacer()
+            }
+            .padding(.horizontal, 16).padding(.vertical, 12)
+            .background(LinearGradient(colors: [Color.sAccent.opacity(0.22), Color.sAccent.opacity(0.06)], startPoint: .leading, endPoint: .trailing))
+
+            VStack(spacing: 0) {
+                ovRow("Monthly Income", income, .sGreen)
+                ovRow("Budgeted", budgeted, .sAccent)
+                ovRow("Committed to Bills", inBills, .sWarn)
+
+                // Allocation bar
+                GeometryReader { g in
+                    ZStack(alignment: .leading) {
+                        Capsule().fill(Color.white.opacity(0.06)).frame(height: 6)
+                        Capsule().fill(over ? Color.sBad : Color.sAccent).frame(width: g.size.width * pct, height: 6)
+                    }
+                }.frame(height: 6).padding(.vertical, 10)
+
+                Rectangle().fill(Color.white.opacity(0.06)).frame(height: 1)
+                HStack {
+                    Text("Left to Budget").font(.system(size: 13, weight: .semibold)).foregroundStyle(Color.sInk)
+                    Spacer()
+                    Text((net < 0 ? "-$" : "$") + num2(net))
+                        .font(.system(size: 16, weight: .bold, design: .monospaced))
+                        .foregroundStyle(net < 0 ? Color.sBad : Color.sGreen)
+                }
+                .padding(.top, 10)
+                Text(net < 0 ? "Over-allocated — trim a target." : (net == 0 ? "Every dollar has a job. 🎯" : "Still unassigned — aim for $0."))
+                    .font(.system(size: 11)).foregroundStyle(Color.sMuted)
+                    .frame(maxWidth: .infinity, alignment: .leading).padding(.top, 2)
+            }
+            .padding(.horizontal, 16).padding(.vertical, 12)
+        }
+        .background(Color.sPanel)
+        .clipShape(RoundedRectangle(cornerRadius: 12))
+        .overlay(RoundedRectangle(cornerRadius: 12).stroke(Color.white.opacity(0.06), lineWidth: 1))
+    }
+
+    private func ovRow(_ label: String, _ value: Double, _ color: Color) -> some View {
+        HStack {
+            Text(label).font(.system(size: 13)).foregroundStyle(Color.sMuted)
+            Spacer()
+            Text(money(value)).font(.system(size: 13, weight: .medium, design: .monospaced)).foregroundStyle(color)
+        }
+        .padding(.vertical, 6)
     }
 
     // MARK: group card
