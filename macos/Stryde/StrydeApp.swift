@@ -33,36 +33,13 @@ struct RootView: View {
                 MainView()
             }
         }
-        // A real title-bar strip: drag to move, double-click to zoom. Inset from
-        // the left so the traffic-light buttons stay clickable.
-        .overlay(alignment: .topLeading) {
-            WindowDragZoom().frame(height: 30).frame(maxWidth: .infinity).padding(.leading, 78)
-        }
         .task { await store.bootstrap() }
     }
 }
 
-// Title-bar strip for a hidden-title-bar window. We handle the mouse down
-// ourselves (mouseDownCanMoveWindow stays false so the event is delivered):
-// double-click zooms ("fit to screen"), a plain press starts a window drag.
-final class DragZoomNSView: NSView {
-    override var mouseDownCanMoveWindow: Bool { false }
-    override func mouseDown(with event: NSEvent) {
-        if event.clickCount >= 2 {
-            window?.zoom(nil)
-        } else {
-            window?.performDrag(with: event)
-        }
-    }
-}
-struct WindowDragZoom: NSViewRepresentable {
-    func makeNSView(context: Context) -> NSView { DragZoomNSView() }
-    func updateNSView(_ nsView: NSView, context: Context) {}
-}
-
-// Keeps the seamless (hidden title bar) look while restoring native window
-// behavior: a real transparent title bar (so double-click-to-zoom and dragging
-// from the top strip work) and the app's dark color underneath.
+// Keeps the seamless (hidden title bar) look while restoring native behavior.
+// The double-click-to-zoom is handled by a global mouse-down monitor so it
+// works no matter what SwiftUI draws over the title-bar region.
 struct WindowConfigurator: NSViewRepresentable {
     func makeNSView(context: Context) -> NSView {
         let v = NSView()
@@ -71,10 +48,29 @@ struct WindowConfigurator: NSViewRepresentable {
             w.titlebarAppearsTransparent = true
             w.titleVisibility = .hidden
             w.styleMask.insert(.fullSizeContentView)
-            w.isMovableByWindowBackground = false
+            w.isMovableByWindowBackground = true   // drag from anywhere blank
             w.backgroundColor = NSColor(red: 0x13/255, green: 0x11/255, blue: 0x1F/255, alpha: 1)
+            TitleBarZoom.install()
         }
         return v
     }
     func updateNSView(_ nsView: NSView, context: Context) {}
+}
+
+// Double-click in the top strip (past the traffic lights) toggles zoom.
+enum TitleBarZoom {
+    static var installed = false
+    static func install() {
+        guard !installed else { return }
+        installed = true
+        NSEvent.addLocalMonitorForEvents(matching: .leftMouseDown) { event in
+            guard event.clickCount == 2, let w = event.window else { return event }
+            let loc = event.locationInWindow           // origin: bottom-left
+            if loc.x > 80 && loc.y >= w.frame.height - 32 {
+                w.zoom(nil)
+                return nil
+            }
+            return event
+        }
+    }
 }
