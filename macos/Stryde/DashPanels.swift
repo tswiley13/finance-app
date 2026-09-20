@@ -2,6 +2,12 @@ import SwiftUI
 
 private let dim = Color(red: 0x5C/255, green: 0x60/255, blue: 0x80/255)
 
+// Primary account first, then alphabetical.
+func primaryFirst(_ a: Account, _ b: Account) -> Bool {
+    if (a.isPrimary == true) != (b.isPrimary == true) { return a.isPrimary == true }
+    return a.name < b.name
+}
+
 // MARK: - Pay-period card
 
 struct PayCard: View {
@@ -127,7 +133,7 @@ struct DashAccounts: View {
             if store.accounts.isEmpty {
                 Text("No accounts added yet").font(.system(size: 13)).italic().foregroundStyle(dim).padding(.vertical, 16)
             } else {
-                ForEach(store.accounts.sorted { $0.name < $1.name }) { acctRow($0) }
+                ForEach(store.accounts.sorted(by: primaryFirst)) { acctRow($0) }
             }
 
             if !store.plaidConnected {

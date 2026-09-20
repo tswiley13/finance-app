@@ -137,7 +137,7 @@ struct AccountsView: View {
     var body: some View {
         let assets = store.accounts.filter { $0.accountType != "credit" }.reduce(0) { $0 + ($1.currentBalance ?? 0) }
         let credit = store.accounts.filter { $0.accountType == "credit" }.reduce(0) { $0 + ($1.currentBalance ?? 0) }
-        let sorted = store.accounts.sorted { $0.name < $1.name }
+        let sorted = store.accounts.sorted(by: primaryFirst)
 
         Page(title: "Accounts", subtitle: "Balances across your accounts") { _ in
             PlaidControls(showSync: true)
