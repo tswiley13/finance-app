@@ -102,7 +102,7 @@ struct BillRowV: View {
                 Text("Skipped").font(.system(size: 11)).foregroundStyle(Color(red: 0x5C/255, green: 0x60/255, blue: 0x80/255))
             }.opacity(0.6)
             Spacer()
-            Text("$\(money(bill.amount))").font(.system(size: 13, design: .monospaced)).foregroundStyle(Color(red: 0x5C/255, green: 0x60/255, blue: 0x80/255))
+            Text(money(bill.amount)).font(.system(size: 13, design: .monospaced)).foregroundStyle(Color(red: 0x5C/255, green: 0x60/255, blue: 0x80/255))
             PillBtn(title: "Restore", tint: .sAccent) { Task { await store.setBillSkipped(billId: bill.id, periodStart: periodStart, skipped: false) } }
         }
     }
@@ -114,7 +114,7 @@ struct BillRowV: View {
                 Text("Paid").font(.system(size: 11)).foregroundStyle(Color(red: 0x5C/255, green: 0x60/255, blue: 0x80/255))
             }.opacity(0.6)
             Spacer()
-            Text("$\(money(paidAmt > 0 ? paidAmt : bill.amount))").font(.system(size: 13, design: .monospaced))
+            Text(money(paidAmt > 0 ? paidAmt : bill.amount)).font(.system(size: 13, design: .monospaced))
                 .foregroundStyle(Color(red: 0x5C/255, green: 0x60/255, blue: 0x80/255)).strikethrough(true)
             PillBtn(title: "Undo", tint: .sBad) { Task { await store.unmarkBillPaid(billId: bill.id, periodStart: periodStart) } }
         }
@@ -131,7 +131,7 @@ struct BillRowV: View {
                             .background(Color.sWarn.opacity(0.15)).clipShape(RoundedRectangle(cornerRadius: 3))
                     }
                 }
-                Text(partial ? "$\(money(paidAmt)) paid · $\(money(bill.amount - paidAmt)) remaining" : freqSub)
+                Text(partial ? "\(money(paidAmt)) paid · \(money(bill.amount - paidAmt)) remaining" : freqSub)
                     .font(.system(size: 11)).foregroundStyle(Color.sMuted)
             }
             Spacer()
@@ -144,7 +144,7 @@ struct BillRowV: View {
                     .overlay(RoundedRectangle(cornerRadius: 6).stroke(Color.sAccent, lineWidth: 1))
                     .onSubmit { commitAmount() }
             } else {
-                Text("$\(money(bill.amount))").font(.system(size: 13, design: .monospaced))
+                Text(money(bill.amount)).font(.system(size: 13, design: .monospaced))
                     .foregroundStyle(partial ? Color.sWarn : Color.sMuted)
                     .onTapGesture { amtText = String(format: "%.2f", bill.amount); editAmt = true }
             }
@@ -195,7 +195,7 @@ struct IncomeRowV: View {
                 Text(shortDate(payDate) + (early ? " · Received early" : "")).font(.system(size: 11)).foregroundStyle(Color.sMuted)
             }
             Spacer()
-            Text("+$\(money(income.fixedAmount ?? 0))").font(.system(size: 13, design: .monospaced))
+            Text("+" + money(income.fixedAmount ?? 0)).font(.system(size: 13, design: .monospaced))
                 .foregroundStyle(early ? Color.sGreen : Color.sMuted)
             if early {
                 LinkBtn(title: "Undo") { Task { await store.setIncomeReceived(incomeId: income.id, periodStart: periodStart, received: false) } }
