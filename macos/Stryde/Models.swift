@@ -110,6 +110,7 @@ struct Budget: Codable, Identifiable {
     var id: String
     var category: String
     var amount: Double
+    var groupName: String?
 }
 
 // What-If scenario overrides. Amounts are stored as strings to match the web

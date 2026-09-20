@@ -1,6 +1,6 @@
 import SwiftUI
 
-struct BudgetLinePayload: Encodable { var householdId: String; var category: String; var amount: Double }
+struct BudgetLinePayload: Encodable { var householdId: String; var category: String; var amount: Double; var groupName: String? = nil }
 
 struct BudgetGroup: Identifiable {
     var id: String { name }
@@ -45,6 +45,7 @@ extension AppStore {
     func groupFor(_ category: String) -> String {
         lineToGroup[category.trimmingCharacters(in: .whitespaces).lowercased()] ?? "Other"
     }
+    func groupOf(_ b: Budget) -> String { b.groupName ?? groupFor(b.category) }
 }
 
 struct BudgetView: View {
@@ -64,7 +65,7 @@ struct BudgetView: View {
 
     private func linesForGroup(_ g: BudgetGroup) -> [(name: String, budget: Budget?)] {
         var map: [String: (String, Budget?)] = [:]
-        for b in store.budgets where store.groupFor(b.category) == g.name { map[b.category.lowercased()] = (b.category, b) }
+        for b in store.budgets where store.groupOf(b) == g.name { map[b.category.lowercased()] = (b.category, b) }
         for c in Set(store.bills.filter { $0.isActive != false }.compactMap { $0.category }
             .map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty })
         where store.groupFor(c) == g.name {
@@ -255,19 +256,11 @@ struct BudgetView: View {
 
             if isOpen {
                 VStack(spacing: 0) {
-                    HStack(spacing: 8) {
-                        Spacer()
-                        Text("IN BILLS").font(.system(size: 8, weight: .semibold)).tracking(0.5).foregroundStyle(Color.sMuted).frame(width: 66, alignment: .trailing)
-                        Text("BUDGET").font(.system(size: 8, weight: .semibold)).tracking(0.5).foregroundStyle(Color.sMuted).frame(width: 84, alignment: .trailing)
-                        Text("DIFF").font(.system(size: 8, weight: .semibold)).tracking(0.5).foregroundStyle(Color.sMuted).frame(width: 60, alignment: .trailing)
-                        Spacer().frame(width: 18)
-                    }
-                    .padding(.top, 8).padding(.bottom, 2)
                     ForEach(lines, id: \.name) { line in
-                        BudgetLineRow(category: line.name, existing: line.budget, billsAmt: billsMonthly(for: line.name), bills: billsIn(line.name), accent: g.color)
+                        BudgetLineRow(category: line.name, existing: line.budget, billsAmt: billsMonthly(for: line.name), currentGroup: g.name, accent: g.color)
                     }
                 }
-                .padding(.horizontal, 14).padding(.bottom, 10)
+                .padding(.horizontal, 14).padding(.top, 4).padding(.bottom, 10)
             }
         }
         .background(Color.sPanel)
@@ -328,97 +321,65 @@ struct BudgetLineRow: View {
     let category: String
     let existing: Budget?
     let billsAmt: Double
-    var bills: [Bill] = []
+    var currentGroup: String = "Other"
     var accent: Color = .sAccent
     @State private var text = ""
-    @State private var showBills = false
 
     private var budgeted: Double { Double(text.filter { "0123456789.".contains($0) }) ?? 0 }
 
     var body: some View {
-        VStack(spacing: 0) {
-            mainRow
-            if showBills && !bills.isEmpty {
-                VStack(spacing: 0) {
-                    ForEach(bills) { b in billReassignRow(b) }
-                }
-                .padding(.leading, 12).padding(.vertical, 4)
-            }
-        }
-    }
-
-    private var mainRow: some View {
-        let diff = budgeted - billsAmt
-        return HStack(spacing: 8) {
-            VStack(alignment: .leading, spacing: 1) {
-                Text(category).font(.system(size: 13, weight: .medium)).foregroundStyle(Color.sInk)
-                    .lineLimit(1).truncationMode(.tail)
-                if !bills.isEmpty {
-                    Button { showBills.toggle() } label: {
-                        HStack(spacing: 3) {
-                            Text("\(bills.count) bill\(bills.count == 1 ? "" : "s")").font(.system(size: 10)).foregroundStyle(accent)
-                            Image(systemName: showBills ? "chevron.up" : "chevron.down").font(.system(size: 7)).foregroundStyle(accent)
-                        }
-                    }.buttonStyle(.plain)
-                }
-            }
+        HStack(spacing: 8) {
+            Text(category).font(.system(size: 13, weight: .medium)).foregroundStyle(Color.sInk)
+                .lineLimit(1).truncationMode(.tail)
             Spacer(minLength: 4)
-            Text(billsAmt > 0 ? money(billsAmt) : "—")
-                .font(.system(size: 11, design: .monospaced)).foregroundStyle(billsAmt > 0 ? Color.sMuted : Color.sMuted.opacity(0.4))
-                .frame(width: 66, alignment: .trailing)
+
             TextField("0", text: $text)
                 .textFieldStyle(.plain).multilineTextAlignment(.trailing)
-                .font(.system(size: 12, design: .monospaced)).foregroundStyle(Color.sInk)
-                .padding(.horizontal, 8).padding(.vertical, 5)
+                .font(.system(size: 13, design: .monospaced)).foregroundStyle(Color.sInk)
+                .padding(.horizontal, 10).padding(.vertical, 6)
                 .background(Color.white.opacity(0.04)).clipShape(RoundedRectangle(cornerRadius: 6))
                 .overlay(RoundedRectangle(cornerRadius: 6).stroke(Color.white.opacity(0.1), lineWidth: 1))
-                .frame(width: 84)
+                .frame(width: 120)
                 .onSubmit(save)
-            Text(budgeted == 0 && billsAmt == 0 ? "—" : (diff < 0 ? "-$\(num2(diff))" : "+$\(num2(diff))"))
-                .font(.system(size: 11, design: .monospaced))
-                .foregroundStyle(budgeted == 0 && billsAmt == 0 ? Color.sMuted.opacity(0.4) : (diff < 0 ? Color.sBad : Color.sGreen))
-                .frame(width: 60, alignment: .trailing)
-            Group {
-                if let e = existing {
-                    Button { Task { await store.remove("budgets", id: e.id) } } label: {
-                        Image(systemName: "xmark").font(.system(size: 9)).foregroundStyle(Color.sBad)
-                    }.buttonStyle(.plain)
-                } else { Spacer().frame(width: 10) }
-            }.frame(width: 18)
-        }
-        .padding(.vertical, 7)
-        .overlay(Rectangle().fill(Color.white.opacity(0.04)).frame(height: 1), alignment: .bottom)
-        .onAppear { text = (existing?.amount).map { $0 == $0.rounded() ? String(Int($0)) : String($0) } ?? "" }
-    }
 
-    private func billReassignRow(_ b: Bill) -> some View {
-        HStack(spacing: 6) {
-            Image(systemName: "arrow.turn.down.right").font(.system(size: 9)).foregroundStyle(Color.sMuted.opacity(0.6))
-            Text(b.name).font(.system(size: 11)).foregroundStyle(Color.sMuted).lineLimit(1)
-            Spacer()
-            Text(money(b.amount * Finance.billMult(b.frequency))).font(.system(size: 10, design: .monospaced)).foregroundStyle(Color.sMuted.opacity(0.7))
+            // Move this line to another group card.
             Menu {
-                ForEach(BUDGET_GROUPS) { g in
-                    Menu(g.name) {
-                        ForEach(g.lines, id: \.self) { l in
-                            Button(l) { Task { await store.updateBillCategory(billId: b.id, category: l) } }
-                        }
-                    }
+                ForEach(BUDGET_GROUPS.filter { $0.name != currentGroup }) { g in
+                    Button(g.name) { move(to: g.name) }
                 }
             } label: {
-                HStack(spacing: 2) {
-                    Text("Move").font(.system(size: 10, weight: .semibold))
-                    Image(systemName: "chevron.down").font(.system(size: 7))
-                }.foregroundStyle(accent)
+                Image(systemName: "folder").font(.system(size: 11)).foregroundStyle(Color.sMuted)
             }
-            .menuStyle(.borderlessButton).fixedSize()
+            .menuStyle(.borderlessButton).fixedSize().help("Move to another card")
+
+            if let e = existing {
+                Button { Task { await store.remove("budgets", id: e.id) } } label: {
+                    Image(systemName: "xmark").font(.system(size: 10)).foregroundStyle(Color.sBad)
+                }.buttonStyle(.plain).frame(width: 16)
+            } else { Spacer().frame(width: 16) }
         }
-        .padding(.vertical, 4)
+        .padding(.vertical, 8)
+        .overlay(Rectangle().fill(Color.white.opacity(0.04)).frame(height: 1), alignment: .bottom)
+        .onAppear {
+            let amt = existing?.amount ?? (billsAmt > 0 ? billsAmt : nil)
+            text = amt.map { $0 == $0.rounded() ? String(Int($0)) : String($0) } ?? ""
+        }
     }
 
     private func save() {
         let amt = budgeted
         if let e = existing, e.amount == amt { return }
         Task { await store.save("budgets", id: existing?.id, BudgetLinePayload(householdId: store.household?.id ?? "", category: category, amount: amt)) }
+    }
+
+    private func move(to group: String) {
+        Task {
+            if let e = existing {
+                await store.updateBudgetGroup(id: e.id, groupName: group)
+            } else {
+                // No saved line yet (bill-only): create one in the target group.
+                await store.save("budgets", id: nil, BudgetLinePayload(householdId: store.household?.id ?? "", category: category, amount: budgeted, groupName: group))
+            }
+        }
     }
 }

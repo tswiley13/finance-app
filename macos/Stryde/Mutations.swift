@@ -164,6 +164,13 @@ extension AppStore {
         catch { errorMessage = error.localizedDescription }
     }
 
+    // Move a budget line to a different group card (persisted override).
+    struct BudgetGroupPayload: Encodable { var groupName: String }
+    func updateBudgetGroup(id: String, groupName: String) async {
+        do { try await client.from("budgets").update(BudgetGroupPayload(groupName: groupName)).eq("id", value: id).execute(); await loadData() }
+        catch { errorMessage = error.localizedDescription }
+    }
+
     // Re-assign a bill to a different category (moves it between budget groups).
     struct BillCategoryPayload: Encodable { var category: String }
     func updateBillCategory(billId: String, category: String) async {
