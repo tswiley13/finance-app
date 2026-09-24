@@ -208,33 +208,49 @@ struct WTMGPanel: View {
 
     var body: some View {
         let proj = store.projection
-        let info = proj.transferInfo()
+        let phases = proj.transferInfo()
         let ps = proj.currentPeriodStart()
         let prefund = proj.nextPeriodPrefund()
-        let billsRows = info.rows.filter { $0.isBillsSection }
-        let transferRows = info.rows.filter { !$0.isBillsSection }
+        let multi = phases.count > 1
 
         return VStack(alignment: .leading, spacing: 0) {
             HStack {
                 Text("WHERE THE MONEY GOES").font(.system(size: 11, weight: .semibold)).tracking(1).foregroundStyle(Color.sMuted)
                 Spacer()
-                Text(info.until.map { "Until \($0)" } ?? "This pay period")
+                Text(multi ? "\(phases.count) transfers this period" : "This pay period")
                     .font(.system(size: 11, design: .monospaced)).foregroundStyle(Color.sMuted)
             }
             .padding(.bottom, 16)
 
-            if info.rows.isEmpty && (prefund?.total ?? 0) <= 0 {
+            if phases.isEmpty && (prefund?.total ?? 0) <= 0 {
                 Text("No allocations this period").font(.system(size: 13)).italic().foregroundStyle(dim).padding(.vertical, 16)
             }
 
-            if !billsRows.isEmpty, let ps {
-                Text("BILLS").font(.system(size: 10, weight: .semibold)).tracking(0.8).foregroundStyle(Color.sMuted).padding(.bottom, 8)
-                ForEach(billsRows) { TransferRowV(row: $0, periodStart: ps) }
-            }
-            if !transferRows.isEmpty, let ps {
-                Text("TRANSFERS").font(.system(size: 10, weight: .semibold)).tracking(0.8).foregroundStyle(Color.sMuted)
-                    .padding(.top, billsRows.isEmpty ? 0 : 16).padding(.bottom, 8)
-                ForEach(transferRows) { TransferRowV(row: $0, periodStart: ps) }
+            ForEach(Array(phases.enumerated()), id: \.element.id) { idx, phase in
+                let billsRows = phase.rows.filter { $0.isBillsSection }
+                let transferRows = phase.rows.filter { !$0.isBillsSection }
+
+                if multi {
+                    HStack {
+                        Text(phase.isFuture ? "TRANSFER ON \(phase.label.uppercased())" : "TRANSFER NOW · \(phase.label.uppercased())")
+                            .font(.system(size: 10, weight: .bold)).tracking(0.6)
+                            .foregroundStyle(phase.isFuture ? Color.sAccent : Color.sGreen)
+                        Spacer()
+                    }
+                    .padding(.top, idx == 0 ? 0 : 18).padding(.bottom, 8)
+                }
+
+                if let ps {
+                    if !billsRows.isEmpty {
+                        Text("BILLS").font(.system(size: 10, weight: .semibold)).tracking(0.8).foregroundStyle(Color.sMuted).padding(.bottom, 8)
+                        ForEach(billsRows) { TransferRowV(row: $0, periodStart: ps) }
+                    }
+                    if !transferRows.isEmpty {
+                        Text("TRANSFERS").font(.system(size: 10, weight: .semibold)).tracking(0.8).foregroundStyle(Color.sMuted)
+                            .padding(.top, billsRows.isEmpty ? 0 : 16).padding(.bottom, 8)
+                        ForEach(transferRows) { TransferRowV(row: $0, periodStart: ps) }
+                    }
+                }
             }
 
             if let pf = prefund, pf.total > 0 {
