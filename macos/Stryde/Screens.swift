@@ -29,64 +29,6 @@ private struct AddBar: View {
     }
 }
 
-// MARK: - Bills
-
-struct BillsView: View {
-    @EnvironmentObject var store: AppStore
-    @State private var editing: Editing<Bill>?
-
-    var body: some View {
-        let active = store.bills.filter { $0.isActive != false }
-        let recurring = active
-            .filter { Finance.billMult($0.frequency) > 0 }
-            .sorted { $0.amount * Finance.billMult($0.frequency) > $1.amount * Finance.billMult($1.frequency) }
-        let oneTime = active.filter { ($0.frequency ?? "") == "one-time" }
-
-        Page(title: "Bills", subtitle: "Everything you owe on a schedule") { _ in
-            AddBar(title: "Add bill") { editing = Editing(nil) }
-
-            HStack(spacing: 12) {
-                StatTile(label: "Monthly Bills", value: Finance.monthlyBills(active), accent: .sWarn)
-                StatTile(label: "Yearly Bills", value: Finance.monthlyBills(active) * 12, accent: .sWarn)
-                StatTile(label: "Active Bills", value: Double(recurring.count), accent: .sAccent, isCount: true)
-            }
-
-            Panel(title: "Recurring", count: recurring.count) {
-                if recurring.isEmpty {
-                    EmptyRow(text: "No recurring bills — add one above")
-                } else {
-                    ForEach(recurring) { b in
-                        TapRow { editing = Editing(b) } content: {
-                            Row(name: b.name, sub: billSub(b),
-                                amount: b.amount, amountColor: .sInk,
-                                trailing: "\(money(b.amount * Finance.billMult(b.frequency)))/mo")
-                        }
-                    }
-                }
-            }
-
-            if !oneTime.isEmpty {
-                Panel(title: "One-time", count: oneTime.count) {
-                    ForEach(oneTime) { b in
-                        TapRow { editing = Editing(b) } content: {
-                            Row(name: b.name, sub: (b.dueDate.map { shortDate($0) } ?? b.category ?? "Other"), amount: b.amount)
-                        }
-                    }
-                }
-            }
-        }
-        .sheet(item: $editing) { BillEditor(existing: $0.value).environmentObject(store) }
-    }
-
-    private func billSub(_ b: Bill) -> String {
-        var parts: [String] = []
-        if let c = b.category, !c.isEmpty { parts.append(c) }
-        parts.append(Finance.freqLabel(b.frequency))
-        if let d = b.dueDay, d > 0, (b.frequency ?? "monthly") != "one-time" { parts.append("Due \(ordinal(d))") }
-        return parts.joined(separator: " · ")
-    }
-}
-
 // MARK: - Income
 
 struct IncomeView: View {

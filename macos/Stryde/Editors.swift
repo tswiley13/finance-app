@@ -40,6 +40,7 @@ struct BillPayload: Encodable {
     var frequency: String
     var dueDay: Int
     var dueDay2: Int?
+    var dueMonth: Int? = nil
     var dueDate: String?
     var paymentMethod: String
     var category: String

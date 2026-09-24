@@ -170,9 +170,14 @@ struct Page<Content: View>: View {
                         }
                     }
                     Spacer()
-                    if store.loadingData {
-                        ProgressView().controlSize(.small).tint(.sAccent)
+                    Button { Task { await store.loadData() } } label: {
+                        Image(systemName: "arrow.clockwise").font(.system(size: 13, weight: .semibold))
+                            .foregroundStyle(Color.sMuted).frame(width: 34, height: 34)
+                            .background(Color.sPanel).clipShape(RoundedRectangle(cornerRadius: 8))
+                            .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.white.opacity(0.06), lineWidth: 1))
                     }
+                    .buttonStyle(.plain).help("Refresh")
+                    .overlay(alignment: .center) { if store.loadingData { ProgressView().controlSize(.small).tint(.sAccent) } }
                 }
                 .padding(.horizontal, hPad)
                 .padding(.top, 24)
