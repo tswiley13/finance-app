@@ -183,10 +183,17 @@ struct Projection {
         return out.filter { seen.insert($0).inserted }
     }
 
-    // Current-period transfers: how much to move from the primary account into
-    // each bill account (grouped), plus per-bill transfers. Accumulating set-
-    // asides are handled separately. Returns (rowKey, label, suggested).
-    struct TransferRow: Identifiable { var id: String { rowKey }; var rowKey: String; var label: String; var suggested: Double }
+    // Current-period "where the money goes": grouped bill-account transfers
+    // ("Bills" section) + per-bill transfers ("Transfers" section), scoped to the
+    // bills the current paycheck must cover (due before the NEXT paycheck).
+    struct TransferRow: Identifiable {
+        var id: String { rowKey }
+        var rowKey: String
+        var label: String
+        var subtitle: String?
+        var suggested: Double
+        var isBillsSection: Bool
+    }
 
     func currentPeriodStart() -> String? {
         let t = today
@@ -194,24 +201,24 @@ struct Projection {
             .first { parse($0.startDate, 0, 0, 0) <= t && parse($0.endDate, 23, 59, 59) >= t }?.startDate
     }
 
-    func transferRows() -> [TransferRow] {
+    func transferInfo() -> (rows: [TransferRow], until: String?) {
         let t = today
         guard let p = payPeriods.sorted(by: { $0.startDate < $1.startDate })
-            .first(where: { parse($0.startDate, 0, 0, 0) <= t && parse($0.endDate, 23, 59, 59) >= t }) else { return [] }
+            .first(where: { parse($0.startDate, 0, 0, 0) <= t && parse($0.endDate, 23, 59, 59) >= t }) else { return ([], nil) }
         let pStart = parse(p.startDate, 0, 0, 0), pEnd = parse(p.endDate, 23, 59, 59), pk = p.startDate
         let acct = accountsById
         let periodBills = bills.filter { isBillDueInPeriod($0, pStart, pEnd) }
 
-        // Earliest future, not-early paycheck in this period.
+        // Earliest paycheck STRICTLY AFTER today (a check due today is the current
+        // one, not the next), so this check covers bills due before it.
         var nextInc: Date? = nil
         for inc in income {
             for pd in incomePayDates(inc, pStart, pEnd) where !earlyPayments.contains("\(inc.id)-\(pk)") {
-                let d = parse(pd, 12, 0, 0)
+                let d = parse(pd, 0, 0, 0)
                 if d > t, nextInc == nil || d < nextInc! { nextInc = d }
             }
         }
 
-        // Only bills this current paycheck must cover.
         let relevant = periodBills.filter { b in
             if isSkipped(b.id, pk) || isPaidInPeriod(b.id, pk) { return false }
             let f = b.frequency ?? "monthly"
@@ -221,7 +228,8 @@ struct Projection {
         }
 
         var rows: [TransferRow] = []
-        // Regular bills grouped by their (non-primary, non-accumulating) account.
+        // Bills section: regular bills grouped by their (non-primary,
+        // non-accumulating) source account.
         var groups: [String: Double] = [:]
         for b in relevant where b.transferToAccountId == nil {
             guard let aid = b.accountId, let a = acct[aid] else { continue }
@@ -230,15 +238,20 @@ struct Projection {
         }
         for (aid, total) in groups {
             let a = acct[aid]!
-            rows.append(TransferRow(rowKey: aid, label: "Transfer to \(a.name)", suggested: max(0, total + (a.minimumBuffer ?? 0))))
+            let buffer = a.minimumBuffer ?? 0
+            rows.append(TransferRow(rowKey: aid, label: "Transfer to \(a.name)",
+                                    subtitle: buffer > 0 ? "Includes \(money(buffer)) buffer" : nil,
+                                    suggested: max(0, total + buffer), isBillsSection: true))
         }
-        // Per-bill transfers to a non-accumulating destination.
+        // Transfers section: one row per bill with a non-accumulating transfer dest.
         for b in relevant {
             if let tid = b.transferToAccountId, let dest = acct[tid], dest.isAccumulating != true {
-                rows.append(TransferRow(rowKey: "transfer-\(b.id)", label: "Move for \(b.name)", suggested: b.amount))
+                rows.append(TransferRow(rowKey: "transfer-\(b.id)", label: b.name,
+                                        subtitle: "Transfer to \(dest.name)", suggested: b.amount, isBillsSection: false))
             }
         }
-        return rows.sorted { $0.suggested > $1.suggested }
+        let until = nextInc.map { shortDate(localDateStr($0)) }
+        return (rows.sorted { $0.suggested > $1.suggested }, until)
     }
 
     // Next period's total "bills to transfer" (pre-fund), matching the web.

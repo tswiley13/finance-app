@@ -208,25 +208,33 @@ struct WTMGPanel: View {
 
     var body: some View {
         let proj = store.projection
-        let rows = proj.transferRows()
+        let info = proj.transferInfo()
         let ps = proj.currentPeriodStart()
         let prefund = proj.nextPeriodPrefund()
+        let billsRows = info.rows.filter { $0.isBillsSection }
+        let transferRows = info.rows.filter { !$0.isBillsSection }
 
         return VStack(alignment: .leading, spacing: 0) {
             HStack {
                 Text("WHERE THE MONEY GOES").font(.system(size: 11, weight: .semibold)).tracking(1).foregroundStyle(Color.sMuted)
                 Spacer()
-                Text("This pay period").font(.system(size: 11, design: .monospaced)).foregroundStyle(Color.sMuted)
+                Text(info.until.map { "Until \($0)" } ?? "This pay period")
+                    .font(.system(size: 11, design: .monospaced)).foregroundStyle(Color.sMuted)
             }
             .padding(.bottom, 16)
 
-            if rows.isEmpty && (prefund?.total ?? 0) <= 0 {
+            if info.rows.isEmpty && (prefund?.total ?? 0) <= 0 {
                 Text("No allocations this period").font(.system(size: 13)).italic().foregroundStyle(dim).padding(.vertical, 16)
             }
 
-            if !rows.isEmpty, let ps {
-                Text("TRANSFERS").font(.system(size: 10, weight: .semibold)).tracking(0.8).foregroundStyle(Color.sMuted).padding(.bottom, 8)
-                ForEach(rows) { TransferRowV(row: $0, periodStart: ps) }
+            if !billsRows.isEmpty, let ps {
+                Text("BILLS").font(.system(size: 10, weight: .semibold)).tracking(0.8).foregroundStyle(Color.sMuted).padding(.bottom, 8)
+                ForEach(billsRows) { TransferRowV(row: $0, periodStart: ps) }
+            }
+            if !transferRows.isEmpty, let ps {
+                Text("TRANSFERS").font(.system(size: 10, weight: .semibold)).tracking(0.8).foregroundStyle(Color.sMuted)
+                    .padding(.top, billsRows.isEmpty ? 0 : 16).padding(.bottom, 8)
+                ForEach(transferRows) { TransferRowV(row: $0, periodStart: ps) }
             }
 
             if let pf = prefund, pf.total > 0 {
@@ -271,25 +279,51 @@ struct TransferRowV: View {
     @EnvironmentObject var store: AppStore
     let row: Projection.TransferRow
     let periodStart: String
+    @State private var partialOpen = false
+    @State private var partialText = ""
 
     var body: some View {
         let transferred = store.transfers[row.rowKey] ?? 0
         let done = transferred >= row.suggested - 0.005
         let remaining = max(0, row.suggested - transferred)
-        return HStack {
-            Text((done ? "✓ " : "") + row.label).font(.system(size: 13, weight: .medium)).foregroundStyle(done ? Color.sGreen : Color.sInk)
+        return HStack(alignment: .center, spacing: 8) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text((done ? "✓ " : "") + row.label).font(.system(size: 13, weight: .medium)).foregroundStyle(done ? Color.sGreen : Color.sInk)
+                if let sub = row.subtitle {
+                    Text(sub).font(.system(size: 11)).foregroundStyle(Color.sMuted)
+                }
+            }
             Spacer()
             if done {
-                LinkBtn(title: "Undo") { Task { await store.setTransfer(rowKey: row.rowKey, amount: row.suggested, periodStart: periodStart, done: false) } }
+                Text("$\(num2(transferred))").font(.system(size: 13, design: .monospaced)).foregroundStyle(Color.sGreen)
+                LinkBtn(title: "Undo") { set(nil, false) }
             } else {
                 VStack(alignment: .trailing, spacing: 1) {
                     Text("$\(num2(remaining))").font(.system(size: 13, design: .monospaced)).foregroundStyle(transferred > 0 ? Color.sAccent : Color.sInk)
                     Text("remaining").font(.system(size: 10)).foregroundStyle(Color.sMuted)
                 }
-                PillBtn(title: "Transfer", tint: .sGood) { Task { await store.setTransfer(rowKey: row.rowKey, amount: row.suggested, periodStart: periodStart, done: true) } }
+                if partialOpen {
+                    TextField("Amt", text: $partialText)
+                        .textFieldStyle(.plain).frame(width: 64).multilineTextAlignment(.trailing)
+                        .font(.system(size: 12, design: .monospaced)).foregroundStyle(Color.sInk)
+                        .padding(.horizontal, 6).padding(.vertical, 4)
+                        .background(Color.sBg).overlay(RoundedRectangle(cornerRadius: 5).stroke(Color.sAccent, lineWidth: 1))
+                    PillBtn(title: "✓", tint: .sGood) {
+                        if let v = Double(partialText.filter { "0123456789.".contains($0) }), v > 0 { set(v, true) }
+                        partialOpen = false
+                    }
+                    PillBtn(title: "✕", tint: .sBad) { partialOpen = false }
+                } else {
+                    PillBtn(title: "Transfer", tint: .sGood) { set(row.suggested, true) }
+                    PillBtn(title: "Partial", tint: .sWarn) { partialText = ""; partialOpen = true }
+                }
             }
         }
         .padding(.vertical, 10)
         .overlay(Rectangle().fill(Color.white.opacity(0.04)).frame(height: 1), alignment: .bottom)
+    }
+
+    private func set(_ amount: Double?, _ done: Bool) {
+        Task { await store.setTransfer(rowKey: row.rowKey, amount: amount ?? row.suggested, periodStart: periodStart, done: done) }
     }
 }
