@@ -33,7 +33,7 @@ struct Panel<Content: View>: View {
             HStack {
                 Text(title).font(.system(size: 14, weight: .semibold)).foregroundStyle(Color.sInk)
                 Spacer()
-                Text("\(count)").font(.system(size: 12)).foregroundStyle(Color.sMuted)
+                Text("\(count) total").font(.system(size: 11, design: .monospaced)).foregroundStyle(Color.sMuted)
             }
             .padding(.bottom, 10)
             content
