@@ -73,15 +73,16 @@ struct MonthlyOverviewView: View {
             HStack {
                 Spacer()
                 Button { whatIf.toggle() } label: {
-                    HStack(spacing: 6) {
-                        Image(systemName: whatIf ? "slider.horizontal.2.square.on.square" : "slider.horizontal.3").font(.system(size: 12, weight: .semibold))
-                        Text(whatIf ? "Exit What-If" : "What-If Mode").font(.system(size: 13, weight: .semibold))
+                    HStack(spacing: 7) {
+                        Image(systemName: whatIf ? "xmark" : "bolt.fill").font(.system(size: 12, weight: .bold))
+                        Text(whatIf ? "Exit What-If Tool" : "What-If Tool").font(.system(size: 13, weight: .bold))
                     }
-                    .foregroundStyle(whatIf ? .white : Color.sAccent)
-                    .padding(.horizontal, 14).padding(.vertical, 8)
-                    .background(whatIf ? Color.sWarn : Color.clear)
-                    .overlay(RoundedRectangle(cornerRadius: 8).stroke(whatIf ? Color.clear : Color.sAccent.opacity(0.5), lineWidth: 1))
+                    .foregroundStyle(whatIf ? Color.sWarn : Color.sBg)
+                    .padding(.horizontal, 16).padding(.vertical, 9)
+                    .background(whatIf ? Color.sWarn.opacity(0.12) : Color.sWarn)
+                    .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.sWarn.opacity(whatIf ? 0.5 : 0), lineWidth: 1))
                     .clipShape(RoundedRectangle(cornerRadius: 8))
+                    .shadow(color: Color.sWarn.opacity(whatIf ? 0 : 0.4), radius: 9, y: 2)
                 }.buttonStyle(.plain)
             }
 

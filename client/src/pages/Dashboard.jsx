@@ -3189,7 +3189,7 @@ function Dashboard() {
                 </button>
               )}
               <button onClick={() => { setWhatIfMode(m => !m); if (whatIfMode) { setWhatIfBills({}); setWhatIfIncome({}); setWhatIfExtraBills([]); setWhatIfExtraIncome([]); setWhatIfBillDraft({ name: "", amount: "", frequency: "monthly", due_day: "" }); setWhatIfIncomeDraft({ name: "", amount: "", frequency: "monthly" }); setActiveScenarioId(null); setScenarioName(""); } }} style={{ fontSize: "12px", fontWeight: "600", color: whatIfMode ? "#13111F" : "#FBBF24", background: whatIfMode ? "#FBBF24" : "rgba(251,191,36,0.1)", border: "1px solid rgba(251,191,36,0.4)", borderRadius: "7px", padding: "7px 16px", cursor: "pointer", fontFamily: "'Inter', sans-serif" }}>
-                {whatIfMode ? "✕  Exit What-If" : "⚡ What-If Mode"}
+                {whatIfMode ? "✕  Exit What-If Tool" : "⚡ What-If Tool"}
               </button>
             </div>
           </div>
@@ -3199,7 +3199,7 @@ function Dashboard() {
             <div style={{ background: "rgba(251,191,36,0.07)", border: "1px solid rgba(251,191,36,0.25)", borderRadius: "10px", padding: "10px 16px", marginBottom: "20px", display: "flex", alignItems: "center", gap: "10px" }}>
               <span style={{ fontSize: "16px" }}>⚡</span>
               <div>
-                <div style={{ fontSize: "13px", fontWeight: "600", color: "#FBBF24" }}>What-If Mode — nothing is saved</div>
+                <div style={{ fontSize: "13px", fontWeight: "600", color: "#FBBF24" }}>What-If Tool — nothing is saved</div>
                 <div style={{ fontSize: "11px", color: "#8B8FA8", marginTop: "1px" }}>Toggle bills on/off, edit amounts, add hypotheticals. Your real data is untouched.</div>
               </div>
             </div>

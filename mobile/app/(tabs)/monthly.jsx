@@ -315,13 +315,13 @@ export default function Monthly() {
             onPress={() => { if (whatIf) resetWhatIf(); setWhatIf(!whatIf); }}
             style={[s.whatIfBtn, whatIf && { backgroundColor: c.warning }]}
           >
-            <Text style={[s.whatIfText, whatIf && { color: "#13111F" }]}>{whatIf ? "✕  Exit" : "⚡ What-If"}</Text>
+            <Text style={[s.whatIfText, whatIf && { color: "#13111F" }]}>{whatIf ? "✕  Exit" : "⚡ What-If Tool"}</Text>
           </Pressable>
         </View>
 
         {whatIf && (
           <Panel style={s.whatIfBanner}>
-            <Text style={{ color: c.warning, fontSize: 13, fontWeight: "600" }}>What-If Mode</Text>
+            <Text style={{ color: c.warning, fontSize: 13, fontWeight: "600" }}>What-If Tool</Text>
             <Text style={{ color: c.textMuted, fontSize: 11, marginTop: 2 }}>
               Edit amounts, toggle lines, add hypotheticals. Nothing touches your real data until you save it as a scenario.
             </Text>
