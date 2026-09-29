@@ -423,6 +423,7 @@ function Dashboard() {
   // Draft entry forms for What-If mode — committed to the lists above on "Add".
   const [whatIfBillDraft, setWhatIfBillDraft] = useState({ name: "", amount: "", frequency: "monthly", due_day: "" });
   const [whatIfIncomeDraft, setWhatIfIncomeDraft] = useState({ name: "", amount: "", frequency: "monthly" });
+  const [showAddIncome, setShowAddIncome] = useState(false); // collapsed "Add income" form in scenario editor
   // Saved What-If scenarios (persisted). activeScenarioId = the one currently loaded.
   const [scenarios, setScenarios] = useState([]);
   const [activeScenarioId, setActiveScenarioId] = useState(null);
@@ -3382,22 +3383,27 @@ function Dashboard() {
                     </div>
                   );
                 })}
-                {whatIfMode && (
-                  <div style={{ background: "rgba(251,191,36,0.05)", border: "1px dashed rgba(251,191,36,0.35)", borderRadius: "10px", padding: "12px 14px", marginTop: "10px" }}>
-                    <div style={{ fontSize: "10px", color: "#8B8FA8", letterSpacing: "0.08em", textTransform: "uppercase", fontWeight: 600, marginBottom: "8px" }}>Add income</div>
-                    <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", marginBottom: "8px" }}>
-                      <input placeholder="Income name" value={whatIfIncomeDraft.name} onChange={e => setWhatIfIncomeDraft(d => ({ ...d, name: e.target.value }))} onKeyDown={e => { if (e.key === "Enter") saveDraftIncome(); }} style={{ ...inputStyle, flex: "2 1 140px", minWidth: 0, boxSizing: "border-box" }} />
-                      <input placeholder="Monthly amount" type="number" value={whatIfIncomeDraft.amount} onChange={e => setWhatIfIncomeDraft(d => ({ ...d, amount: e.target.value }))} onKeyDown={e => { if (e.key === "Enter") saveDraftIncome(); }} style={{ ...inputStyle, flex: "1 1 120px", minWidth: 0, boxSizing: "border-box" }} />
-                    </div>
-                    <button onClick={saveDraftIncome} disabled={!whatIfIncomeDraft.name.trim() || !whatIfIncomeDraft.amount} style={{ width: "100%", fontSize: "13px", fontWeight: 700, color: "#13111F", background: (!whatIfIncomeDraft.name.trim() || !whatIfIncomeDraft.amount) ? "rgba(251,191,36,0.4)" : "#FBBF24", border: "none", borderRadius: "7px", padding: "9px", cursor: (!whatIfIncomeDraft.name.trim() || !whatIfIncomeDraft.amount) ? "not-allowed" : "pointer", fontFamily: "'Inter', sans-serif" }}>Add income</button>
-                  </div>
-                )}
                 <div style={{ display: "grid", gridTemplateColumns: whatIfMode ? "24px 1fr 120px 86px" : "1fr 120px 86px", gap: "8px", paddingTop: "12px", borderTop: "1px solid rgba(255,255,255,0.08)", marginTop: "4px" }}>
                   {whatIfMode && <div />}
                   <div style={{ fontSize: "12px", color: "#8B8FA8", fontWeight: "600" }}>Total</div>
                   <div style={{ fontFamily: "'DM Mono', monospace", fontSize: "13px", color: "#00D4AA", textAlign: "right", fontWeight: "600" }}>${fmt(wiMonthlyIncome)}</div>
                   <div style={{ fontFamily: "'DM Mono', monospace", fontSize: "13px", color: "#8B8FA8", textAlign: "right" }}>${fmt(wiMonthlyIncome * 12)}</div>
                 </div>
+                {whatIfMode && (showAddIncome ? (
+                  <div style={{ background: "rgba(251,191,36,0.05)", border: "1px dashed rgba(251,191,36,0.35)", borderRadius: "10px", padding: "12px 14px", marginTop: "12px" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
+                      <div style={{ fontSize: "10px", color: "#8B8FA8", letterSpacing: "0.08em", textTransform: "uppercase", fontWeight: 600 }}>Add income</div>
+                      <button onClick={() => { setShowAddIncome(false); setWhatIfIncomeDraft({ name: "", amount: "", frequency: "monthly" }); }} title="Cancel" style={{ background: "none", border: "none", color: "#8B8FA8", cursor: "pointer", fontSize: "13px", padding: 0, lineHeight: 1 }}>✕</button>
+                    </div>
+                    <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", marginBottom: "8px" }}>
+                      <input autoFocus placeholder="Income name" value={whatIfIncomeDraft.name} onChange={e => setWhatIfIncomeDraft(d => ({ ...d, name: e.target.value }))} onKeyDown={e => { if (e.key === "Enter" && whatIfIncomeDraft.name.trim() && whatIfIncomeDraft.amount) { saveDraftIncome(); setShowAddIncome(false); } }} style={{ ...inputStyle, flex: "2 1 140px", minWidth: 0, boxSizing: "border-box" }} />
+                      <input placeholder="Monthly amount" type="number" value={whatIfIncomeDraft.amount} onChange={e => setWhatIfIncomeDraft(d => ({ ...d, amount: e.target.value }))} onKeyDown={e => { if (e.key === "Enter" && whatIfIncomeDraft.name.trim() && whatIfIncomeDraft.amount) { saveDraftIncome(); setShowAddIncome(false); } }} style={{ ...inputStyle, flex: "1 1 120px", minWidth: 0, boxSizing: "border-box" }} />
+                    </div>
+                    <button onClick={() => { saveDraftIncome(); setShowAddIncome(false); }} disabled={!whatIfIncomeDraft.name.trim() || !whatIfIncomeDraft.amount} style={{ width: "100%", fontSize: "13px", fontWeight: 700, color: "#13111F", background: (!whatIfIncomeDraft.name.trim() || !whatIfIncomeDraft.amount) ? "rgba(251,191,36,0.4)" : "#FBBF24", border: "none", borderRadius: "7px", padding: "9px", cursor: (!whatIfIncomeDraft.name.trim() || !whatIfIncomeDraft.amount) ? "not-allowed" : "pointer", fontFamily: "'Inter', sans-serif" }}>Add income</button>
+                  </div>
+                ) : (
+                  <button onClick={() => setShowAddIncome(true)} style={{ marginTop: "12px", fontSize: "12px", fontWeight: 600, color: "#FBBF24", background: "rgba(251,191,36,0.08)", border: "1px dashed rgba(251,191,36,0.35)", borderRadius: "8px", padding: "8px 14px", cursor: "pointer", fontFamily: "'Inter', sans-serif" }}>+ Add income</button>
+                ))}
               </div>
 
               {/* Net summary panel */}
