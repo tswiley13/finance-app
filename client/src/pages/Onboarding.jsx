@@ -699,14 +699,20 @@ function Onboarding({ onComplete }) {
     if (card.id) {
       const { error } = await supabase.from("accounts").update(payload).eq("id", card.id);
       if (error) { updateCard(index, { loading: false, error: error.message }); return false; }
-      setAccountList(prev => prev.map(a => a.id === card.id ? { ...a, ...payload } : a));
+      if (payload.is_primary) {
+        await supabase.from("accounts").update({ is_primary: false }).eq("household_id", householdId).neq("id", card.id);
+      }
+      setAccountList(prev => prev.map(a => card.id && a.id === card.id ? { ...a, ...payload } : (payload.is_primary ? { ...a, is_primary: false } : a)));
       updateCard(index, { loading: false, saved: true });
     } else {
       const { data: savedAccount, error } = await supabase
         .from("accounts").insert(payload).select().single();
       if (error) { updateCard(index, { loading: false, error: error.message }); return false; }
+      if (payload.is_primary) {
+        await supabase.from("accounts").update({ is_primary: false }).eq("household_id", householdId).neq("id", savedAccount.id);
+      }
       const newCardIndex = carouselCards.length;
-      setAccountList(prev => [...prev, savedAccount]);
+      setAccountList(prev => [...(payload.is_primary ? prev.map(a => ({ ...a, is_primary: false })) : prev), savedAccount]);
       setCarouselCards(prev => [
         ...prev.map((c, i) => i === index ? { ...c, loading: false, saved: true, id: savedAccount.id } : c),
         blankCard(),
@@ -1256,11 +1262,11 @@ function Onboarding({ onComplete }) {
                 </div>
               </div>
               <label style={{ display: "flex", alignItems: "center", gap: "8px", cursor: "pointer" }}>
-                <input type="checkbox" checked={ac.isPrimary} onChange={(e) => updateCard(activeIndex, { isPrimary: e.target.checked })} />
-                <span style={{ fontSize: "12px", color: "#8B8FA8" }}>Primary account</span>
+                <input type="checkbox" checked={ac.isPrimary} onChange={(e) => e.target.checked ? setCarouselCards(prev => prev.map((c, i) => ({ ...c, isPrimary: i === activeIndex }))) : updateCard(activeIndex, { isPrimary: false })} />
+                <span style={{ fontSize: "12px", color: "#8B8FA8" }}>Primary (main checking) account</span>
               </label>
               <div style={{ fontSize: "11px", color: "#6E7681", marginTop: "-4px" }}>
-                Any accounts marked Primary are combined to calculate your available funds.
+                Your one main spending account — the balance "Available Now" reflects. Only one can be primary.
               </div>
               <label style={{ display: "flex", alignItems: "center", gap: "8px", cursor: "pointer" }}>
                 <input type="checkbox" checked={ac.isAccumulating} onChange={(e) => updateCard(activeIndex, { isAccumulating: e.target.checked })} />

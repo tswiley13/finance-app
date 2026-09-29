@@ -405,11 +405,12 @@ struct Projection {
         for r in rows {
             let pStart = parse(r.start, 0, 0, 0)
             let pEnd = parse(r.end, 23, 59, 59)
-            if pStart > monthEnd { continue }                 // starts next month
-            if r.isCurrent && pEnd <= monthEnd { billsRemaining += r.billsDeducted; continue }
-            if !r.isCurrent && pEnd <= monthEnd { billsRemaining += r.billsDeducted; continue }
-            // Period crosses into next month (incl. the current one): only bills
-            // due on/before month end, at their remaining amount.
+            if pStart > monthEnd { continue }                          // starts next month
+            if pEnd <= monthEnd { billsRemaining += r.billsDeducted; continue } // fully this month
+            // Spills into next month. Only the CURRENT period contributes a
+            // partial (its bills due on/before month end); a future spill-over
+            // period is excluded — its bills belong to next month.
+            guard r.isCurrent else { continue }
             for b in r.bills where !isSkipped(b.id, r.start) {
                 if let due = billDueDate(b, pStart, pEnd), due <= monthEnd {
                     billsRemaining += max(0, b.amount - paidAmount(b.id, r.start))

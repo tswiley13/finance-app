@@ -27,6 +27,9 @@ export default function Dashboard() {
   if (gate) return gate;
 
   const p = d.projection;
+  const savings = (d.accounts || [])
+    .filter((a) => a.account_type === "savings")
+    .reduce((sum, a) => sum + (a.current_balance || 0), 0);
   const currentIdx = d.rows.findIndex((r) => r.isCurrent);
   const currentRow = currentIdx >= 0 ? d.rows[currentIdx] : null;
   const current = currentRow; // used by the transfers tile
@@ -129,6 +132,10 @@ export default function Dashboard() {
         <View style={[s.tileRow, { marginTop: 8 }]}>
           <StatTile label="Bills Remaining" value={p.billsRemaining} negative />
           <StatTile label="Available This Month" value={p.availableThisMonth} negative={p.availableThisMonth < 0} />
+        </View>
+        <View style={[s.tileRow, { marginTop: 8 }]}>
+          <StatTile label="Savings" value={savings} />
+          <View style={{ flex: 1 }} />
         </View>
 
         <View style={s.discRow}>

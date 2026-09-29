@@ -460,14 +460,29 @@ export function getMonthlyProjection(rows, ctx) {
     })
     .reduce((sum, inc) => sum + (inc.fixed_amount || 0), 0);
 
-  const billsRemaining = rows
-    .filter((item) => {
-      if (item.isCurrent) return true;
-      const pStart = new Date(item.period.start_date + "T00:00:00");
-      const pEnd = new Date(item.period.end_date + "T23:59:59");
-      return pStart > today && pEnd <= monthEndDate;
-    })
-    .reduce((sum, item) => sum + (item.billsDeducted || 0), 0);
+  const billsRemaining = rows.reduce((sum, item) => {
+    const pStart = new Date(item.period.start_date + "T00:00:00");
+    const pEnd = new Date(item.period.end_date + "T23:59:59");
+    if (item.isCurrent) {
+      // Current period fully in this month → all its unpaid bills.
+      if (pEnd <= monthEndDate) return sum + (item.billsDeducted || 0);
+      // Current period spills into next month → only bills due on/before month-end.
+      const pk = item.period.start_date;
+      let partial = 0;
+      (item.bills || []).forEach((b) => {
+        if (isBillSkipped(ctx.skippedBillPeriods, b.id, pk)) return;
+        const due = billActualDate(b, pStart, pEnd);
+        if (due && due <= monthEndDate) {
+          partial += Math.max(0, (b.amount || 0) - getBillPaidAmount(ctx.billPayments, b.id, pk));
+        }
+      });
+      return sum + partial;
+    }
+    // Upcoming period fully within this month counts; a spill-over period that
+    // merely starts this month is excluded (its bills belong to next month).
+    if (pStart > today && pEnd <= monthEndDate) return sum + (item.billsDeducted || 0);
+    return sum;
+  }, 0);
 
   // Bills you've already funded via a confirmed WTMG transfer are paid from the
   // bills account, not from primary — and the primary balance already dropped

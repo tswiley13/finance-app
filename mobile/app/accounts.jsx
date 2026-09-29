@@ -93,12 +93,21 @@ export default function Accounts() {
     };
 
     let dbError;
+    let savedId = editing?.id;
     if (editing?.id) {
       ({ error: dbError } = await supabase.from("accounts").update(payload).eq("id", editing.id));
     } else {
-      ({ error: dbError } = await supabase.from("accounts").insert({
-        ...payload, household_id: d.household.id,
-      }));
+      const { data: ins, error } = await supabase.from("accounts")
+        .insert({ ...payload, household_id: d.household.id })
+        .select("id").single();
+      dbError = error;
+      savedId = ins?.id;
+    }
+
+    // Only one account can be primary — clear it on every other account.
+    if (!dbError && form.is_primary && savedId) {
+      await supabase.from("accounts").update({ is_primary: false })
+        .eq("household_id", d.household.id).neq("id", savedId);
     }
 
     setSaving(false);

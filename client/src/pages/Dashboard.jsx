@@ -2521,8 +2521,10 @@ function Dashboard() {
         const pEnd = new Date(item.period.end_date + "T23:59:59");
         if (pStart > monthEndDate) return;               // starts next month — skip
         if (pEnd <= monthEndDate) { monthBills += item.billsDeducted || 0; return; } // fully this month
-        // Period crosses into next month — including the CURRENT period when it
-        // spills over: only the bills due on/before month-end count this month.
+        // Spills into next month. Only the CURRENT period contributes a partial
+        // (its bills due on/before month-end); a future spill-over period is
+        // excluded — its bills belong to next month.
+        if (!item.isCurrent) return;
         item.bills.forEach(b => {
           const pk = item.period.start_date;
           if (skippedBillPeriods.has(`${b.id}-${pk}`)) return;
