@@ -3094,10 +3094,10 @@ function Dashboard() {
                   type="number"
                   value={monthlyInputValue}
                   onChange={e => { if (isExtra) setWhatIfExtraBills(prev => prev.map(x => x.id === b.id ? { ...x, amount: e.target.value } : x)); else setBillOverride(b.id, "amount", e.target.value); }}
-                  onFocus={() => setFrozenBillOrder(billOrderRef.current)}
-                  onBlur={() => setFrozenBillOrder(null)}
+                  onFocus={e => { setFrozenBillOrder(billOrderRef.current); e.target.style.borderColor = "rgba(251,191,36,0.55)"; e.target.style.background = "rgba(251,191,36,0.1)"; }}
+                  onBlur={e => { setFrozenBillOrder(null); e.target.style.borderColor = "transparent"; e.target.style.background = changed ? "rgba(251,191,36,0.08)" : "transparent"; }}
                   onKeyDown={e => { if (e.key === "Enter") e.target.blur(); }}
-                  style={{ width: "100%", boxSizing: "border-box", background: changed ? "rgba(251,191,36,0.08)" : "rgba(255,255,255,0.04)", border: changed ? "1px solid rgba(251,191,36,0.4)" : "1px solid rgba(255,255,255,0.1)", borderRadius: "6px", color: enabled ? "#F0F6FC" : "#4A4F5C", fontFamily: "'DM Mono', monospace", fontSize: isMobile ? "12px" : "13px", padding: "5px 8px", textAlign: "right" }}
+                  style={{ width: "100%", boxSizing: "border-box", background: changed ? "rgba(251,191,36,0.08)" : "transparent", border: "1px solid transparent", borderRadius: "6px", color: enabled ? "#F0F6FC" : "#4A4F5C", fontFamily: "'DM Mono', monospace", fontSize: isMobile ? "12px" : "13px", padding: "5px 8px", textAlign: "right", transition: "border-color 0.15s, background 0.15s" }}
                 />
               ) : (
                 <span style={{ fontFamily: "'DM Mono', monospace", fontSize: "13px", color: enabled ? "#F87171" : "#4A4F5C" }}>{enabled ? `$${fmt(monthly)}` : "—"}</span>
@@ -3369,8 +3369,10 @@ function Dashboard() {
                             type="number"
                             value={monthlyInputValue}
                             onChange={e => { if (isExtra) setWhatIfExtraIncome(prev => prev.map(x => x.id === i.id ? { ...x, amount: e.target.value } : x)); else setIncOverride(i.id, "amount", e.target.value); }}
+                            onFocus={e => { e.target.style.borderColor = "rgba(251,191,36,0.55)"; e.target.style.background = "rgba(251,191,36,0.1)"; }}
+                            onBlur={e => { e.target.style.borderColor = "transparent"; e.target.style.background = changed ? "rgba(251,191,36,0.08)" : "transparent"; }}
                             onKeyDown={e => { if (e.key === "Enter") e.target.blur(); }}
-                            style={{ width: "100%", boxSizing: "border-box", background: changed ? "rgba(251,191,36,0.08)" : "rgba(255,255,255,0.04)", border: changed ? "1px solid rgba(251,191,36,0.4)" : "1px solid rgba(255,255,255,0.1)", borderRadius: "6px", color: enabled ? "#00D4AA" : "#4A4F5C", fontFamily: "'DM Mono', monospace", fontSize: "13px", padding: "5px 8px", textAlign: "right" }}
+                            style={{ width: "100%", boxSizing: "border-box", background: changed ? "rgba(251,191,36,0.08)" : "transparent", border: "1px solid transparent", borderRadius: "6px", color: enabled ? "#00D4AA" : "#4A4F5C", fontFamily: "'DM Mono', monospace", fontSize: "13px", padding: "5px 8px", textAlign: "right", transition: "border-color 0.15s, background 0.15s" }}
                           />
                         ) : (
                           <span style={{ fontFamily: "'DM Mono', monospace", fontSize: "13px", color: enabled ? "#00D4AA" : "#4A4F5C" }}>{enabled ? `$${fmt(monthly)}` : "—"}</span>
