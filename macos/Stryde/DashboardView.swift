@@ -137,11 +137,13 @@ struct DashboardView: View {
     // MARK: tiles
 
     private func tilesRow(_ t: ProjectionTiles) -> some View {
-        HStack(spacing: 12) {
+        let savings = store.accounts.filter { $0.accountType == "savings" }.reduce(0.0) { $0 + ($1.currentBalance ?? 0) }
+        return HStack(spacing: 12) {
             DashTile(label: "Available Now", value: t.availableNow, color: .sGood)
             DashTile(label: "Income This Month", value: t.incomeThisMonth, color: .sGood)
             DashTile(label: "Bills Remaining", value: t.billsRemaining, color: .sBad)
             DashTile(label: "Available This Month", value: t.availableThisMonth, color: t.availableThisMonth < 0 ? .sBad : .sGreen)
+            DashTile(label: "Savings", value: savings, color: .sSky)
         }
     }
 

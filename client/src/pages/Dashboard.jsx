@@ -104,10 +104,12 @@ const css = `
   .content-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
 
   .stat-row-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 28px; }
+  .stat-row-5 { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; margin-bottom: 28px; }
   .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 
   @media (max-width: 1024px) {
     .stat-row-4 { grid-template-columns: repeat(2, 1fr) !important; gap: 8px !important; }
+    .stat-row-5 { grid-template-columns: repeat(2, 1fr) !important; gap: 8px !important; }
     .stat-amount { font-size: 20px !important; }
   }
 
@@ -2621,7 +2623,7 @@ function Dashboard() {
           )}
 
           {/* Monthly summary */}
-          <div className="stat-row-4">
+          <div className="stat-row-5">
             <div className="stat-card">
               <div className="stat-label">Available Now</div>
               <div className="stat-amount">${fmt(primaryBalance)}</div>
@@ -2637,6 +2639,10 @@ function Dashboard() {
             <div className="stat-card">
               <div className="stat-label">Available This Month</div>
               <div className={`stat-amount ${availableThisMonth < 0 ? "negative" : "neutral"}`}>${fmt(availableThisMonth)}</div>
+            </div>
+            <div className="stat-card">
+              <div className="stat-label">Savings</div>
+              <div className="stat-amount" style={{ color: "#38BDF8" }}>${fmt(accounts.filter((a) => a.account_type === "savings").reduce((s, a) => s + (a.current_balance || 0), 0))}</div>
             </div>
           </div>
 

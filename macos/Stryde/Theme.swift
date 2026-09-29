@@ -9,6 +9,7 @@ extension Color {
     static let sGreen  = Color(red: 0x4A/255, green: 0xDE/255, blue: 0x80/255)
     static let sBad    = Color(red: 0xF8/255, green: 0x71/255, blue: 0x71/255)
     static let sWarn   = Color(red: 0xF5/255, green: 0x9E/255, blue: 0x0B/255)
+    static let sSky    = Color(red: 0x38/255, green: 0xBD/255, blue: 0xF8/255)
     static let sMuted  = Color(red: 0x8B/255, green: 0x8F/255, blue: 0xA8/255)
     static let sInk    = Color(red: 0xF0/255, green: 0xF6/255, blue: 0xFC/255)
     static let sHair   = Color.white.opacity(0.06)
