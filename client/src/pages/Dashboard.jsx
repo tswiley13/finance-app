@@ -1600,6 +1600,15 @@ function Dashboard() {
       return;
     }
 
+    // Only one account can be primary — clear it on every other account.
+    if (isPrimary) {
+      await supabase
+        .from("accounts")
+        .update({ is_primary: false })
+        .eq("household_id", household.id)
+        .neq("id", editingAccount.id);
+    }
+
     setAccounts(
       accounts.map((a) =>
         a.id === editingAccount.id
@@ -1619,7 +1628,7 @@ function Dashboard() {
               reset_day: parseInt(resetDay) || null,
               minimum_buffer: minimumBuffer ? parseFloat(minimumBuffer) : 0,
             }
-          : a,
+          : (isPrimary ? { ...a, is_primary: false } : a),
       ),
     );
 
@@ -5045,7 +5054,7 @@ function Dashboard() {
                     Primary
                   </label>
                   <div style={{ fontSize: "11px", color: "#8B8FA8", marginTop: "2px", gridColumn: "1 / -1" }}>
-                    Any accounts marked Primary are combined to calculate your available funds.
+                    Your one main spending account — the balance "Available Now" reflects. Marking this clears Primary on your other accounts.
                   </div>
                   <label
                     style={{
@@ -5118,7 +5127,18 @@ function Dashboard() {
                       console.log("Error:", error.message);
                       return;
                     }
-                    setAccounts([...accounts, savedAccount]);
+                    // Only one account can be primary — clear it on the others.
+                    if (isPrimary) {
+                      await supabase
+                        .from("accounts")
+                        .update({ is_primary: false })
+                        .eq("household_id", household.id)
+                        .neq("id", savedAccount.id);
+                    }
+                    setAccounts([
+                      ...accounts.map((a) => (isPrimary ? { ...a, is_primary: false } : a)),
+                      savedAccount,
+                    ]);
                     setAccountName("");
                     setBankName("");
                     setLastFour("");
@@ -5490,7 +5510,7 @@ function Dashboard() {
                             Primary
                           </label>
                           <div style={{ fontSize: "11px", color: "#8B8FA8", marginTop: "2px", gridColumn: "1 / -1" }}>
-                            Any accounts marked Primary are combined to calculate your available funds.
+                            Your one main spending account — the balance "Available Now" reflects. Marking this clears Primary on your other accounts.
                           </div>
                           <label
                             style={{

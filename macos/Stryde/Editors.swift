@@ -262,7 +262,11 @@ struct AccountEditor: View {
             }
             SPicker(label: "Type", selection: $accountType, options: acctTypeOptions)
             SNumberField(label: "Current balance", value: $balance)
-            SToggle(label: "Primary (spending) account", isOn: $isPrimary)
+            VStack(alignment: .leading, spacing: 3) {
+                SToggle(label: "Primary (spending) account", isOn: $isPrimary)
+                Text("The one account “Available Now” reflects — just one. Turning this on clears it on your other accounts.")
+                    .font(.system(size: 11)).foregroundStyle(Color.sMuted)
+            }
             SToggle(label: "Accumulating (save toward a target)", isOn: $isAccumulating)
             if isAccumulating {
                 SNumberField(label: "Target", value: $target)
@@ -282,7 +286,7 @@ struct AccountEditor: View {
             dueDay: isAccumulating ? dueDay : nil,
             minimumBuffer: buffer ?? 0
         )
-        Task { await store.save("accounts", id: existing?.id, p) }
+        Task { await store.saveAccount(id: existing?.id, p, makePrimary: isPrimary) }
     }
 }
 

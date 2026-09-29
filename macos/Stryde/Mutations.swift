@@ -16,6 +16,27 @@ extension AppStore {
         }
     }
 
+    // Save an account, enforcing a single primary: if this one is primary, clear
+    // the primary flag on every other account in the household.
+    struct PrimaryFlag: Encodable { var isPrimary: Bool }
+    func saveAccount(id: String?, _ payload: AccountPayload, makePrimary: Bool) async {
+        do {
+            var newId = id
+            if let id {
+                try await client.from("accounts").update(payload).eq("id", value: id).execute()
+            } else {
+                struct R: Decodable { var id: String }
+                let r: R = try await client.from("accounts").insert(payload).select("id").single().execute().value
+                newId = r.id
+            }
+            if makePrimary, let nid = newId, let hid = household?.id {
+                try await client.from("accounts").update(PrimaryFlag(isPrimary: false))
+                    .eq("household_id", value: hid).neq("id", value: nid).execute()
+            }
+            await loadData()
+        } catch { errorMessage = error.localizedDescription }
+    }
+
     // Batch insert (used to seed the budget template in one round-trip).
     func insertMany<T: Encodable>(_ table: String, _ rows: [T]) async {
         guard !rows.isEmpty else { return }
