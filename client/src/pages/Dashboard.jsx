@@ -171,7 +171,7 @@ function PlaidLinkOpener({ token, onSuccess, onExit }) {
   return null;
 }
 
-function PlaidConnectButton({ userId, onSuccess, updateMode = false }) {
+function PlaidConnectButton({ userId, onSuccess, updateMode = false, label }) {
   const [linkToken, setLinkToken] = useState(null);
   const [fetching, setFetching] = useState(false);
   const [plaidError, setPlaidError] = useState(null);
@@ -238,7 +238,7 @@ function PlaidConnectButton({ userId, onSuccess, updateMode = false }) {
           fontFamily: "'Inter', sans-serif",
         }}
       >
-        {fetching ? "Connecting..." : updateMode ? "Reconnect Bank" : "+ Connect Bank"}
+        {fetching ? "Connecting..." : updateMode ? "Reconnect Bank" : (label || "+ Connect Bank")}
       </button>
       {plaidError && (
         <div style={{ fontSize: "12px", color: "#F87171", marginTop: "8px", maxWidth: "260px", wordBreak: "break-word" }}>
@@ -5213,6 +5213,8 @@ function Dashboard() {
                     {plaidSyncing ? "Syncing..." : plaidLastSynced ? `Synced ${plaidLastSynced.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}` : "Sync Balances"}
                   </button>
                 )}
+                {/* Always available so a user can link another bank even after the first is connected */}
+                <PlaidConnectButton userId={userId} label={plaidConnected ? "+ Add Bank" : "+ Connect Bank"} onSuccess={() => { setPlaidConnected(true); if (household?.id) syncPlaidBalances(household.id); }} />
                 <div className="panel-count">{accounts.length} total</div>
               </div>
             </div>
@@ -5637,11 +5639,6 @@ function Dashboard() {
                 ⚠️ Your bank connection has expired. Please reconnect to resume syncing.
               </div>
               <PlaidConnectButton userId={userId} updateMode={true} onSuccess={() => { setPlaidReconnectNeeded(false); setPlaidConnected(true); if (household?.id) syncPlaidBalances(household.id); }} />
-            </div>
-          )}
-          {!plaidConnected && !plaidReconnectNeeded && (
-            <div style={{ display: "flex", justifyContent: "flex-end", marginTop: "12px" }}>
-              <PlaidConnectButton userId={userId} onSuccess={() => { if (household?.id) syncPlaidBalances(household.id); }} />
             </div>
           )}
         </div>
