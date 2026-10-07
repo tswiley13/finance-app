@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 const sections = [
   {
     title: "1. Who We Are",
-    body: `Stryde Financial is operated by Stryde Financial LLC ("we," "us," or "our"). We can be reached at traviswiley13@gmail.com.`,
+    body: `Stryde Financial is operated by Desert Iron Technologies ("we," "us," or "our"). We can be reached at traviswiley13@gmail.com.`,
   },
   {
     title: "2. What We Collect",
@@ -48,7 +48,7 @@ export default function PrivacyPolicy() {
     <div style={{ minHeight: "100vh", background: "#13111F", color: "#F0F6FC", fontFamily: "'Inter', sans-serif" }}>
       <div style={{ maxWidth: "760px", margin: "0 auto", padding: "60px 24px" }}>
         <Link to="/" style={{ fontSize: "13px", color: "#6C63FF", textDecoration: "none", display: "inline-block", marginBottom: "32px" }}>← Back</Link>
-        <div style={{ fontSize: "11px", color: "#8B8FA8", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: "8px" }}>Stryde Financial LLC</div>
+        <div style={{ fontSize: "11px", color: "#8B8FA8", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: "8px" }}>Desert Iron Technologies</div>
         <h1 style={{ fontFamily: "'Syne', sans-serif", fontSize: "32px", fontWeight: "700", marginBottom: "8px" }}>Privacy Policy</h1>
         <p style={{ fontSize: "13px", color: "#8B8FA8", marginBottom: "48px" }}>Last updated: May 18, 2026</p>
 
@@ -60,7 +60,7 @@ export default function PrivacyPolicy() {
         ))}
 
         <div style={{ borderTop: "1px solid rgba(255,255,255,0.08)", paddingTop: "32px", marginTop: "16px", fontSize: "12px", color: "#484F58" }}>
-          © 2026 Stryde Financial LLC. All rights reserved.
+          © 2026 Desert Iron Technologies. All rights reserved.
         </div>
       </div>
     </div>
