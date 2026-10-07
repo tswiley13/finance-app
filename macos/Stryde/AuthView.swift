@@ -68,10 +68,10 @@ struct AuthView: View {
                 Spacer()
 
                 VStack(spacing: 4) {
-                    Text("© 2026 Desert Forged")
+                    Text("© 2026 Desert Iron Technologies")
                         .font(.system(size: 11))
                         .foregroundStyle(.white.opacity(0.4))
-                    Link("A Desert Forged product ↗", destination: URL(string: "https://desertforged.com")!)
+                    Link("A Desert Iron Technologies product ↗", destination: URL(string: "https://desertirontech.com")!)
                         .font(.system(size: 11))
                         .foregroundStyle(Color.sAccent.opacity(0.85))
                 }
