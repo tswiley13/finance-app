@@ -239,7 +239,7 @@ function JoinHousehold() {
 
       {/* Footer */}
       <div className="auth-footer">
-        <div style={{ fontSize: "12px", color: "#484F58" }}>© 2026 Stryde. All rights reserved.</div>
+        <div style={{ fontSize: "12px", color: "#484F58" }}>© 2026 Desert Forged. All rights reserved.</div>
         <div style={{ fontSize: "12px", color: "#484F58" }}>Built for those who serve.</div>
       </div>
     </div>

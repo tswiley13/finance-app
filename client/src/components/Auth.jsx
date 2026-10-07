@@ -458,7 +458,7 @@ function AuthPage({ defaultSignUp = false }) {
       {/* Footer */}
       <div className="auth-footer">
         <div style={{ fontSize: "12px", color: "#484F58" }}>
-          © 2026 Stryde Financial LLC. All rights reserved.
+          © 2026 Desert Forged. All rights reserved.
         </div>
         <div style={{ display: "flex", gap: "16px" }}>
           <Link to="/privacy" style={{ fontSize: "12px", color: "#484F58", textDecoration: "none" }}>Privacy Policy</Link>

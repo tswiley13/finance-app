@@ -67,9 +67,14 @@ struct AuthView: View {
 
                 Spacer()
 
-                Text("© 2026 Black Sheep Dev Group LLC")
-                    .font(.system(size: 11))
-                    .foregroundStyle(.white.opacity(0.4))
+                VStack(spacing: 4) {
+                    Text("© 2026 Desert Forged")
+                        .font(.system(size: 11))
+                        .foregroundStyle(.white.opacity(0.4))
+                    Link("A Desert Forged product ↗", destination: URL(string: "https://desertforged.com")!)
+                        .font(.system(size: 11))
+                        .foregroundStyle(Color.sAccent.opacity(0.85))
+                }
             }
             .padding(48)
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)

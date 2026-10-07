@@ -176,7 +176,8 @@ export default function Settings() {
           </Pressable>
         </Panel>
 
-        <Text style={s.copyright}>© 2026 Stryde Financial LLC</Text>
+        <Text style={s.copyright}>© 2026 Desert Forged</Text>
+        <Text onPress={() => Linking.openURL("https://desertforged.com")} style={[s.copyright, { color: c.accent, marginTop: 2 }]}>A Desert Forged product ↗</Text>
       </ScrollView>
     </SafeAreaView>
   );

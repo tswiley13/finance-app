@@ -4214,6 +4214,7 @@ function Dashboard() {
             <h2 style={{ fontFamily: "'Syne', sans-serif", fontSize: "24px" }}>
               Settings
             </h2>
+            <a href="https://desertforged.com" target="_blank" rel="noopener noreferrer" style={{ fontSize: "12px", color: "#6C63FF", textDecoration: "none" }}>A Desert Forged product ↗</a>
           </div>
 
           {/* Household */}
