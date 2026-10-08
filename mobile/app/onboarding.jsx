@@ -77,6 +77,12 @@ export default function Onboarding() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("You're signed out. Sign in and try again.");
 
+      // If a household already exists for this user (e.g. they re-entered
+      // onboarding), reuse it instead of creating a duplicate.
+      const { data: existingMember } = await supabase
+        .from("household_members").select("household_id").eq("user_id", user.id).limit(1).maybeSingle();
+      if (existingMember?.household_id) { setHouseholdId(existingMember.household_id); setStep(2); return; }
+
       // Same invite code shape as the web: 5 letters, dash, 4 digits.
       const inviteCode =
         householdName.toUpperCase().replace(/[^A-Z]/g, "").slice(0, 5) +
@@ -114,7 +120,7 @@ export default function Onboarding() {
   // ── Step 2: accounts ───────────────────────────────────────────────────────
   async function saveAccounts() {
     const named = accounts.filter((a) => a.name.trim());
-    if (named.length === 0) return setStep(3); // skippable
+    if (named.length === 0) return setError("Add at least one account — Stryde needs it to track your money.");
     if (named.filter((a) => a.is_primary).length !== 1) {
       return setError("Pick exactly one primary checking account — it's the balance 'Available Now' shows.");
     }
