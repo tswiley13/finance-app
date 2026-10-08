@@ -753,45 +753,23 @@ function Dashboard() {
     });
   }
 
+  // Start date of the pay period that contains today (or null if none).
+  function currentPeriodStartStr() {
+    const d = new Date();
+    const todayStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+    const cp = payPeriods.find((p) => todayStr >= p.start_date && todayStr <= p.end_date);
+    return cp ? cp.start_date : null;
+  }
+
+  // "Due" on the Bills page = still owed in the CURRENT pay period. Driven by the
+  // per-period payment records (billPayments), NOT the legacy bill.is_paid /
+  // bill.paid_date columns, which the current payment flow never writes — so the
+  // old version always returned true and paid/partial state never showed.
   function isBillDue(bill) {
-    if (!bill.is_paid) return true;
-
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const paidDate = new Date(bill.paid_date);
-    paidDate.setHours(0, 0, 0, 0);
-
-    // Biweekly: due again 14 days after last payment
-    if ((bill.frequency || "monthly") === "biweekly") {
-      const nextDue = new Date(paidDate);
-      nextDue.setDate(nextDue.getDate() + 14);
-      return today >= nextDue;
-    }
-
-    // Pay Day: due again when a new pay period has started since payment
-    if ((bill.frequency || "monthly") === "payday") {
-      const todayStr = today.toISOString().split("T")[0];
-      const currentPeriod = payPeriods.find(p => todayStr >= p.start_date && todayStr <= p.end_date);
-      if (currentPeriod) {
-        const periodStart = new Date(currentPeriod.start_date + "T00:00:00");
-        return paidDate < periodStart;
-      }
-      const nextDue = new Date(paidDate);
-      nextDue.setDate(nextDue.getDate() + 14);
-      return today >= nextDue;
-    }
-
-    const paidMonth = paidDate.getMonth();
-    const paidYear = paidDate.getFullYear();
-    const currentMonth = today.getMonth();
-    const currentYear = today.getFullYear();
-
-    // If paid in a previous month, show as due again
-    if (paidYear < currentYear) return true;
-    if (paidYear === currentYear && paidMonth < currentMonth) return true;
-
-    // Paid this month — hide it
-    return false;
+    if ((bill.frequency || "monthly") === "one-time") return !isOneTimeBillDone(bill);
+    const cp = currentPeriodStartStr();
+    if (!cp) return true;
+    return !isBillFullyPaid(bill, cp);
   }
 
   // Per-period payment helpers — keyed on billId + period start_date string
@@ -6384,7 +6362,7 @@ function Dashboard() {
                 <div className="panel" style={{ flex: "1", minWidth: "160px", margin: 0 }}>
                   <div style={{ fontSize: "11px", color: "#8B8FA8", fontFamily: "'Inter', sans-serif", marginBottom: "4px", textTransform: "uppercase", letterSpacing: "0.06em" }}>Bills Remaining</div>
                   <div style={{ fontSize: "22px", fontFamily: "'DM Mono', monospace", color: "#F87171", fontWeight: "600" }}>
-                    ${fmt(bills.filter(b => b.is_active !== false && isBillDue(b)).reduce((sum, b) => sum + (b.amount || 0), 0))}
+                    ${fmt(bills.filter(b => b.is_active !== false && isBillDue(b)).reduce((sum, b) => { const cp = currentPeriodStartStr(); const paid = cp ? getBillPaidAmount(b.id, cp) : 0; return sum + Math.max(0, (b.amount || 0) - paid); }, 0))}
                   </div>
                   <div style={{ fontSize: "11px", color: "#8B8FA8", fontFamily: "'Inter', sans-serif", marginTop: "4px" }}>still owed this month</div>
                 </div>
@@ -6423,9 +6401,11 @@ function Dashboard() {
                         </div>
                         <div className="row-sub">
                           {(() => {
-                            const remaining = (bill.amount || 0) - (bill.paid_amount || 0);
-                            const hasPartial = isBillDue(bill) && (bill.paid_amount || 0) > 0 && remaining > 0;
-                            if (hasPartial) return `$${fmt(bill.paid_amount)} paid · $${fmt(remaining)} remaining`;
+                            const cpStart = currentPeriodStartStr();
+                            const paidNow = cpStart ? getBillPaidAmount(bill.id, cpStart) : 0;
+                            const remaining = (bill.amount || 0) - paidNow;
+                            const hasPartial = isBillDue(bill) && paidNow > 0 && remaining > 0;
+                            if (hasPartial) return `$${fmt(paidNow)} paid · $${fmt(remaining)} remaining`;
                             const freq = bill.frequency || "monthly";
                             const dueStr = freq === "payday" ? "Every Pay Day"
                               : freq === "biweekly" ? "Biweekly"
