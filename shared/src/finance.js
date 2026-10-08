@@ -460,28 +460,26 @@ export function getMonthlyProjection(rows, ctx) {
     })
     .reduce((sum, inc) => sum + (inc.fixed_amount || 0), 0);
 
+  // Bills Remaining — the simple, only rule: every unpaid (non-skipped) bill
+  // whose DUE DATE is on or before the last day of this calendar month, from
+  // the current pay period onward. Which pay period a bill sits in is
+  // irrelevant — only its due date and whether it's paid. This makes a pay
+  // period that starts this month but spills into next (e.g. Oct 22–Nov 4)
+  // contribute its THIS-month bills (Oct 22–31) and drop only its next-month
+  // ones; fully past periods are carry-over, not "remaining this month".
   const billsRemaining = rows.reduce((sum, item) => {
     const pStart = new Date(item.period.start_date + "T00:00:00");
     const pEnd = new Date(item.period.end_date + "T23:59:59");
-    if (item.isCurrent) {
-      // Current period fully in this month → all its unpaid bills.
-      if (pEnd <= monthEndDate) return sum + (item.billsDeducted || 0);
-      // Current period spills into next month → only bills due on/before month-end.
-      const pk = item.period.start_date;
-      let partial = 0;
-      (item.bills || []).forEach((b) => {
-        if (isBillSkipped(ctx.skippedBillPeriods, b.id, pk)) return;
-        const due = billActualDate(b, pStart, pEnd);
-        if (due && due <= monthEndDate) {
-          partial += Math.max(0, (b.amount || 0) - getBillPaidAmount(ctx.billPayments, b.id, pk));
-        }
-      });
-      return sum + partial;
-    }
-    // Upcoming period fully within this month counts; a spill-over period that
-    // merely starts this month is excluded (its bills belong to next month).
-    if (pStart > today && pEnd <= monthEndDate) return sum + (item.billsDeducted || 0);
-    return sum;
+    if (!item.isCurrent && pEnd < today) return sum; // fully past → carry-over, not this month
+    const pk = item.period.start_date;
+    let periodSum = 0;
+    (item.bills || []).forEach((b) => {
+      if (isBillSkipped(ctx.skippedBillPeriods, b.id, pk)) return;
+      const due = billActualDate(b, pStart, pEnd);
+      if (!due || due > monthEndDate) return; // due in a later month → not this month
+      periodSum += Math.max(0, (b.amount || 0) - getBillPaidAmount(ctx.billPayments, b.id, pk));
+    });
+    return sum + periodSum;
   }, 0);
 
   // Bills you've already funded via a confirmed WTMG transfer are paid from the

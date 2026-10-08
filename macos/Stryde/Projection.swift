@@ -400,21 +400,20 @@ struct Projection {
             }
         }
 
-        // Bills Remaining — granular spill-over rule.
+        // Bills Remaining — the one simple rule: every unpaid (non-skipped) bill
+        // whose DUE DATE is on or before the last day of this calendar month,
+        // from the current period onward. Only the due date and paid status
+        // matter, not which period the bill sits in — so a period that starts
+        // this month but spills into next counts its THIS-month bills and drops
+        // only its next-month ones; fully past periods are carry-over.
         var billsRemaining = 0.0
         for r in rows {
             let pStart = parse(r.start, 0, 0, 0)
             let pEnd = parse(r.end, 23, 59, 59)
-            if pStart > monthEnd { continue }                          // starts next month
-            if pEnd <= monthEnd { billsRemaining += r.billsDeducted; continue } // fully this month
-            // Spills into next month. Only the CURRENT period contributes a
-            // partial (its bills due on/before month end); a future spill-over
-            // period is excluded — its bills belong to next month.
-            guard r.isCurrent else { continue }
+            if !r.isCurrent && pEnd < t { continue }   // fully past → carry-over, not this month
             for b in r.bills where !isSkipped(b.id, r.start) {
-                if let due = billDueDate(b, pStart, pEnd), due <= monthEnd {
-                    billsRemaining += max(0, b.amount - paidAmount(b.id, r.start))
-                }
+                guard let due = billDueDate(b, pStart, pEnd), due <= monthEnd else { continue }
+                billsRemaining += max(0, b.amount - paidAmount(b.id, r.start))
             }
         }
 

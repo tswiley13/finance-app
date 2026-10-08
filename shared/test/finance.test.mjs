@@ -93,10 +93,10 @@ const proj = getMonthlyProjection(rows, ctx);
 assert.equal(Number(proj.availableNow.toFixed(2)), 339.31, "Available Now = primary balance");
 assert.equal(Number(proj.incomeThisMonth.toFixed(2)), 5954.00,
   "Income This Month = Jul 16 + Jul 30 deposits (2 x 2977)");
-assert.equal(Number(proj.billsRemaining.toFixed(2)), 3002.71,
-  "Bills Remaining = current unpaid (1268.71) + Jul 16-29 (1734); Jul 30-Aug 12 excluded");
-assert.equal(Number(proj.availableThisMonth.toFixed(2)), 3290.60,
-  "Available This Month = 339.31 + 5954.00 - 3002.71");
+assert.equal(Number(proj.billsRemaining.toFixed(2)), 4002.71,
+  "Bills Remaining = current unpaid (1268.71) + Jul 16-29 (1734) + Jul 30-Aug 12's July-due payday bills (food+gas+lawyer=1000, due Jul 30); only that period's Aug bills are excluded");
+assert.equal(Number(proj.availableThisMonth.toFixed(2)), 2290.60,
+  "Available This Month = 339.31 + 5954.00 - 4002.71");
 
 // The identity that must always hold.
 assert.equal(

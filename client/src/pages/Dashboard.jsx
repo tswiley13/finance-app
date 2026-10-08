@@ -2491,12 +2491,13 @@ function Dashboard() {
         })
         .reduce((sum, inc) => sum + (inc.fixed_amount || 0), 0);
 
-      // Bills Remaining = unpaid bills DUE within the current calendar month.
-      // A period fully inside the month contributes its whole remaining; a
-      // spill-over period (starts this month, ends next) contributes only the
-      // bills whose due date lands on/before month-end — so we don't lose this
-      // month's bills that happen to sit in a period ending in October, nor
-      // pull in next-month bills.
+      // Bills Remaining — the one simple rule: every unpaid (non-skipped) bill
+      // whose DUE DATE is on or before the last day of this calendar month,
+      // from the current pay period onward. Which pay period a bill sits in is
+      // irrelevant — only its due date and whether it's paid. So a pay period
+      // that starts this month but spills into next (e.g. Oct 22–Nov 4) counts
+      // its THIS-month bills (Oct 22–31) and drops only its next-month ones;
+      // fully past periods are carry-over, not "remaining this month".
       const monthEndDate = new Date(currentYear, currentMonth + 1, 0, 23, 59, 59);
       // The date a bill is due within a given period (null if it doesn't land there).
       const billDueInPeriod = (bill, pStart, pEnd) => {
@@ -2520,19 +2521,13 @@ function Dashboard() {
       rows.forEach(item => {
         const pStart = new Date(item.period.start_date + "T00:00:00");
         const pEnd = new Date(item.period.end_date + "T23:59:59");
-        if (pStart > monthEndDate) return;               // starts next month — skip
-        if (pEnd <= monthEndDate) { monthBills += item.billsDeducted || 0; return; } // fully this month
-        // Spills into next month. Only the CURRENT period contributes a partial
-        // (its bills due on/before month-end); a future spill-over period is
-        // excluded — its bills belong to next month.
-        if (!item.isCurrent) return;
+        if (!item.isCurrent && pEnd < today) return;     // fully past → carry-over, not this month
+        const pk = item.period.start_date;
         item.bills.forEach(b => {
-          const pk = item.period.start_date;
           if (skippedBillPeriods.has(`${b.id}-${pk}`)) return;
           const due = billDueInPeriod(b, pStart, pEnd);
-          if (due && due <= monthEndDate) {
-            monthBills += Math.max(0, (b.amount || 0) - getBillPaidAmount(b.id, pk));
-          }
+          if (!due || due > monthEndDate) return;        // due in a later month → not this month
+          monthBills += Math.max(0, (b.amount || 0) - getBillPaidAmount(b.id, pk));
         });
       });
 
