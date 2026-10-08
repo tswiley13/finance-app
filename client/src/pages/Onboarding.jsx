@@ -2,6 +2,13 @@ import { useState, useEffect } from "react";
 import { usePlaidLink } from "react-plaid-link";
 import { supabase } from "../supabase";
 
+// Single source of truth for the starter categories — must match the bill
+// Category dropdown in step 5. Seeded once at household creation.
+const DEFAULT_CATEGORIES = [
+  "Housing", "Utilities", "Insurance", "Subscriptions", "Loans",
+  "Transportation", "Food & Gas", "Savings", "Other",
+];
+
 function PlaidLinkOpener({ token, onSuccess, onExit }) {
   const { open, ready } = usePlaidLink({ token, onSuccess, onExit });
   useEffect(() => { if (ready) open(); }, [ready, open]);
@@ -109,9 +116,10 @@ function Onboarding({ onComplete }) {
     saved: false, id: null, error: null, loading: false,
     accountName: "", bankName: "", lastFour: "",
     accountType: "checking", currentBalance: "",
-    isPrimary: false, isAccumulating: false,
+    isPrimary: true, isAccumulating: false,
     accumulationTarget: "", accDueDay: "", resetType: "manual", resetDay: "",
   }]);
+  const [stepError, setStepError] = useState(null); // step-level gate message (steps 3 & 4)
   const [billList, setBillList] = useState([]);
   const [billName, setBillName] = useState("");
   const [billAmount, setBillAmount] = useState("");
@@ -159,51 +167,63 @@ function Onboarding({ onComplete }) {
       setHouseholdId(household.id);
       setHouseholdName(household.name);
 
-      const { data: members } = await supabase
-        .from("household_members")
-        .select("id")
-        .eq("household_id", household.id);
+      // Load EVERYTHING (full rows) so a user who left and came back doesn't hit
+      // empty account/member/income dropdowns or lose links. (The old version
+      // selected only `id`, which left the bills step unusable on resume.)
+      const [{ data: members }, { data: accounts }, { data: incomeRows }, { data: billRows }, { data: existingDebts }] = await Promise.all([
+        supabase.from("household_members").select("*").eq("household_id", household.id),
+        supabase.from("accounts").select("*").eq("household_id", household.id),
+        supabase.from("income").select("*").eq("household_id", household.id),
+        supabase.from("bills").select("*").eq("household_id", household.id),
+        supabase.from("debts").select("*").eq("household_id", household.id),
+      ]);
 
-      if (!members || members.length === 0) {
-        setStep(2);
-        return;
-      }
-
-      const { data: accounts } = await supabase
-        .from("accounts")
-        .select("id")
-        .eq("household_id", household.id);
-
-      if (!accounts || accounts.length === 0) {
-        setStep(3);
-        return;
-      }
-
-      const { data: incomeRows } = await supabase
-        .from("income")
-        .select("id")
-        .eq("household_id", household.id);
-
-      if (!incomeRows || incomeRows.length === 0) {
-        setStep(4);
-        return;
-      }
-
-      const { data: billRows } = await supabase
-        .from("bills")
-        .select("id")
-        .eq("household_id", household.id);
-
-      if (!billRows || billRows.length === 0) {
-        setStep(5);
-        return;
-      }
-
-      const { data: existingDebts } = await supabase
-        .from("debts")
-        .select("*")
-        .eq("household_id", household.id);
+      setMemberList(members || []);
+      setAccountList(accounts || []);
+      setIncomeList(incomeRows || []);
+      setBillList(billRows || []);
       setDebtList(existingDebts || []);
+
+      if (accounts && accounts.length > 0) {
+        setCarouselCards([
+          ...accounts.map((a) => ({
+            saved: true, id: a.id, error: null, loading: false,
+            accountName: a.name || "", bankName: a.bank_name || "", lastFour: a.last_four || "",
+            accountType: a.account_type || "checking",
+            currentBalance: a.current_balance != null ? String(a.current_balance) : "",
+            isPrimary: !!a.is_primary, isAccumulating: !!a.is_accumulating,
+            accumulationTarget: a.accumulation_target != null ? String(a.accumulation_target) : "",
+            accDueDay: a.due_day != null ? String(a.due_day) : "",
+            resetType: a.reset_type || "manual",
+            resetDay: a.reset_day != null ? String(a.reset_day) : "",
+          })),
+          blankCard(),
+        ]);
+      }
+
+      if (incomeRows && incomeRows.length > 0) {
+        setIncomeCards([
+          ...incomeRows.map((i) => ({
+            saved: true, id: i.id, error: null, loading: false,
+            incomeName: i.name || "", incomeOwner: i.owner || "", incomeType: i.type || "salary",
+            incomeFrequency: i.frequency || "biweekly", depositAccountId: i.deposit_account_id || "",
+            nextPayDate: i.next_pay_date || "",
+            incomeEntryMode: i.type === "hourly" ? "" : (i.tax_rate != null ? "gross" : "net"),
+            fixedAmount: i.fixed_amount != null ? String(i.fixed_amount) : "",
+            hourlyRate: i.hourly_rate != null ? String(i.hourly_rate) : "",
+            hoursPerWeek: i.hours_per_week != null ? String(i.hours_per_week) : "",
+            overtimeRate: i.overtime_rate != null ? String(i.overtime_rate) : "",
+            taxRate: i.tax_rate != null ? String(i.tax_rate) : "",
+          })),
+          blankIncomeCard(),
+        ]);
+      }
+
+      // Land on the first incomplete step.
+      if (!members || members.length === 0) { setStep(2); return; }
+      if (!accounts || accounts.length === 0) { setStep(3); return; }
+      if (!incomeRows || incomeRows.length === 0) { setStep(4); return; }
+      if (!billRows || billRows.length === 0) { setStep(5); return; }
       setStep(6);
     }
 
@@ -245,19 +265,11 @@ function Onboarding({ onComplete }) {
     }).select().single();
     if (savedMember) setMemberList([savedMember]);
 
-    // Seed default categories
-    await supabase.from("categories").insert([
-      { household_id: created.id, name: "Housing" },
-      { household_id: created.id, name: "Utilities" },
-      { household_id: created.id, name: "Insurance" },
-      { household_id: created.id, name: "Subscriptions" },
-      { household_id: created.id, name: "Transportation" },
-      { household_id: created.id, name: "Food" },
-      { household_id: created.id, name: "Health" },
-      { household_id: created.id, name: "Debt" },
-      { household_id: created.id, name: "Personal" },
-      { household_id: created.id, name: "Other" },
-    ]);
+    // Seed default categories — the SAME list the bill-category dropdown and
+    // saveDefaultCategories use, so we don't end up with two conflicting sets.
+    await supabase.from("categories").insert(
+      DEFAULT_CATEGORIES.map((name) => ({ household_id: created.id, name }))
+    );
 
     setHouseholdId(created.id);
     setStep(2);
@@ -659,6 +671,32 @@ function Onboarding({ onComplete }) {
     setCarouselCards(prev => prev.map((c, i) => i === index ? { ...c, ...fields } : c));
   }
 
+  // Gate for leaving step 3: the dashboard is dead without at least one
+  // account and exactly one (non-accumulating) primary.
+  async function ensureAccountsReady() {
+    if (!householdId) return true;
+    const { data } = await supabase.from("accounts").select("id, is_primary, is_accumulating").eq("household_id", householdId);
+    const accts = data || [];
+    if (accts.length === 0) { setStepError("Add at least one account to continue — Stryde needs it to track your money."); return false; }
+    const primaries = accts.filter(a => a.is_primary && !a.is_accumulating);
+    if (primaries.length === 0) { setStepError("Mark one account as your Primary (main spending) account — that's the balance Stryde shows as \"Available Now.\""); return false; }
+    setStepError(null);
+    return true;
+  }
+
+  // Gate for leaving step 4: pay periods (and the whole projection) need at
+  // least one income, and a deposit date for anything that isn't monthly.
+  async function ensureIncomeReady() {
+    if (!householdId) return true;
+    const { data } = await supabase.from("income").select("id, frequency, next_pay_date").eq("household_id", householdId);
+    const inc = data || [];
+    if (inc.length === 0) { setStepError("Add at least one income source so Stryde can build your pay-period budget."); return false; }
+    const missingDate = inc.find(i => i.frequency !== "monthly" && !i.next_pay_date);
+    if (missingDate) { setStepError("Add the last deposit date for your non-monthly income — Stryde needs it to work out your pay schedule."); return false; }
+    setStepError(null);
+    return true;
+  }
+
   async function saveCard(index) {
     const card = carouselCards[index];
     if (!card.accountName) {
@@ -972,24 +1010,13 @@ function Onboarding({ onComplete }) {
   }
 
   async function saveDefaultCategories(hid) {
-    const defaults = [
-      "Housing",
-      "Utilities",
-      "Insurance",
-      "Subscriptions",
-      "Loans",
-      "Transportation",
-      "Food & Gas",
-      "Savings",
-      "Other",
-    ];
-
-    for (const name of defaults) {
-      await supabase.from("categories").insert({
-        household_id: hid,
-        name: name,
-      });
-    }
+    // Idempotent: categories are already seeded at household creation, so only
+    // insert if somehow missing (prevents duplicate category rows at finish).
+    const { data: existing } = await supabase.from("categories").select("id").eq("household_id", hid).limit(1);
+    if (existing && existing.length > 0) return;
+    await supabase.from("categories").insert(
+      DEFAULT_CATEGORIES.map((name) => ({ household_id: hid, name }))
+    );
   }
 
   function calculateTransfers() {
@@ -1171,7 +1198,7 @@ function Onboarding({ onComplete }) {
 
         <div style={{ display: "flex", justifyContent: "space-between", marginTop: "8px" }}>
           <button style={ghostBtn} onClick={() => setStep(1)}>Back</button>
-          <button style={primaryBtn} onClick={() => setStep(3)}>Continue</button>
+          <button style={primaryBtn} onClick={() => { setStepError(null); setStep(3); }}>Continue</button>
         </div>
       </div>
     ));
@@ -1272,6 +1299,9 @@ function Onboarding({ onComplete }) {
                 <input type="checkbox" checked={ac.isAccumulating} onChange={(e) => updateCard(activeIndex, { isAccumulating: e.target.checked })} />
                 <span style={{ fontSize: "12px", color: "#8B8FA8" }}>Accumulating (saving toward a goal)</span>
               </label>
+              <div style={{ fontSize: "11px", color: "#6E7681", marginTop: "-4px" }}>
+                A separate pot you fill up over time (e.g. a savings or "bills" account). Stryde tells you how much to move into it each payday. Leave this off for a normal checking/savings account.
+              </div>
               {ac.isAccumulating && (
                 <>
                   <div>
@@ -1292,11 +1322,13 @@ function Onboarding({ onComplete }) {
               </button>
             </div>
           )}
+          {stepError && <div style={{ fontSize: "12px", color: "#F87171", background: "rgba(248,113,113,0.08)", padding: "8px 12px", borderRadius: "6px" }}>{stepError}</div>}
           <div style={{ display: "flex", justifyContent: "space-between", marginTop: "4px" }}>
-            <button style={ghostBtn} onClick={() => setStep(2)}>Back</button>
+            <button style={ghostBtn} onClick={() => { setStepError(null); setStep(2); }}>Back</button>
             <button style={primaryBtn} onClick={async () => {
               const card = carouselCards[activeIndex];
               if (!card.saved && card.accountName) { const ok = await saveCard(activeIndex); if (!ok) return; }
+              if (!(await ensureAccountsReady())) return;
               setStep(4);
             }}>Continue</button>
           </div>
@@ -1416,16 +1448,19 @@ function Onboarding({ onComplete }) {
                       </div>
                     </div>
                     <label style={{ display: "flex", alignItems: "center", gap: "8px", cursor: "pointer" }}>
-                      <input type="checkbox" checked={card.isPrimary} onChange={(e) => updateCard(index, { isPrimary: e.target.checked })} />
-                      <span style={{ fontSize: "12px", color: "#8B8FA8" }}>Primary account</span>
+                      <input type="checkbox" checked={card.isPrimary} onChange={(e) => e.target.checked ? setCarouselCards(prev => prev.map((c, i) => ({ ...c, isPrimary: i === index }))) : updateCard(index, { isPrimary: false })} />
+                      <span style={{ fontSize: "12px", color: "#8B8FA8" }}>Primary (main checking) account</span>
                     </label>
                     <div style={{ fontSize: "11px", color: "#6E7681", marginTop: "-4px" }}>
-                      Any accounts marked Primary are combined to calculate your available funds.
+                      Your main spending account — the balance "Available Now" shows. Pick exactly one.
                     </div>
                     <label style={{ display: "flex", alignItems: "center", gap: "8px", cursor: "pointer" }}>
                       <input type="checkbox" checked={card.isAccumulating} onChange={(e) => updateCard(index, { isAccumulating: e.target.checked })} />
-                      <span style={{ fontSize: "12px", color: "#8B8FA8" }}>Accumulating</span>
+                      <span style={{ fontSize: "12px", color: "#8B8FA8" }}>Accumulating (saving toward a goal)</span>
                     </label>
+                    <div style={{ fontSize: "11px", color: "#6E7681", marginTop: "-4px" }}>
+                      A separate pot you fill up over time (e.g. a savings or "bills" account). Stryde tells you how much to move into it each payday. Leave this off for a normal checking/savings account.
+                    </div>
                     {card.isAccumulating && (
                       <>
                         <div>
@@ -1475,14 +1510,16 @@ function Onboarding({ onComplete }) {
           </div>
         )}
 
+        {stepError && <div style={{ fontSize: "12px", color: "#F87171", background: "rgba(248,113,113,0.08)", padding: "8px 12px", borderRadius: "6px", textAlign: "center" }}>{stepError}</div>}
         <div style={{ display: "flex", justifyContent: "space-between" }}>
-          <button style={ghostBtn} onClick={() => setStep(2)}>Back</button>
+          <button style={ghostBtn} onClick={() => { setStepError(null); setStep(2); }}>Back</button>
           <button style={primaryBtn} onClick={async () => {
             const card = carouselCards[activeIndex];
             if (!card.saved && card.accountName) {
               const ok = await saveCard(activeIndex);
               if (!ok) return;
             }
+            if (!(await ensureAccountsReady())) return;
             setStep(4);
           }}>Continue</button>
         </div>
@@ -1646,11 +1683,13 @@ function Onboarding({ onComplete }) {
               </button>
             </div>
           )}
+          {stepError && <div style={{ fontSize: "12px", color: "#F87171", background: "rgba(248,113,113,0.08)", padding: "8px 12px", borderRadius: "6px" }}>{stepError}</div>}
           <div style={{ display: "flex", justifyContent: "space-between", marginTop: "4px" }}>
-            <button style={ghostBtn} onClick={() => setStep(3)}>Back</button>
+            <button style={ghostBtn} onClick={() => { setStepError(null); setStep(3); }}>Back</button>
             <button style={primaryBtn} onClick={async () => {
               const card = incomeCards[incomeActiveIndex];
               if (!card.saved && card.incomeName) { const ok = await saveIncomeCard(incomeActiveIndex); if (!ok) return; }
+              if (!(await ensureIncomeReady())) return;
               setStep(5);
             }}>Continue</button>
           </div>
@@ -1885,14 +1924,16 @@ function Onboarding({ onComplete }) {
           </div>
         )}
 
+        {stepError && <div style={{ fontSize: "12px", color: "#F87171", background: "rgba(248,113,113,0.08)", padding: "8px 12px", borderRadius: "6px", textAlign: "center" }}>{stepError}</div>}
         <div style={{ display: "flex", justifyContent: "space-between" }}>
-          <button style={ghostBtn} onClick={() => setStep(3)}>Back</button>
+          <button style={ghostBtn} onClick={() => { setStepError(null); setStep(3); }}>Back</button>
           <button style={primaryBtn} onClick={async () => {
             const card = incomeCards[incomeActiveIndex];
             if (!card.saved && card.incomeName) {
               const ok = await saveIncomeCard(incomeActiveIndex);
               if (!ok) return;
             }
+            if (!(await ensureIncomeReady())) return;
             setStep(5);
           }}>Continue</button>
         </div>
@@ -2003,8 +2044,11 @@ function Onboarding({ onComplete }) {
 
         <label style={checkRowStyle}>
           <input type="checkbox" checked={isBillAccumulating} onChange={(e) => { setIsBillAccumulating(e.target.checked); if (!e.target.checked) setBillTransferToAccountId(""); }} />
-          <span style={checkLabelStyle}>This is a transfer to another account</span>
+          <span style={checkLabelStyle}>This bill is paid by moving money into another account</span>
         </label>
+        <div style={{ fontSize: "11px", color: "#6E7681", marginTop: "-6px", marginBottom: "4px" }}>
+          Check this only for bills you cover by transferring money into a savings or "bills" account first (not paid straight from checking). Stryde will tell you how much to move each payday in "Where the money goes." Most bills: leave this off.
+        </div>
         {isBillAccumulating && (
           <div>
             <label style={labelStyle}>Transfer to which account?</label>
