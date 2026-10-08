@@ -150,13 +150,18 @@ function incomeItemsInPeriod(inc, periodStart, periodEnd) {
 
   if (interval === 0) {
     // Monthly — the pay day may fall in the period's start month or end month.
+    // When a period sits inside ONE calendar month both candidates collide, so
+    // dedupe by date or the deposit gets counted twice.
     const payDay = baseDate.getDate();
+    const seen = new Set();
     [
       new Date(periodStart.getFullYear(), periodStart.getMonth(), payDay, 12, 0, 0),
       new Date(periodEnd.getFullYear(), periodEnd.getMonth(), payDay, 12, 0, 0),
     ].forEach((d) => {
-      if (d >= periodStart && d <= periodEnd) {
-        out.push({ ...inc, actualPayDate: localDateStr(d) });
+      const key = localDateStr(d);
+      if (d >= periodStart && d <= periodEnd && !seen.has(key)) {
+        seen.add(key);
+        out.push({ ...inc, actualPayDate: key });
       }
     });
     return out;

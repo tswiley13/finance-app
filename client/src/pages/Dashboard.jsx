@@ -1328,10 +1328,15 @@ function Dashboard() {
             new Date(periodStart.getFullYear(), periodStart.getMonth(), payDay, 12, 0, 0),
             new Date(periodEnd.getFullYear(), periodEnd.getMonth(), payDay, 12, 0, 0),
           ];
+          // Dedupe: inside one calendar month both candidates collide, which
+          // would count the monthly deposit twice.
+          const seenPayDates = new Set();
           candidateDates.forEach((d) => {
-            if (d >= periodStart && d <= periodEnd) {
+            const key = d.toISOString().split("T")[0];
+            if (d >= periodStart && d <= periodEnd && !seenPayDates.has(key)) {
+              seenPayDates.add(key);
               periodIncome += inc.fixed_amount;
-              periodIncomeItems.push({ ...inc, actualPayDate: d.toISOString().split("T")[0] });
+              periodIncomeItems.push({ ...inc, actualPayDate: key });
             }
           });
         } else {
@@ -6923,10 +6928,15 @@ function Dashboard() {
                     return true;
                   });
 
-                  // Regular bills: current period only, not transfer bills, not assigned to accumulating accounts
+                  // Regular bills: current period only, not transfer bills, not
+                  // assigned to accumulating accounts, and NOT paid straight from
+                  // the primary spending account — those need no transfer (you
+                  // don't move money to yourself). Matches the shared engine's
+                  // getPeriodTransferGroups, which also skips primary.
                   const regularBills = periodBills.filter((b) => {
                     if (b.transfer_to_account_id) return false;
                     const acct = accounts.find((a) => a.id === b.account_id);
+                    if (acct?.is_primary) return false;
                     return !acct?.is_accumulating;
                   });
 
