@@ -676,11 +676,11 @@ function Onboarding({ onComplete }) {
   // account and exactly one (non-accumulating) primary.
   async function ensureAccountsReady() {
     if (!householdId) return true;
-    const { data } = await supabase.from("accounts").select("id, is_primary, is_accumulating").eq("household_id", householdId);
+    const { data } = await supabase.from("accounts").select("id, is_primary, is_accumulating, account_type").eq("household_id", householdId);
     const accts = data || [];
     if (accts.length === 0) { setStepError("Add at least one account to continue — Stryde needs it to track your money."); return false; }
-    const primaries = accts.filter(a => a.is_primary && !a.is_accumulating);
-    if (primaries.length === 0) { setStepError("Mark one account as your Primary (main spending) account — that's the balance Stryde shows as \"Available Now.\""); return false; }
+    const primaries = accts.filter(a => a.is_primary && !a.is_accumulating && a.account_type !== "savings");
+    if (primaries.length === 0) { setStepError("Mark one checking account as your Primary checking — that's the balance Stryde shows as \"Available Now.\""); return false; }
     setStepError(null);
     return true;
   }
@@ -1284,7 +1284,7 @@ function Onboarding({ onComplete }) {
               <div style={{ display: "flex", gap: "8px" }}>
                 <div style={{ flex: 1 }}>
                   <label style={cardLabel}>Type</label>
-                  <select style={{ ...cardInput, cursor: "pointer" }} value={ac.accountType} onChange={(e) => updateCard(activeIndex, { accountType: e.target.value })}>
+                  <select style={{ ...cardInput, cursor: "pointer" }} value={ac.accountType} onChange={(e) => updateCard(activeIndex, { accountType: e.target.value, ...(e.target.value === "savings" ? { isPrimary: false } : {}) })}>
                     <option value="checking">Checking</option>
                     <option value="savings">Savings</option>
                   </select>
@@ -1294,13 +1294,15 @@ function Onboarding({ onComplete }) {
                   <input style={cardInput} type="number" placeholder="0.00" value={ac.currentBalance} onChange={(e) => updateCard(activeIndex, { currentBalance: e.target.value })} />
                 </div>
               </div>
+              {ac.accountType !== "savings" && (<>
               <label style={{ display: "flex", alignItems: "center", gap: "8px", cursor: "pointer" }}>
-                <input type="checkbox" checked={ac.isPrimary} onChange={(e) => e.target.checked ? setCarouselCards(prev => prev.map((c, i) => ({ ...c, isPrimary: i === activeIndex }))) : updateCard(activeIndex, { isPrimary: false })} />
-                <span style={{ fontSize: "12px", color: "#8B8FA8" }}>Primary (main checking) account</span>
+                <input type="checkbox" checked={ac.isPrimary} onChange={(e) => e.target.checked ? setCarouselCards(prev => prev.map((c, i) => ({ ...c, isPrimary: i === activeIndex && c.accountType !== "savings" }))) : updateCard(activeIndex, { isPrimary: false })} />
+                <span style={{ fontSize: "12px", color: "#8B8FA8" }}>Primary checking account</span>
               </label>
               <div style={{ fontSize: "11px", color: "#6E7681", marginTop: "-4px" }}>
-                Your one main spending account — the balance "Available Now" reflects. Only one can be primary.
+                Your one main spending account — the balance "Available Now" reflects. Pick exactly one. (Savings add up automatically in the Savings total.)
               </div>
+              </>)}
               <label style={{ display: "flex", alignItems: "center", gap: "8px", cursor: "pointer" }}>
                 <input type="checkbox" checked={ac.isAccumulating} onChange={(e) => updateCard(activeIndex, { isAccumulating: e.target.checked })} />
                 <span style={{ fontSize: "12px", color: "#8B8FA8" }}>Accumulating (saving toward a goal)</span>
@@ -1443,7 +1445,7 @@ function Onboarding({ onComplete }) {
                     <div style={{ display: "flex", gap: "8px" }}>
                       <div style={{ flex: 1 }}>
                         <label style={cardLabel}>Type</label>
-                        <select style={{ ...cardInput, cursor: "pointer" }} value={card.accountType} onChange={(e) => updateCard(index, { accountType: e.target.value })}>
+                        <select style={{ ...cardInput, cursor: "pointer" }} value={card.accountType} onChange={(e) => updateCard(index, { accountType: e.target.value, ...(e.target.value === "savings" ? { isPrimary: false } : {}) })}>
                           <option value="checking">Checking</option>
                           <option value="savings">Savings</option>
                         </select>
@@ -1453,13 +1455,15 @@ function Onboarding({ onComplete }) {
                         <input style={cardInput} type="number" placeholder="0.00" value={card.currentBalance} onChange={(e) => updateCard(index, { currentBalance: e.target.value })} />
                       </div>
                     </div>
+                    {card.accountType !== "savings" && (<>
                     <label style={{ display: "flex", alignItems: "center", gap: "8px", cursor: "pointer" }}>
-                      <input type="checkbox" checked={card.isPrimary} onChange={(e) => e.target.checked ? setCarouselCards(prev => prev.map((c, i) => ({ ...c, isPrimary: i === index }))) : updateCard(index, { isPrimary: false })} />
-                      <span style={{ fontSize: "12px", color: "#8B8FA8" }}>Primary (main checking) account</span>
+                      <input type="checkbox" checked={card.isPrimary} onChange={(e) => e.target.checked ? setCarouselCards(prev => prev.map((c, i) => ({ ...c, isPrimary: i === index && c.accountType !== "savings" }))) : updateCard(index, { isPrimary: false })} />
+                      <span style={{ fontSize: "12px", color: "#8B8FA8" }}>Primary checking account</span>
                     </label>
                     <div style={{ fontSize: "11px", color: "#6E7681", marginTop: "-4px" }}>
-                      Your main spending account — the balance "Available Now" shows. Pick exactly one.
+                      Your main spending account — the balance "Available Now" shows. Pick exactly one. (Savings accounts add up automatically in the Savings total.)
                     </div>
+                    </>)}
                     <label style={{ display: "flex", alignItems: "center", gap: "8px", cursor: "pointer" }}>
                       <input type="checkbox" checked={card.isAccumulating} onChange={(e) => updateCard(index, { isAccumulating: e.target.checked })} />
                       <span style={{ fontSize: "12px", color: "#8B8FA8" }}>Accumulating (saving toward a goal)</span>

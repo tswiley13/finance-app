@@ -262,15 +262,17 @@ export default function Accounts() {
               </View>
 
               <Field label="Type">
-                <Select value={form.account_type} onChange={(v) => setForm({ ...form, account_type: v })} options={TYPES} />
+                <Select value={form.account_type} onChange={(v) => setForm({ ...form, account_type: v, ...(v === "savings" ? { is_primary: false } : {}) })} options={TYPES} />
               </Field>
 
-              <Toggle
-                label="Primary account"
-                hint="Your main spending account. 'Available Now' is this balance."
-                value={form.is_primary}
-                onValueChange={(v) => setForm({ ...form, is_primary: v })}
-              />
+              {form.account_type !== "savings" && (
+                <Toggle
+                  label="Primary checking"
+                  hint="Your main spending account. 'Available Now' is this balance. Savings accounts add up automatically in the Savings total."
+                  value={form.is_primary}
+                  onValueChange={(v) => setForm({ ...form, is_primary: v })}
+                />
+              )}
 
               <Toggle
                 label="Accumulating account"

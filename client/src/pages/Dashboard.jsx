@@ -2343,7 +2343,7 @@ function Dashboard() {
   function renderContent() {
     if (activeNav === "dashboard") {
       const primaryBalance = accounts
-        .filter((a) => a.is_primary && !a.is_accumulating)
+        .filter((a) => a.is_primary && !a.is_accumulating && a.account_type !== "savings")
         .reduce((sum, a) => sum + (a.current_balance || 0), 0);
 
       const breakdown = getPayPeriodBreakdown();
@@ -5036,7 +5036,7 @@ function Dashboard() {
                 />
                 <select
                   value={accountType}
-                  onChange={(e) => setAccountType(e.target.value)}
+                  onChange={(e) => { setAccountType(e.target.value); if (e.target.value === "savings") setIsPrimary(false); }}
                   style={{
                     background: "rgba(255,255,255,0.06)",
                     border: "1px solid rgba(255,255,255,0.1)",
@@ -5074,6 +5074,7 @@ function Dashboard() {
                 <div
                   style={{ display: "flex", alignItems: "center", gap: "8px" }}
                 >
+                  {accountType !== "savings" && (<>
                   <label
                     style={{
                       color: "rgba(255,255,255,0.6)",
@@ -5088,11 +5089,12 @@ function Dashboard() {
                       checked={isPrimary}
                       onChange={(e) => setIsPrimary(e.target.checked)}
                     />
-                    Primary
+                    Primary checking
                   </label>
                   <div style={{ fontSize: "11px", color: "#8B8FA8", marginTop: "2px", gridColumn: "1 / -1" }}>
-                    Your one main spending account — the balance "Available Now" reflects. Marking this clears Primary on your other accounts.
+                    Your one main spending account — the balance "Available Now" reflects. Marking this clears Primary on your other accounts. (Savings accounts add up automatically in the Savings total.)
                   </div>
+                  </>)}
                   <label
                     style={{
                       color: "rgba(255,255,255,0.6)",
@@ -5475,7 +5477,7 @@ function Dashboard() {
                         />
                         <select
                           value={accountType}
-                          onChange={(e) => setAccountType(e.target.value)}
+                          onChange={(e) => { setAccountType(e.target.value); if (e.target.value === "savings") setIsPrimary(false); }}
                           style={{
                             background: "#2D2B45",
                             border: "1px solid rgba(255,255,255,0.1)",
@@ -5532,6 +5534,7 @@ function Dashboard() {
                             gridColumn: "1 / -1",
                           }}
                         >
+                          {accountType !== "savings" && (<>
                           <label
                             style={{
                               color: "#8B8FA8",
@@ -5546,11 +5549,12 @@ function Dashboard() {
                               checked={isPrimary}
                               onChange={(e) => setIsPrimary(e.target.checked)}
                             />
-                            Primary
+                            Primary checking
                           </label>
                           <div style={{ fontSize: "11px", color: "#8B8FA8", marginTop: "2px", gridColumn: "1 / -1" }}>
-                            Your one main spending account — the balance "Available Now" reflects. Marking this clears Primary on your other accounts.
+                            Your one main spending account — the balance "Available Now" reflects. Marking this clears Primary on your other accounts. (Savings accounts add up automatically in the Savings total.)
                           </div>
+                          </>)}
                           <label
                             style={{
                               color: "#8B8FA8",
@@ -7288,7 +7292,7 @@ function Dashboard() {
           </div>
           <div className="stat-row">
             {(() => {
-              const primaryBalance = accounts.filter((a) => a.is_primary && !a.is_accumulating).reduce((sum, a) => sum + (a.current_balance || 0), 0);
+              const primaryBalance = accounts.filter((a) => a.is_primary && !a.is_accumulating && a.account_type !== "savings").reduce((sum, a) => sum + (a.current_balance || 0), 0);
               const now = new Date();
               const currentMonth = now.getMonth();
               const currentYear = now.getFullYear();
@@ -7435,7 +7439,7 @@ function Dashboard() {
                           }}
                         >
                           {item.isCurrentPeriod
-                            ? "$" + fmt(accounts.filter((a) => a.is_primary && !a.is_accumulating).reduce((sum, a) => sum + (a.current_balance || 0), 0))
+                            ? "$" + fmt(accounts.filter((a) => a.is_primary && !a.is_accumulating && a.account_type !== "savings").reduce((sum, a) => sum + (a.current_balance || 0), 0))
                             : (item.leftOver < 0 ? "-" : "") + "$" + fmt(Math.abs(item.leftOver))}
                         </div>
                       </div>

@@ -116,7 +116,7 @@ export default function Onboarding() {
     const named = accounts.filter((a) => a.name.trim());
     if (named.length === 0) return setStep(3); // skippable
     if (named.filter((a) => a.is_primary).length !== 1) {
-      return setError("Pick exactly one primary account — it's the balance 'Available Now' shows.");
+      return setError("Pick exactly one primary checking account — it's the balance 'Available Now' shows.");
     }
     for (const a of named) {
       if (a.is_accumulating && (!a.accumulation_target || !a.due_day)) {
@@ -303,8 +303,8 @@ export default function Onboarding() {
                     />
                   </Field>
                   <Toggle
-                    label="Primary account"
-                    hint="The one you spend from. Exactly one."
+                    label="Primary checking"
+                    hint="The one you spend from — your 'Available Now' balance. Exactly one."
                     value={a.is_primary}
                     onValueChange={(v) =>
                       // Only one primary; turning this on turns the others off.

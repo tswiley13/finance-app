@@ -261,11 +261,14 @@ struct AccountEditor: View {
                 STextField(label: "Last 4", text: $lastFour)
             }
             SPicker(label: "Type", selection: $accountType, options: acctTypeOptions)
+                .onChange(of: accountType) { _, newVal in if newVal == "savings" { isPrimary = false } }
             SNumberField(label: "Current balance", value: $balance)
-            VStack(alignment: .leading, spacing: 3) {
-                SToggle(label: "Primary (spending) account", isOn: $isPrimary)
-                Text("The one account “Available Now” reflects — just one. Turning this on clears it on your other accounts.")
-                    .font(.system(size: 11)).foregroundStyle(Color.sMuted)
+            if accountType != "savings" {
+                VStack(alignment: .leading, spacing: 3) {
+                    SToggle(label: "Primary checking", isOn: $isPrimary)
+                    Text("Your main spending account — the balance “Available Now” reflects. Just one. Savings accounts add up automatically in the Savings total.")
+                        .font(.system(size: 11)).foregroundStyle(Color.sMuted)
+                }
             }
             SToggle(label: "Accumulating (save toward a target)", isOn: $isAccumulating)
             if isAccumulating {

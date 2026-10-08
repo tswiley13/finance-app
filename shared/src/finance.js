@@ -333,10 +333,12 @@ export function getPayPeriodBreakdown(ctx, limit = 10) {
 
 // ── End balance chain ────────────────────────────────────────────────────────
 
-/** Sum of the primary (non-accumulating) account balances. */
+/** Balance of the primary checking (main spending) account.
+ *  Savings never counts toward "Available Now" even if mis-flagged primary —
+ *  "Primary" means your primary CHECKING account. */
 export function getPrimaryBalance(accounts = []) {
   return accounts
-    .filter((a) => a.is_primary && !a.is_accumulating)
+    .filter((a) => a.is_primary && !a.is_accumulating && a.account_type !== "savings")
     .reduce((sum, a) => sum + (a.current_balance || 0), 0);
 }
 

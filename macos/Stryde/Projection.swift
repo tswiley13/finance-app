@@ -301,7 +301,7 @@ struct Projection {
         let acctById = accountsById
 
         let availableNow = accounts
-            .filter { $0.isPrimary == true && $0.isAccumulating != true }
+            .filter { $0.isPrimary == true && $0.isAccumulating != true && $0.accountType != "savings" }
             .reduce(0) { $0 + ($1.currentBalance ?? 0) }
 
         // Upcoming periods (not fully past), sorted, max 10.
