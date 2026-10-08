@@ -130,12 +130,20 @@ function billActualDate(bill, periodStart, periodEnd) {
   const freq = bill.frequency || "monthly";
   if (freq === "one-time" && bill.due_date) return new Date(bill.due_date + "T12:00:00");
   if (freq === "payday" || freq === "biweekly") return periodStart;
-  if (!bill.due_day) return periodEnd;
-  const thisMonth = new Date(periodStart.getFullYear(), periodStart.getMonth(), bill.due_day);
-  const nextMonth = new Date(periodStart.getFullYear(), periodStart.getMonth() + 1, bill.due_day);
-  if (thisMonth >= periodStart && thisMonth <= periodEnd) return thisMonth;
-  if (nextMonth >= periodStart && nextMonth <= periodEnd) return nextMonth;
-  return nextMonth;
+  // Semi-monthly bills have TWO due days — consider both (web's billDueInPeriod
+  // already does; before this, the mobile Bills-Remaining tile dropped the
+  // second occurrence near month boundaries).
+  const days = (freq === "semi-monthly" ? [bill.due_day, bill.due_day_2] : [bill.due_day]).filter((d) => d);
+  if (days.length === 0) return periodEnd;
+  const candidates = [];
+  days.forEach((d) => {
+    candidates.push(new Date(periodStart.getFullYear(), periodStart.getMonth(), d));
+    candidates.push(new Date(periodStart.getFullYear(), periodStart.getMonth() + 1, d));
+  });
+  candidates.sort((a, b) => a - b);
+  const inPeriod = candidates.find((c) => c >= periodStart && c <= periodEnd);
+  if (inPeriod) return inPeriod;
+  return candidates.find((c) => c >= periodStart) || candidates[candidates.length - 1];
 }
 
 // ── Income scheduling ────────────────────────────────────────────────────────

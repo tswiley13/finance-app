@@ -251,6 +251,7 @@ function Onboarding({ onComplete }) {
 
     if (error) {
       console.log("Error:", error.message);
+      setStepError("Couldn't create your household: " + error.message + " — please try again.");
       return;
     }
 
@@ -949,13 +950,17 @@ function Onboarding({ onComplete }) {
     const allDates = [];
     paychecks.forEach((income) => {
       const baseDate = new Date(income.next_pay_date);
+      // Cadence from the income's frequency (was hardcoded to 14, so weekly
+      // earners got wrong periods). semi-monthly is approximated as biweekly.
+      const interval = income.frequency === "weekly" ? 7 : 14;
       // Go back enough periods to cover today
       const daysUntilNext = Math.ceil((baseDate - today) / (1000 * 60 * 60 * 24));
-      const periodsBack = Math.ceil(daysUntilNext / 14) + 1;
+      const periodsBack = Math.ceil(daysUntilNext / interval) + 1;
       const startOffset = -periodsBack;
-      for (let i = startOffset; i < 8; i++) {
+      const forward = interval === 7 ? 16 : 8; // cover ~4 months either cadence
+      for (let i = startOffset; i < forward; i++) {
         const date = new Date(baseDate);
-        date.setDate(baseDate.getDate() + i * 14);
+        date.setDate(baseDate.getDate() + i * interval);
         allDates.push(date);
       }
     });
@@ -1132,6 +1137,7 @@ function Onboarding({ onComplete }) {
           <label style={labelStyle}>Household Name</label>
           <input style={inputStyle} type="text" placeholder="e.g. The Smith Family" value={householdName} onChange={(e) => setHouseholdName(e.target.value)} onKeyDown={(e) => e.key === "Enter" && householdName && yourName && createHousehold()} />
         </div>
+        {stepError && <div style={{ fontSize: "12px", color: "#F87171", background: "rgba(248,113,113,0.08)", padding: "8px 12px", borderRadius: "6px" }}>{stepError}</div>}
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <button style={ghostBtn} onClick={() => supabase.auth.signOut()}>Sign Out</button>
           <button style={primaryBtn} onClick={createHousehold} disabled={!householdName || !yourName}>Continue</button>

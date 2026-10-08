@@ -879,6 +879,7 @@ function Dashboard() {
 
     if (error) {
       console.log("Error:", error.message);
+      setIsSaving(false);
       return;
     }
 
@@ -940,6 +941,7 @@ function Dashboard() {
 
     if (error) {
       console.log("Error:", error.message);
+      setIsSaving(false);
       return;
     }
 
@@ -1109,6 +1111,7 @@ function Dashboard() {
     const { error } = await supabase.from("bills").delete().eq("id", billId);
     if (error) {
       console.log("Error:", error.message);
+      setIsSaving(false);
       return;
     }
     setBills(bills.filter((b) => b.id !== billId));
@@ -1486,6 +1489,7 @@ function Dashboard() {
 
     if (error) {
       console.log("Error:", error.message);
+      setIsSaving(false);
       return;
     }
 
@@ -1527,6 +1531,7 @@ function Dashboard() {
 
     if (error) {
       console.log("Error:", error.message);
+      setIsSaving(false);
       return;
     }
 
@@ -1565,6 +1570,7 @@ function Dashboard() {
     const { error } = await supabase.from("income").delete().eq("id", incomeId);
     if (error) {
       console.log("Error:", error.message);
+      setIsSaving(false);
       return;
     }
     setIncome(income.filter((i) => i.id !== incomeId));
@@ -1605,6 +1611,7 @@ function Dashboard() {
 
     if (error) {
       console.log("Error:", error.message);
+      setIsSaving(false);
       return;
     }
 
@@ -1664,6 +1671,7 @@ function Dashboard() {
       .eq("id", accountId);
     if (error) {
       console.log("Error:", error.message);
+      setIsSaving(false);
       return;
     }
     setAccounts(accounts.filter((a) => a.id !== accountId));
@@ -1731,6 +1739,7 @@ function Dashboard() {
 
     if (error) {
       console.log("Error:", error.message);
+      setIsSaving(false);
       return;
     }
 
@@ -1754,6 +1763,7 @@ function Dashboard() {
 
     if (error) {
       console.log("Error:", error.message);
+      setIsSaving(false);
       return;
     }
 
@@ -1775,6 +1785,7 @@ function Dashboard() {
 
     if (error) {
       console.log("Error:", error.message);
+      setIsSaving(false);
       return;
     }
 
@@ -1800,6 +1811,7 @@ function Dashboard() {
       .single();
     if (error) {
       console.log("Error:", error.message);
+      setIsSaving(false);
       return;
     }
     setCategories([...categories, savedCategory]);
@@ -1813,6 +1825,7 @@ function Dashboard() {
       .eq("id", categoryId);
     if (error) {
       console.log("Error:", error.message);
+      setIsSaving(false);
       return;
     }
     setCategories(categories.filter((c) => c.id !== categoryId));
@@ -1939,6 +1952,7 @@ function Dashboard() {
 
     if (error) {
       console.log("Error:", error.message);
+      setIsSaving(false);
       return;
     }
 
@@ -1984,6 +1998,7 @@ function Dashboard() {
 
     if (error) {
       console.log("Error:", error.message);
+      setIsSaving(false);
       return;
     }
 
@@ -2027,6 +2042,7 @@ function Dashboard() {
     const { error } = await supabase.from("debts").delete().eq("id", debtId);
     if (error) {
       console.log("Error:", error.message);
+      setIsSaving(false);
       return;
     }
     setDebts(debts.filter((d) => d.id !== debtId));
@@ -2046,6 +2062,7 @@ function Dashboard() {
 
     if (error) {
       console.log("Error:", error.message);
+      setIsSaving(false);
       return;
     }
 
@@ -2101,6 +2118,7 @@ function Dashboard() {
 
     if (error) {
       console.log("Error:", error.message);
+      setIsSaving(false);
       return;
     }
 
@@ -2129,6 +2147,7 @@ function Dashboard() {
 
     if (error) {
       console.log("Error:", error.message);
+      setIsSaving(false);
       return;
     }
 
@@ -2145,6 +2164,7 @@ function Dashboard() {
 
     if (error) {
       console.log("Error:", error.message);
+      setIsSaving(false);
       return;
     }
 
