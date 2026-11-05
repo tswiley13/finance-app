@@ -92,9 +92,11 @@ extension AppStore {
                 await loadData(); return
             }
             let today = cal.startOfDay(for: Date())
-            let year = cal.component(.year, from: today)
-            let endOfYear = cal.date(from: DateComponents(year: year, month: 12, day: 31, hour: 23, minute: 59, second: 59))!
             let lookback = today.addingTimeInterval(-60 * 86400)
+            let futurePeriods = 6 // rolling window: current + next 5, crosses year-end
+            // Generate past the window we need, then trim. A (futurePeriods+2)×14-day
+            // horizon always yields at least `futurePeriods` future periods.
+            let horizon = today.addingTimeInterval(Double(futurePeriods + 2) * 14 * 86400)
 
             var allDates: [Date] = []
             for inc in paychecks {
@@ -105,22 +107,37 @@ extension AppStore {
                 while current > lookback { current = cal.date(byAdding: .day, value: -interval, to: current)! }
                 current = cal.date(byAdding: .day, value: interval, to: current)!
                 var cursor = current
-                while cursor <= endOfYear { allDates.append(cursor); cursor = cal.date(byAdding: .day, value: interval, to: cursor)! }
+                while cursor <= horizon { allDates.append(cursor); cursor = cal.date(byAdding: .day, value: interval, to: cursor)! }
             }
             allDates.sort()
             var unique: [Date] = []
             for d in allDates where unique.isEmpty || !cal.isDate(unique.last!, inSameDayAs: d) { unique.append(d) }
 
-            var periods: [PayPeriodInsert] = []
+            // Bound each period by the next start, then keep lookback past periods
+            // plus exactly `futurePeriods` current/future ones (the rolling window).
+            var built: [(start: Date, end: Date)] = []
             for i in unique.indices {
                 let start = unique[i]
                 let end = i < unique.count - 1
                     ? cal.date(byAdding: .day, value: -1, to: unique[i + 1])!
                     : cal.date(byAdding: .day, value: 13, to: start)!
+                built.append((start, end))
+            }
+            var futureCount = 0
+            let kept = built.filter { row in
+                if row.end >= today {
+                    futureCount += 1
+                    return futureCount <= futurePeriods
+                }
+                return true
+            }
+
+            var periods: [PayPeriodInsert] = []
+            for (i, row) in kept.enumerated() {
                 periods.append(PayPeriodInsert(
                     householdId: hid, name: "Pay Period \(i + 1)",
-                    startDay: cal.component(.day, from: start), endDay: cal.component(.day, from: end),
-                    startDate: localDateStr(start), endDate: localDateStr(end)))
+                    startDay: cal.component(.day, from: row.start), endDay: cal.component(.day, from: row.end),
+                    startDate: localDateStr(row.start), endDate: localDateStr(row.end)))
             }
             if !periods.isEmpty { try await client.from("pay_periods").insert(periods).execute() }
             await loadData()

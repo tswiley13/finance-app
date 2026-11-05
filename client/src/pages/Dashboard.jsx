@@ -699,11 +699,19 @@ function Dashboard() {
 
         setLoading(false);
 
-        // Auto-regenerate pay periods if none extend into the current year
-        const currentYear = new Date().getFullYear();
+        // Auto-regenerate so the rolling window stays topped up: trigger when
+        // there are no periods yet, or when fewer than the target (6) still lie
+        // on or ahead of today — i.e. periods have elapsed and the window needs
+        // to roll forward. (Was: only when nothing reached the current year,
+        // which let the projection shrink as the year ran down.)
+        const FUTURE_PERIODS_TARGET = 6;
         const periodsData = periodsRes.data || [];
-        const lastPeriod = [...periodsData].sort((a, b) => new Date(b.end_date) - new Date(a.end_date))[0];
-        if (!lastPeriod || new Date(lastPeriod.end_date + "T12:00:00").getFullYear() < currentYear) {
+        const todayStart = new Date();
+        todayStart.setHours(0, 0, 0, 0);
+        const futureCount = periodsData.filter(
+          (p) => new Date(p.end_date + "T12:00:00") >= todayStart,
+        ).length;
+        if (periodsData.length === 0 || futureCount < FUTURE_PERIODS_TARGET) {
           // Trigger silent regeneration — will run after state is set
           setTimeout(() => regeneratePayPeriods(), 500);
         }
@@ -2206,8 +2214,12 @@ function Dashboard() {
       today.setHours(0, 0, 0, 0);
 
       const allDates = [];
-      const endOfYear = new Date(today.getFullYear(), 11, 31, 23, 59, 59);
       const lookbackDays = 60; // include ~2 months of past periods
+      const futurePeriods = 6; // rolling window of current + next 5 (crosses year-end)
+      // Generate past the window we need, then trim. A (futurePeriods+2)×14-day
+      // horizon always yields at least `futurePeriods` future periods, even for
+      // all-weekly income.
+      const horizon = new Date(today.getTime() + (futurePeriods + 2) * 14 * 86400000);
 
       paychecks.forEach((inc) => {
         const baseDate = new Date(inc.next_pay_date + "T12:00:00");
@@ -2223,9 +2235,9 @@ function Dashboard() {
         }
         current.setDate(current.getDate() + interval); // step forward once to be in range
 
-        // Walk forward from there through end of year
+        // Walk forward from there past the rolling horizon
         const cursor = new Date(current);
-        while (cursor <= endOfYear) {
+        while (cursor <= horizon) {
           allDates.push(new Date(cursor));
           cursor.setDate(cursor.getDate() + interval);
         }
@@ -2238,7 +2250,9 @@ function Dashboard() {
           index === 0 || date.toDateString() !== self[index - 1].toDateString(),
       );
 
-      const periods = [];
+      // Bound each period by the next start, then keep lookback past periods +
+      // exactly `futurePeriods` current/future ones (the rolling window).
+      const built = [];
       for (let i = 0; i < uniqueDates.length; i++) {
         const startDate = new Date(uniqueDates[i]);
         let endDate;
@@ -2249,16 +2263,26 @@ function Dashboard() {
           endDate = new Date(startDate);
           endDate.setDate(startDate.getDate() + 13);
         }
-
-        periods.push({
-          household_id: householdData.id,
-          name: `Pay Period ${i + 1}`,
-          start_day: startDate.getDate(),
-          end_day: endDate.getDate(),
-          start_date: localDateStr(startDate),
-          end_date: localDateStr(endDate),
-        });
+        built.push({ startDate, endDate });
       }
+
+      let futureCount = 0;
+      const kept = built.filter(({ endDate }) => {
+        if (endDate >= today) {
+          futureCount += 1;
+          return futureCount <= futurePeriods;
+        }
+        return true;
+      });
+
+      const periods = kept.map(({ startDate, endDate }, i) => ({
+        household_id: householdData.id,
+        name: `Pay Period ${i + 1}`,
+        start_day: startDate.getDate(),
+        end_day: endDate.getDate(),
+        start_date: localDateStr(startDate),
+        end_date: localDateStr(endDate),
+      }));
 
       // One batched insert (was a loop) — fewer round-trips, and a single error
       // instead of a half-written set.
