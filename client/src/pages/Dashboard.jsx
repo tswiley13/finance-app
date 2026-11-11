@@ -712,8 +712,9 @@ function Dashboard() {
           (p) => new Date(p.end_date + "T12:00:00") >= todayStart,
         ).length;
         if (periodsData.length === 0 || futureCount < FUTURE_PERIODS_TARGET) {
-          // Trigger silent regeneration — will run after state is set
-          setTimeout(() => regeneratePayPeriods(), 500);
+          // Trigger silent regeneration — will run after state is set. silent:true
+          // so it never pops an alert (it runs on every load; a popup would nag).
+          setTimeout(() => regeneratePayPeriods({ silent: true }), 500);
         }
 
         if (connected) {
@@ -2158,7 +2159,15 @@ function Dashboard() {
     setConfirmDeleteMemberId(null);
   }
 
-  async function regeneratePayPeriods() {
+  async function regeneratePayPeriods(opts = {}) {
+    // `silent` = the automatic on-load top-up. It must NEVER show an alert():
+    // these run unprompted on every page load, so a popup (e.g. the household
+    // not being in state yet, a transient 500ms race) would nag the user every
+    // single time the site opens. Manual regenerates (from the button) still
+    // surface errors normally.
+    const silent = opts.silent === true;
+    const tries = opts._tries || 0;
+
     // Guard against concurrent runs (e.g. the auto-trigger firing while a manual
     // regenerate is mid-flight) — interleaved delete/insert duplicates periods.
     if (regenLock.current) return;
@@ -2170,7 +2179,19 @@ function Dashboard() {
     try {
       const householdData = household;
       if (!householdData?.id) {
-        alert("Still loading your household — give it a second and try again.");
+        // Household isn't in state yet (the auto top-up can fire before load
+        // finishes). Don't nag — for the silent path, quietly retry a few times
+        // until it's ready; for a manual click, tell the user once.
+        if (silent) {
+          if (tries < 5) {
+            setTimeout(
+              () => regeneratePayPeriods({ silent: true, _tries: tries + 1 }),
+              1500,
+            );
+          }
+        } else {
+          alert("Still loading your household — give it a second and try again.");
+        }
         return;
       }
 
@@ -2183,7 +2204,8 @@ function Dashboard() {
         .select("*")
         .eq("household_id", householdData.id);
       if (incErr) {
-        alert("Couldn't read your income to rebuild pay periods: " + incErr.message);
+        if (!silent)
+          alert("Couldn't read your income to rebuild pay periods: " + incErr.message);
         return;
       }
 
@@ -2198,15 +2220,16 @@ function Dashboard() {
         .delete()
         .eq("household_id", householdData.id);
       if (delErr) {
-        alert("Couldn't clear old pay periods: " + delErr.message);
+        if (!silent) alert("Couldn't clear old pay periods: " + delErr.message);
         return;
       }
 
       if (paychecks.length === 0) {
         setPayPeriods([]);
-        alert(
-          "No pay periods were generated.\n\nPay periods are built from income that is paid weekly or every 2 weeks and has a \"next pay date\". Go to the Income page and make sure at least one income source has a Biweekly or Weekly frequency and a next pay date set, then regenerate.",
-        );
+        if (!silent)
+          alert(
+            "No pay periods were generated.\n\nPay periods are built from income that is paid weekly or every 2 weeks and has a \"next pay date\". Go to the Income page and make sure at least one income source has a Biweekly or Weekly frequency and a next pay date set, then regenerate.",
+          );
         return;
       }
 
@@ -2288,7 +2311,7 @@ function Dashboard() {
       // instead of a half-written set.
       const { error: insErr } = await supabase.from("pay_periods").insert(periods);
       if (insErr) {
-        alert("Couldn't save the new pay periods: " + insErr.message);
+        if (!silent) alert("Couldn't save the new pay periods: " + insErr.message);
         return;
       }
 
@@ -2301,7 +2324,8 @@ function Dashboard() {
 
       setPayPeriods(newPeriods || []);
     } catch (e) {
-      alert("Pay period regeneration failed: " + (e?.message || String(e)));
+      if (!silent)
+        alert("Pay period regeneration failed: " + (e?.message || String(e)));
     } finally {
       setRegenerating(false);
       setConfirmRegenerate(false);
