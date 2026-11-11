@@ -39,6 +39,13 @@ input:-webkit-autofill:focus {
 html, body {
   margin: 0;
   background-color: #13111F;
+  overflow-x: hidden;
+}
+/* Guard: no element can drag the page wider than the screen and clip content
+   on narrow / foldable (e.g. iPhone Duo) viewports. */
+#root {
+  max-width: 100%;
+  overflow-x: hidden;
 }
 
 /* Phones and tablets (≤1024px) get hamburger menu instead of sidebar */

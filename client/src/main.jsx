@@ -1,36 +1,45 @@
-import { StrictMode } from 'react'
+import { StrictMode, useEffect } from 'react'
 import { createRoot } from 'react-dom/client'
 import { BrowserRouter } from 'react-router-dom'
 import { useRegisterSW } from 'virtual:pwa-register/react'
 import './index.css'
 import App from './App.jsx'
 
-function UpdateBanner() {
-  const { needRefresh: [needRefresh], updateServiceWorker } = useRegisterSW()
-  if (!needRefresh) return null
-  return (
-    <div style={{
-      position: 'fixed', bottom: '16px', left: '50%', transform: 'translateX(-50%)',
-      background: '#6C63FF', color: '#fff', padding: '10px 20px', borderRadius: '10px',
-      display: 'flex', alignItems: 'center', gap: '12px', zIndex: 9999,
-      fontFamily: "'Inter', sans-serif", fontSize: '13px', fontWeight: '500',
-      boxShadow: '0 4px 20px rgba(0,0,0,0.4)',
-    }}>
-      <span>Update available</span>
-      <button
-        onClick={() => updateServiceWorker(true)}
-        style={{ background: '#fff', color: '#6C63FF', border: 'none', borderRadius: '6px', padding: '4px 12px', cursor: 'pointer', fontWeight: '700', fontSize: '12px', fontFamily: "'Inter', sans-serif" }}
-      >
-        Reload
-      </button>
-    </div>
-  )
+// Auto-update: when a new build is deployed, activate it and reload immediately
+// instead of waiting for the user to tap an "Update available" banner. This is
+// what prevents the stale-cached-build problem (an old layout or old pay-period
+// logic lingering on the device after a deploy).
+function PwaAutoUpdate() {
+  const {
+    needRefresh: [needRefresh],
+    updateServiceWorker,
+  } = useRegisterSW({
+    onRegisteredSW(_swUrl, registration) {
+      if (!registration) return
+      const check = () => registration.update().catch(() => {})
+      // Re-check for a newer build hourly, and whenever the app regains focus
+      // (iOS PWAs don't reliably check on their own, so a long-open app would
+      // otherwise sit on a stale build).
+      setInterval(check, 60 * 60 * 1000)
+      document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible') check()
+      })
+    },
+  })
+
+  useEffect(() => {
+    // A new build is ready → activate it and reload. (skipWaiting/clientsClaim
+    // are already on, so this swaps to the new assets in one reload.)
+    if (needRefresh) updateServiceWorker(true)
+  }, [needRefresh, updateServiceWorker])
+
+  return null
 }
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
     <BrowserRouter>
-      <UpdateBanner />
+      <PwaAutoUpdate />
       <App />
     </BrowserRouter>
   </StrictMode>,
