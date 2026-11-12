@@ -59,7 +59,7 @@ export default function Settings() {
     } catch (e) {
       Alert.alert(
         "Couldn't delete account",
-        `${e.message || e}\n\nIf this keeps happening, contact support@stryde.money.`
+        `${e.message || e}\n\nIf this keeps happening, contact hello@desertirontech.com.`
       );
     } finally {
       setDeleting(false);

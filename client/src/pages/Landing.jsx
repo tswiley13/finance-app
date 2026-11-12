@@ -536,11 +536,11 @@ function Landing() {
         <p>Real financial planning for every household. Know exactly where every dollar is going — before the bills hit.</p>
         <div className="landing-hero-cta">
           <button onClick={goToSignUp} style={{ fontSize: "16px", fontWeight: "700", color: "#13111F", background: "linear-gradient(135deg, #6C63FF, #948cf2)", border: "none", borderRadius: "10px", padding: "16px 36px", cursor: "pointer", fontFamily: "'Inter', sans-serif" }}>
-            Start Free Trial
+            Get Started Free
           </button>
           <a href="#demo" style={{ fontSize: "15px", color: "#6E7681", textDecoration: "none", fontWeight: "500" }}>See how it works →</a>
         </div>
-        <p style={{ fontSize: "12px", color: "#4A4F5C", marginTop: "20px" }}>No credit card required · 14-day free trial</p>
+        <p style={{ fontSize: "12px", color: "#4A4F5C", marginTop: "20px" }}>Free while in early access · No credit card required</p>
         <p className="landing-mobile-signin">
           Already have an account?{" "}
           <span onClick={goToSignIn} style={{ color: "#6C63FF", cursor: "pointer", fontWeight: "600" }}>Sign In</span>
@@ -604,52 +604,54 @@ function Landing() {
         <div style={{ maxWidth: "1100px", margin: "0 auto" }}>
           <div style={{ textAlign: "center", marginBottom: "64px" }}>
             <div style={{ fontSize: "11px", fontWeight: "700", letterSpacing: "0.2em", textTransform: "uppercase", color: "#6C63FF", marginBottom: "16px" }}>Pricing</div>
-            <h2 style={{ fontSize: "42px", fontWeight: "800", letterSpacing: "-0.02em", marginBottom: "16px" }}>Simple, transparent pricing</h2>
-            <p style={{ fontSize: "17px", color: "#8B8FA8" }}>Start free. No credit card required.</p>
+            <h2 style={{ fontSize: "42px", fontWeight: "800", letterSpacing: "-0.02em", marginBottom: "16px" }}>Free while in early access</h2>
+            <p style={{ fontSize: "17px", color: "#8B8FA8" }}>Stryde is completely free right now. Paid plans are on the way — nothing is charged today.</p>
           </div>
           <div className="landing-pricing-grid">
-            <div style={{ background: "#161B22", border: "1px solid #30363D", borderRadius: "16px", padding: "36px" }}>
-              <div style={{ fontSize: "14px", fontWeight: "600", color: "#8B8FA8", marginBottom: "8px" }}>Free Trial</div>
+            <div style={{ background: "#161B22", border: "1px solid #6C63FF", borderRadius: "16px", padding: "36px", position: "relative" }}>
+              <div style={{ position: "absolute", top: "-12px", left: "50%", transform: "translateX(-50%)", fontSize: "10px", fontWeight: "700", letterSpacing: "0.1em", textTransform: "uppercase", color: "#13111F", background: "linear-gradient(135deg, #6C63FF, #948cf2)", borderRadius: "20px", padding: "4px 14px" }}>Available Now</div>
+              <div style={{ fontSize: "14px", fontWeight: "600", color: "#8B8FA8", marginBottom: "8px" }}>Early Access</div>
               <div style={{ fontFamily: "'DM Mono', monospace", fontSize: "42px", fontWeight: "700", color: "#F0F6FC", marginBottom: "4px" }}>$0</div>
-              <div style={{ fontSize: "13px", color: "#4A4F5C", marginBottom: "28px" }}>14 days, no card needed</div>
+              <div style={{ fontSize: "13px", color: "#4A4F5C", marginBottom: "28px" }}>Free — no credit card needed</div>
               <div style={{ display: "flex", flexDirection: "column", gap: "12px", marginBottom: "32px" }}>
-                {["Full access to all features", "Up to 2 household members", "Unlimited pay periods"].map((f, i) => (
+                {["Full access to every current feature", "Share with your household", "Unlimited pay periods", "Real-time bank balances (Plaid)"].map((f, i) => (
                   <div key={i} style={{ display: "flex", alignItems: "center", gap: "10px", fontSize: "14px", color: "#8B8FA8" }}>
                     <div style={{ width: "16px", height: "16px", borderRadius: "50%", background: "rgba(0,212,170,0.15)", border: "1px solid rgba(0,212,170,0.3)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><div style={{ width: "5px", height: "5px", borderRadius: "50%", background: "#00D4AA" }} /></div>
                     {f}
                   </div>
                 ))}
               </div>
-              <button onClick={goToSignUp} style={{ width: "100%", padding: "13px", background: "none", border: "1px solid #30363D", borderRadius: "8px", color: "#F0F6FC", fontSize: "14px", fontWeight: "600", fontFamily: "'Inter', sans-serif", cursor: "pointer" }}>Start Free Trial</button>
+              <button onClick={goToSignUp} style={{ width: "100%", padding: "13px", background: "linear-gradient(135deg, #6C63FF, #948cf2)", border: "none", borderRadius: "8px", color: "#13111F", fontSize: "14px", fontWeight: "700", fontFamily: "'Inter', sans-serif", cursor: "pointer" }}>Get Started Free</button>
             </div>
-            <div style={{ background: "#161B22", border: "1px solid #6C63FF", borderRadius: "16px", padding: "36px", position: "relative" }}>
-              <div style={{ position: "absolute", top: "-12px", left: "50%", transform: "translateX(-50%)", fontSize: "10px", fontWeight: "700", letterSpacing: "0.1em", textTransform: "uppercase", color: "#13111F", background: "linear-gradient(135deg, #6C63FF, #948cf2)", borderRadius: "20px", padding: "4px 14px" }}>Most Popular</div>
-              <div style={{ fontSize: "14px", fontWeight: "600", color: "#8B8FA8", marginBottom: "8px" }}>Monthly</div>
-              <div style={{ fontFamily: "'DM Mono', monospace", fontSize: "42px", fontWeight: "700", color: "#F0F6FC", marginBottom: "4px" }}>$9.99<span style={{ fontSize: "18px", color: "#8B8FA8" }}>/mo</span></div>
-              <div style={{ fontSize: "13px", color: "#4A4F5C", marginBottom: "28px" }}>Billed monthly, cancel anytime</div>
+            <div style={{ background: "#161B22", border: "1px solid #30363D", borderRadius: "16px", padding: "36px", position: "relative", opacity: 0.85 }}>
+              <div style={{ position: "absolute", top: "20px", right: "20px", fontSize: "9px", fontWeight: "700", letterSpacing: "0.1em", textTransform: "uppercase", color: "#6C63FF", background: "rgba(108,99,255,0.1)", border: "1px solid rgba(108,99,255,0.2)", borderRadius: "20px", padding: "4px 10px" }}>Coming Soon</div>
+              <div style={{ fontSize: "14px", fontWeight: "600", color: "#8B8FA8", marginBottom: "8px" }}>Premium</div>
+              <div style={{ fontFamily: "'DM Mono', monospace", fontSize: "42px", fontWeight: "700", color: "#F0F6FC", marginBottom: "4px" }}>TBD</div>
+              <div style={{ fontSize: "13px", color: "#4A4F5C", marginBottom: "28px" }}>Planned paid plan — not yet available</div>
               <div style={{ display: "flex", flexDirection: "column", gap: "12px", marginBottom: "32px" }}>
-                {["Everything in free trial", "Unlimited household members", "Real-time bank balances (Plaid)", "AI financial advisor", "Priority support"].map((f, i) => (
+                {["Everything in Early Access", "AI financial advisor (planned)", "Priority support"].map((f, i) => (
                   <div key={i} style={{ display: "flex", alignItems: "center", gap: "10px", fontSize: "14px", color: "#8B8FA8" }}>
                     <div style={{ width: "16px", height: "16px", borderRadius: "50%", background: "rgba(108,99,255,0.15)", border: "1px solid rgba(108,99,255,0.3)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><div style={{ width: "5px", height: "5px", borderRadius: "50%", background: "#6C63FF" }} /></div>
                     {f}
                   </div>
                 ))}
               </div>
-              <button onClick={goToSignUp} style={{ width: "100%", padding: "13px", background: "linear-gradient(135deg, #6C63FF, #948cf2)", border: "none", borderRadius: "8px", color: "#13111F", fontSize: "14px", fontWeight: "700", fontFamily: "'Inter', sans-serif", cursor: "pointer" }}>Get Started</button>
+              <button disabled style={{ width: "100%", padding: "13px", background: "none", border: "1px solid #30363D", borderRadius: "8px", color: "#6E7681", fontSize: "14px", fontWeight: "600", fontFamily: "'Inter', sans-serif", cursor: "default" }}>Coming Soon</button>
             </div>
-            <div style={{ background: "#161B22", border: "1px solid #30363D", borderRadius: "16px", padding: "36px" }}>
+            <div style={{ background: "#161B22", border: "1px solid #30363D", borderRadius: "16px", padding: "36px", position: "relative", opacity: 0.85 }}>
+              <div style={{ position: "absolute", top: "20px", right: "20px", fontSize: "9px", fontWeight: "700", letterSpacing: "0.1em", textTransform: "uppercase", color: "#6C63FF", background: "rgba(108,99,255,0.1)", border: "1px solid rgba(108,99,255,0.2)", borderRadius: "20px", padding: "4px 10px" }}>Coming Soon</div>
               <div style={{ fontSize: "14px", fontWeight: "600", color: "#8B8FA8", marginBottom: "8px" }}>Military & First Responders</div>
-              <div style={{ fontFamily: "'DM Mono', monospace", fontSize: "42px", fontWeight: "700", color: "#F0F6FC", marginBottom: "4px" }}>$7.99<span style={{ fontSize: "18px", color: "#8B8FA8" }}>/mo</span></div>
-              <div style={{ fontSize: "13px", color: "#4A4F5C", marginBottom: "28px" }}>Verified via ID.me or Login.gov</div>
+              <div style={{ fontFamily: "'DM Mono', monospace", fontSize: "42px", fontWeight: "700", color: "#F0F6FC", marginBottom: "4px" }}>TBD</div>
+              <div style={{ fontSize: "13px", color: "#4A4F5C", marginBottom: "28px" }}>A discounted plan is planned for those who serve</div>
               <div style={{ display: "flex", flexDirection: "column", gap: "12px", marginBottom: "32px" }}>
-                {["Everything in Monthly plan", "20% lifetime discount", "Military, police, fire & EMS eligible", "Verification required"].map((f, i) => (
+                {["Everything in Premium", "Discount for military, police, fire & EMS", "Verification at launch"].map((f, i) => (
                   <div key={i} style={{ display: "flex", alignItems: "center", gap: "10px", fontSize: "14px", color: "#8B8FA8" }}>
                     <div style={{ width: "16px", height: "16px", borderRadius: "50%", background: "rgba(0,212,170,0.15)", border: "1px solid rgba(0,212,170,0.3)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><div style={{ width: "5px", height: "5px", borderRadius: "50%", background: "#00D4AA" }} /></div>
                     {f}
                   </div>
                 ))}
               </div>
-              <button onClick={goToSignUp} style={{ width: "100%", padding: "13px", background: "none", border: "1px solid #30363D", borderRadius: "8px", color: "#F0F6FC", fontSize: "14px", fontWeight: "600", fontFamily: "'Inter', sans-serif", cursor: "pointer" }}>Verify & Get Discount</button>
+              <button disabled style={{ width: "100%", padding: "13px", background: "none", border: "1px solid #30363D", borderRadius: "8px", color: "#6E7681", fontSize: "14px", fontWeight: "600", fontFamily: "'Inter', sans-serif", cursor: "default" }}>Coming Soon</button>
             </div>
           </div>
         </div>
@@ -660,9 +662,9 @@ function Landing() {
         <h2>Ready to stop hoping?</h2>
         <p style={{ fontSize: "18px", color: "#8B8FA8", marginBottom: "40px" }}>Join households already planning ahead with Stryde.</p>
         <button onClick={goToSignUp} style={{ fontSize: "16px", fontWeight: "700", color: "#13111F", background: "linear-gradient(135deg, #6C63FF, #948cf2)", border: "none", borderRadius: "10px", padding: "16px 40px", cursor: "pointer", fontFamily: "'Inter', sans-serif" }}>
-          Start Free Trial
+          Get Started Free
         </button>
-        <p style={{ fontSize: "12px", color: "#4A4F5C", marginTop: "16px" }}>No credit card required · 14-day free trial · Cancel anytime</p>
+        <p style={{ fontSize: "12px", color: "#4A4F5C", marginTop: "16px" }}>Free while in early access · No credit card required</p>
       </section>
 
       {/* Footer */}

@@ -521,13 +521,12 @@ function Dashboard() {
   async function syncPlaidBalances(householdId) {
     setPlaidSyncing(true);
     try {
-      console.log("[Plaid] Invoking sync for household:", householdId);
       const { data, error: fnError } = await supabase.functions.invoke("plaid-sync-balances", {
         body: { household_id: householdId },
       });
-      console.log("[Plaid] Edge function response:", data, "error:", fnError);
       if (fnError) {
-        console.error("[Plaid] Edge function error:", fnError);
+        // Log the error only, never account/balance payloads.
+        console.error("[Plaid] Sync failed");
       }
       // Check if bank login has expired (only show warning if token was deleted and nothing synced)
       if (data?.loginRequired) {
@@ -537,14 +536,13 @@ function Dashboard() {
         setPlaidReconnectNeeded(false);
         setPlaidConnected(true);
       }
-      const { data: refreshed, error: dbError } = await supabase.from("accounts").select("*").eq("household_id", householdId);
-      console.log("[Plaid] Refreshed accounts from DB:", refreshed, "db error:", dbError);
+      const { data: refreshed } = await supabase.from("accounts").select("*").eq("household_id", householdId);
       if (refreshed) setAccounts(refreshed);
       const syncedAt = new Date();
       localStorage.setItem("plaidLastSynced", syncedAt.toISOString());
       setPlaidLastSynced(syncedAt);
-    } catch (err) {
-      console.error("[Plaid] Sync threw:", err);
+    } catch {
+      console.error("[Plaid] Sync error");
     }
     setPlaidSyncing(false);
   }
@@ -4260,7 +4258,12 @@ function Dashboard() {
             <h2 style={{ fontFamily: "'Syne', sans-serif", fontSize: "24px" }}>
               Settings
             </h2>
-            <a href="https://desertirontech.com" target="_blank" rel="noopener noreferrer" style={{ fontSize: "12px", color: "#6C63FF", textDecoration: "none" }}>A Desert Iron Technologies product ↗</a>
+            <div style={{ display: "flex", gap: "14px", alignItems: "center", flexWrap: "wrap", marginTop: "2px" }}>
+              <a href="https://desertirontech.com" target="_blank" rel="noopener noreferrer" style={{ fontSize: "12px", color: "#6C63FF", textDecoration: "none" }}>A Desert Iron Technologies product ↗</a>
+              <span style={{ fontSize: "12px", color: "#30363D" }}>·</span>
+              <a href="/privacy" target="_blank" rel="noopener noreferrer" style={{ fontSize: "12px", color: "#8B8FA8", textDecoration: "none" }}>Privacy Policy</a>
+              <a href="/terms" target="_blank" rel="noopener noreferrer" style={{ fontSize: "12px", color: "#8B8FA8", textDecoration: "none" }}>Terms of Service</a>
+            </div>
           </div>
 
           {/* Household */}

@@ -114,6 +114,21 @@ struct SettingsView: View {
                 }
                 .padding(.top, 4)
             }
+
+            // Legal
+            Panel(title: "Legal", count: 0) {
+                VStack(alignment: .leading, spacing: 8) {
+                    Link("Privacy Policy ↗", destination: URL(string: "https://stryde.money/privacy")!)
+                        .font(.system(size: 13)).foregroundStyle(Color.sAccent)
+                    Link("Terms of Service ↗", destination: URL(string: "https://stryde.money/terms")!)
+                        .font(.system(size: 13)).foregroundStyle(Color.sAccent)
+                    Link("A Desert Iron Technologies product ↗", destination: URL(string: "https://desertirontech.com")!)
+                        .font(.system(size: 12)).foregroundStyle(Color.sAccent)
+                    Text("© 2026 Desert Iron Technologies, LLC")
+                        .font(.system(size: 11)).foregroundStyle(Color.sMuted)
+                }
+                .padding(.top, 4)
+            }
         }
         .onAppear {
             name = store.household?.name ?? ""

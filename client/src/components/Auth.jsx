@@ -50,6 +50,13 @@ function AuthPage({ defaultSignUp = false }) {
 
   async function handleOAuth(provider) {
     setError(null);
+    // Google/Apple can create a brand-new account, so the same consent the email
+    // form requires must apply here. When the user is on the sign-up view, make
+    // them agree before we hand off to the provider.
+    if (isSignUp && !agreedToTerms) {
+      setError("You must agree to the Terms of Service and Privacy Policy to create an account.");
+      return;
+    }
     setOauthLoading(provider);
     const { error } = await supabase.auth.signInWithOAuth({
       provider,
@@ -428,6 +435,15 @@ function AuthPage({ defaultSignUp = false }) {
                 </svg>
                 {oauthLoading === "apple" ? "Redirecting…" : "Continue with Apple"}
               </button>
+            </div>
+
+            {/* Consent notice for OAuth — Google/Apple can create an account, so
+                we give the same Terms/Privacy notice the email form requires. */}
+            <div style={{ marginTop: "14px", fontSize: "11px", color: "#6E7681", lineHeight: "1.5", textAlign: "center" }}>
+              By continuing with Google or Apple, you agree to our{" "}
+              <Link to="/terms" target="_blank" style={{ color: "#6C63FF", textDecoration: "none" }}>Terms of Service</Link>
+              {" "}and{" "}
+              <Link to="/privacy" target="_blank" style={{ color: "#6C63FF", textDecoration: "none" }}>Privacy Policy</Link>.
             </div>
 
             <div style={{ marginTop: "24px", textAlign: "center" }}>

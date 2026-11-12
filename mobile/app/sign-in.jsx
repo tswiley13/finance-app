@@ -18,9 +18,16 @@ export default function SignIn() {
   const [oauth, setOauth] = useState(null);
   const [error, setError] = useState(null);
   const [sentEmail, setSentEmail] = useState(false);
+  const [agreed, setAgreed] = useState(false);
+
+  const openLegal = (path) => Linking.openURL("https://stryde.money" + path);
 
   async function submit() {
     setError(null);
+    if (isSignUp && !agreed) {
+      setError("You must agree to the Terms of Service and Privacy Policy to create an account.");
+      return;
+    }
     setLoading(true);
     if (isSignUp) {
       const { error } = await supabase.auth.signUp({ email, password });
@@ -37,6 +44,12 @@ export default function SignIn() {
   // returned tokens back to Supabase (there's no URL for it to auto-detect).
   async function signInWith(provider) {
     setError(null);
+    // Apple/Google can create a new account, so apply the same consent the email
+    // form requires when the user is on the sign-up view.
+    if (isSignUp && !agreed) {
+      setError("You must agree to the Terms of Service and Privacy Policy to create an account.");
+      return;
+    }
     setOauth(provider);
     try {
       const redirectTo = Linking.createURL("/");
@@ -123,6 +136,20 @@ export default function SignIn() {
             </View>
           )}
 
+          {isSignUp && (
+            <Pressable onPress={() => setAgreed(!agreed)} style={s.consentRow}>
+              <View style={[s.checkbox, agreed && s.checkboxOn]}>
+                {agreed && <Text style={s.checkboxTick}>✓</Text>}
+              </View>
+              <Text style={s.consentText}>
+                I agree to the{" "}
+                <Text style={s.link} onPress={() => openLegal("/terms")}>Terms of Service</Text>
+                {" "}and{" "}
+                <Text style={s.link} onPress={() => openLegal("/privacy")}>Privacy Policy</Text>
+              </Text>
+            </Pressable>
+          )}
+
           <Pressable onPress={submit} disabled={loading} style={[s.primaryBtn, loading && { opacity: 0.7 }]}>
             {loading
               ? <ActivityIndicator color="#13111F" />
@@ -154,6 +181,13 @@ export default function SignIn() {
               {oauth === "google" ? "Opening…" : "Continue with Google"}
             </Text>
           </Pressable>
+
+          <Text style={s.oauthConsent}>
+            By continuing with Apple or Google, you agree to our{" "}
+            <Text style={s.link} onPress={() => openLegal("/terms")}>Terms of Service</Text>
+            {" "}and{" "}
+            <Text style={s.link} onPress={() => openLegal("/privacy")}>Privacy Policy</Text>.
+          </Text>
 
           <Pressable onPress={() => { setIsSignUp(!isSignUp); setError(null); }} style={{ marginTop: 20 }}>
             <Text style={s.switchText}>
@@ -219,4 +253,13 @@ const s = StyleSheet.create({
   oauthText: { fontSize: 15, fontWeight: "600" },
   switchText: { color: c.textFaint, fontSize: 14, textAlign: "center" },
   link: { color: c.accent, fontWeight: "600" },
+  consentRow: { flexDirection: "row", alignItems: "flex-start", gap: 10, marginTop: 16 },
+  checkbox: {
+    width: 20, height: 20, borderRadius: 4, borderWidth: 1,
+    borderColor: "rgba(108,99,255,0.5)", alignItems: "center", justifyContent: "center", marginTop: 1,
+  },
+  checkboxOn: { backgroundColor: c.accent, borderColor: c.accent },
+  checkboxTick: { color: "#13111F", fontSize: 13, fontWeight: "900", lineHeight: 16 },
+  consentText: { flex: 1, fontSize: 12, color: c.textFaint, lineHeight: 18 },
+  oauthConsent: { fontSize: 11, color: c.textFaint, lineHeight: 16, textAlign: "center", marginTop: 2 },
 });
