@@ -176,7 +176,7 @@ export default function Settings() {
           </Pressable>
         </Panel>
 
-        <Text style={s.copyright}>© 2026 Desert Iron Technologies</Text>
+        <Text style={s.copyright}>© 2026 Desert Iron Technologies, LLC</Text>
         <Text onPress={() => Linking.openURL("https://desertirontech.com")} style={[s.copyright, { color: c.accent, marginTop: 2 }]}>A Desert Iron Technologies product ↗</Text>
       </ScrollView>
     </SafeAreaView>

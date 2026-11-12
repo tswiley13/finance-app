@@ -668,7 +668,7 @@ function Landing() {
       {/* Footer */}
       <footer className="landing-footer">
         <div style={{ fontSize: "18px", fontWeight: "900", letterSpacing: "0.12em", textTransform: "uppercase" }}>Stryde</div>
-        <div style={{ fontSize: "12px", color: "#4A4F5C" }}>© 2026 Desert Iron Technologies. All rights reserved.</div>
+        <div style={{ fontSize: "12px", color: "#4A4F5C" }}>© 2026 Desert Iron Technologies, LLC. All rights reserved.</div>
         <div style={{ display: "flex", gap: "16px", alignItems: "center" }}>
           <a href="https://desertirontech.com" target="_blank" rel="noopener noreferrer" style={{ fontSize: "12px", color: "#6C63FF", textDecoration: "none" }}>A Desert Iron Technologies product ↗</a>
           <a href="/privacy" style={{ fontSize: "12px", color: "#4A4F5C", textDecoration: "none" }}>Privacy Policy</a>

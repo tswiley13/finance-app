@@ -60,7 +60,7 @@ export default function PrivacyPolicy() {
         ))}
 
         <div style={{ borderTop: "1px solid rgba(255,255,255,0.08)", paddingTop: "32px", marginTop: "16px", fontSize: "12px", color: "#484F58" }}>
-          © 2026 Desert Iron Technologies. All rights reserved.
+          © 2026 Desert Iron Technologies, LLC. All rights reserved.
         </div>
       </div>
     </div>
