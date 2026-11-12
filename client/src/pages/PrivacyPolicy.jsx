@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 const sections = [
   {
     title: "1. Who We Are",
-    body: `Stryde Financial is operated by Desert Iron Technologies ("we," "us," or "our"). We can be reached at traviswiley13@gmail.com.`,
+    body: `Stryde Financial is operated by Desert Iron Technologies ("we," "us," or "our"). We can be reached at hello@desertirontech.com.`,
   },
   {
     title: "2. What We Collect",
@@ -23,11 +23,11 @@ const sections = [
   },
   {
     title: "6. Data Retention",
-    body: `Your data is retained as long as your account is active. You may request deletion of your account and all associated data at any time by emailing traviswiley13@gmail.com.`,
+    body: `Your data is retained as long as your account is active. You may request deletion of your account and all associated data at any time by emailing hello@desertirontech.com.`,
   },
   {
     title: "7. Your Rights",
-    body: `You have the right to access, correct, or delete your personal data at any time. To make a request, contact us at traviswiley13@gmail.com.`,
+    body: `You have the right to access, correct, or delete your personal data at any time. To make a request, contact us at hello@desertirontech.com.`,
   },
   {
     title: "8. Children",
@@ -39,7 +39,7 @@ const sections = [
   },
   {
     title: "10. Contact",
-    body: `traviswiley13@gmail.com`,
+    body: `hello@desertirontech.com`,
   },
 ];
 

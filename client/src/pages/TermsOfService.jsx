@@ -43,7 +43,7 @@ const sections = [
   },
   {
     title: "11. Contact",
-    body: `traviswiley13@gmail.com`,
+    body: `hello@desertirontech.com`,
   },
 ];
 
