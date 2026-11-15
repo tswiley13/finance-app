@@ -78,13 +78,15 @@ function AuthPage({ defaultSignUp = false }) {
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
+          padding: "24px",
           fontFamily: "'Inter', sans-serif",
         }}
       >
         <div
           style={{
-            width: "420px",
-            padding: "48px",
+            width: "100%",
+            maxWidth: "420px",
+            padding: "clamp(28px, 7vw, 48px)",
             background: "#161B22",
             borderRadius: "16px",
             border: "1px solid #30363D",

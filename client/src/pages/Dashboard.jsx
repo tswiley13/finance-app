@@ -113,9 +113,24 @@ const css = `
     .stat-amount { font-size: 20px !important; }
   }
 
+  /* Tablet dead-zone (unfolded foldables, small tablets, split-screen): the
+     sidebar is already gone below 1024px, but the two-column body + 3-across
+     stat rows are too wide to fit. Stack / reflow them below 900px so no page
+     overflows its width. */
+  @media (max-width: 900px) {
+    .dashboard-grid { grid-template-columns: 1fr !important; }
+    .content-grid { grid-template-columns: 1fr !important; }
+    .stat-row { grid-template-columns: repeat(2, 1fr) !important; }
+  }
+
   /* Reclaim horizontal room on phones so the dense What-If rows aren't cramped. */
   @media (max-width: 768px) {
     .content-area { padding: 16px 12px 40px !important; }
+  }
+
+  @media (max-width: 640px) {
+    .stat-row { grid-template-columns: 1fr !important; }
+    .form-grid { grid-template-columns: 1fr !important; }
   }
 
   .desktop-only { display: flex; }
