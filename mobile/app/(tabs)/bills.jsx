@@ -31,7 +31,7 @@ const OWNERS = [
 
 const blank = {
   name: "", amount: "", frequency: "monthly", due_day: null, due_day_2: null,
-  due_month: null, due_date: "", account_id: null, category: "", owner: "joint",
+  due_month: null, due_date: "", start_date: "", account_id: null, category: "", owner: "joint",
   payment_method: "", transfer_to_account_id: null, is_variable: false,
 };
 
@@ -99,6 +99,7 @@ export default function Bills() {
       due_day_2: b.due_day_2 || null,
       due_month: b.due_month || null,
       due_date: b.due_date || "",
+      start_date: b.start_date || "",
       account_id: b.account_id || null,
       category: b.category || "",
       owner: b.owner || "joint",
@@ -144,6 +145,7 @@ export default function Bills() {
       amount: parseFloat(form.amount),
       due_day: isPayday ? 0 : isOneTime ? oneTimeDay : parseInt(form.due_day),
       due_date: isOneTime ? form.due_date : null,
+      start_date: !isOneTime && form.start_date ? form.start_date : null,
       payment_method: form.payment_method || null,
       category: form.category || null,
       owner: form.owner,
@@ -319,6 +321,12 @@ export default function Bills() {
                     options={MONTHS}
                     placeholder="Pick a month"
                   />
+                </Field>
+              )}
+
+              {!isOneTime && (
+                <Field label="Starts On" hint="Leave blank if it's already active. Set a date to start it later — e.g. a new savings transfer beginning next month.">
+                  <DateField value={form.start_date} onChange={(v) => setForm({ ...form, start_date: v })} />
                 </Field>
               )}
 

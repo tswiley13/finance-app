@@ -336,6 +336,7 @@ function Dashboard() {
   const [billFrequency, setBillFrequency] = useState("");
   const [billDueDay2, setBillDueDay2] = useState("");
   const [billDueDate, setBillDueDate] = useState(""); // exact date for a one-time payment
+  const [billStartDate, setBillStartDate] = useState(""); // when a recurring bill first becomes active (blank = already active)
   // Latest dashboard projection, captured during render so Export can reuse the
   // exact numbers shown on the tiles (no re-deriving the pay-period chain).
   const exportRef = useRef({ rows: [], snapshot: null });
@@ -852,6 +853,7 @@ function Dashboard() {
         amount: parseFloat(billAmount),
         due_day: isPayday ? 0 : isOneTime ? oneTimeDay : parseInt(dueDay),
         due_date: isOneTime ? billDueDate : null,
+        start_date: !isOneTime && billStartDate ? billStartDate : null,
         payment_method: paymentMethod,
         category: billCategory,
         owner: billOwner,
@@ -878,6 +880,7 @@ function Dashboard() {
     setBillAmount("");
     setDueDay("");
     setBillDueDate("");
+    setBillStartDate("");
     setPaymentMethod("");
     setBillCategory("");
     setBillOwner("joint");
@@ -917,6 +920,7 @@ function Dashboard() {
         amount: parseFloat(billAmount),
         due_day: editedDueDay,
         due_date: isOneTimeEdit ? billDueDate : null,
+        start_date: !isOneTimeEdit && billStartDate ? billStartDate : null,
         payment_method: paymentMethod,
         category: billCategory,
         owner: billOwner,
@@ -944,6 +948,7 @@ function Dashboard() {
               amount: parseFloat(billAmount),
               due_day: editedDueDay,
               due_date: isOneTimeEdit ? billDueDate : null,
+              start_date: !isOneTimeEdit && billStartDate ? billStartDate : null,
               payment_method: paymentMethod,
               category: billCategory,
               owner: billOwner,
@@ -963,6 +968,7 @@ function Dashboard() {
     setBillAmount("");
     setDueDay("");
     setBillDueDate("");
+    setBillStartDate("");
     setPaymentMethod("");
     setBillCategory("");
     setBillOwner("joint");
@@ -1357,6 +1363,13 @@ function Dashboard() {
 
       const periodBills = bills.filter((bill) => {
         if (!isBillDueInPeriod(bill)) return false;
+
+        // Start date: a bill isn't active until its start_date. If the whole
+        // period ends before it begins, the bill doesn't belong here yet.
+        if (bill.start_date) {
+          const billStart = new Date(bill.start_date + "T00:00:00");
+          if (periodEnd < billStart) return false;
+        }
 
         const freq = bill.frequency || "monthly";
 
@@ -2400,6 +2413,8 @@ function Dashboard() {
         };
         carryOverBills = bills.filter(bill => {
           const freq = bill.frequency || "monthly";
+          // Not active until its start_date — skip if the prev period ends first.
+          if (bill.start_date && prevEnd < new Date(bill.start_date + "T00:00:00")) return false;
           let due = false;
           if (freq === "one-time") {
             if (!bill.due_date) return false;
@@ -6243,6 +6258,8 @@ function Dashboard() {
                 setBillName("");
                 setBillAmount("");
                 setDueDay("");
+                setBillDueDate("");
+                setBillStartDate("");
                 setPaymentMethod("");
                 setBillCategory("");
                 setBillOwner("joint");
@@ -6342,6 +6359,17 @@ function Dashboard() {
                     onChange={(e) => setBillDueDay2(e.target.value)}
                     style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", color: "#F2F0EB", padding: "8px 12px", borderRadius: "6px", fontSize: "13px", fontFamily: "'Inter', sans-serif" }}
                   />
+                )}
+                {billFrequency !== "one-time" && (
+                  <div style={{ display: "flex", alignItems: "center", background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "6px", padding: "0 12px" }} title="Leave blank if this bill is already active. Set a date to start it in the future — e.g. a new savings transfer beginning next month.">
+                    <span style={{ color: "#8B8FA8", fontSize: "11px", textTransform: "uppercase", letterSpacing: "0.04em", whiteSpace: "nowrap", marginRight: "8px" }}>Starts on</span>
+                    <input
+                      type="date"
+                      value={billStartDate}
+                      onChange={(e) => setBillStartDate(e.target.value)}
+                      style={{ background: "none", border: "none", outline: "none", color: "#F2F0EB", padding: "8px 0", fontSize: "13px", fontFamily: "'Inter', sans-serif", width: "100%", colorScheme: "dark" }}
+                    />
+                  </div>
                 )}
                 {(billFrequency === "quarterly" || billFrequency === "annually") && (
                   <select
@@ -6565,6 +6593,7 @@ function Dashboard() {
                                 setBillDueDay2(bill.due_day_2 || "");
                                 setBillDueMonth(bill.due_month || "");
                                 setBillDueDate(bill.due_date || "");
+                                setBillStartDate(bill.start_date || "");
                               }
                             }}
                             style={{ background: "none", border: "1px solid rgba(255,255,255,0.15)", color: "#8B8FA8", padding: "4px 10px", borderRadius: "6px", cursor: "pointer", fontSize: "11px", fontFamily: "'Inter', sans-serif", whiteSpace: "nowrap" }}
@@ -6684,6 +6713,17 @@ function Dashboard() {
                               onChange={(e) => setBillDueDay2(e.target.value)}
                               style={{ background: "#2D2B45", border: "1px solid rgba(255,255,255,0.1)", color: "#F0F6FC", padding: "8px 12px", borderRadius: "6px", fontSize: "13px", fontFamily: "'Inter', sans-serif" }}
                             />
+                          )}
+                          {billFrequency !== "one-time" && (
+                            <div style={{ display: "flex", alignItems: "center", background: "#2D2B45", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "6px", padding: "0 12px" }} title="Leave blank if this bill is already active. Set a date to start it in the future.">
+                              <span style={{ color: "#8B8FA8", fontSize: "11px", textTransform: "uppercase", letterSpacing: "0.04em", whiteSpace: "nowrap", marginRight: "8px" }}>Starts on</span>
+                              <input
+                                type="date"
+                                value={billStartDate}
+                                onChange={(e) => setBillStartDate(e.target.value)}
+                                style={{ background: "none", border: "none", outline: "none", color: "#F0F6FC", padding: "8px 0", fontSize: "13px", fontFamily: "'Inter', sans-serif", width: "100%", colorScheme: "dark" }}
+                              />
+                            </div>
                           )}
                           <select
                             value={paymentMethod}

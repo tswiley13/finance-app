@@ -86,6 +86,14 @@ function dueDayInPeriod(day, periodStart, periodEnd) {
 export function isBillDueInPeriod(bill, periodStart, periodEnd) {
   const freq = bill.frequency || "monthly";
 
+  // Start date — a bill isn't active until its start_date. If the whole period
+  // ends before the bill begins, it doesn't belong here yet. (NULL = already
+  // active.) Applies to recurring bills; a one-time bill carries its own date.
+  if (bill.start_date && freq !== "one-time") {
+    const billStart = new Date(bill.start_date + "T00:00:00");
+    if (periodEnd < billStart) return false;
+  }
+
   // One-time payment — lands only in the single period containing its date.
   if (freq === "one-time") {
     if (!bill.due_date) return false;

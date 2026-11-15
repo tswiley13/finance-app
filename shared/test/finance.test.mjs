@@ -391,6 +391,47 @@ import { isBillDueInPeriod, isOneTimeBillDone } from "../src/index.js";
 
 console.log("✓ one-time payment tests passed");
 
+// ── Bill start_date ──────────────────────────────────────────────────────
+// A recurring bill is not active until its start_date; a period that ends
+// before it begins must not include it. (NULL start_date = always active.)
+{
+  const pStart = new Date("2026-07-16T00:00:00");
+  const pEnd = new Date("2026-07-29T23:59:59");
+  const monthly = { id: "sav", name: "Savings", amount: 200, frequency: "monthly", due_day: 20, account_id: "billsacct" };
+
+  // No start_date → active (due_day 20 lands in the period).
+  assert.ok(isBillDueInPeriod(monthly, pStart, pEnd), "bill with no start_date is active");
+
+  // start_date in the future → the whole period ends before it → excluded.
+  assert.ok(
+    !isBillDueInPeriod({ ...monthly, start_date: "2026-08-01" }, pStart, pEnd),
+    "bill starting Aug 1 is excluded from a July period that ends before it"
+  );
+
+  // start_date inside the period → active (due day still lands).
+  assert.ok(
+    isBillDueInPeriod({ ...monthly, start_date: "2026-07-18" }, pStart, pEnd),
+    "bill starting mid-period is active that period"
+  );
+
+  // start_date in the past → active.
+  assert.ok(
+    isBillDueInPeriod({ ...monthly, start_date: "2026-01-01" }, pStart, pEnd),
+    "bill started in the past is active"
+  );
+
+  // Projection level: a savings bill added now but starting next month only
+  // shows up from the period that reaches its start date onward.
+  const futureSav = { id: "futuresav", name: "New Savings", amount: 150, frequency: "monthly", due_day: 5, start_date: "2026-08-01", account_id: "billsacct" };
+  const savCtx = { ...ctx, bills: [...bills, futureSav] };
+  const savRows = enrichBreakdown(getPayPeriodBreakdown(savCtx), savCtx);
+  const hasSav = (row) => row.bills.some((b) => b.id === "futuresav");
+  assert.ok(!hasSav(savRows[0]), "future-start savings NOT in the first (July) period");
+  assert.ok(savRows.some(hasSav), "future-start savings appears once its start month is reached");
+}
+
+console.log("✓ bill start_date tests passed");
+
 // ── Financial summary export (markdown + csv) ────────────────────────────────
 import { buildFinancialSummary } from "../src/index.js";
 {

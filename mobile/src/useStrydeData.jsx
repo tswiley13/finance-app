@@ -6,14 +6,21 @@
 // calls useStrydeData(), and as a plain hook each one ran its own full fetch —
 // ~10 Supabase queries per tab tap. Loading once and sharing keeps tab changes
 // instant and cheap on cellular.
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "./supabase";
 import {
   getPayPeriodBreakdown,
   enrichBreakdown,
   getMonthlyProjection,
+  buildPayPeriods,
   localDateStr,
 } from "@stryde/shared";
+
+// Keep the rolling pay-period window topped up. The web dashboard does this on
+// load; without a matching check here, a mobile-only user's periods slowly run
+// out (they used to stop ~6 periods out, leaving the "6-Month Outlook" short).
+// We regenerate when coverage drops below ~5 months of the 6-month window.
+const COVERAGE_MONTHS = 5;
 
 const StrydeContext = createContext(null);
 
@@ -120,6 +127,50 @@ export function StrydeDataProvider({ children }) {
   }, []);
 
   useEffect(() => { load(); }, [load]);
+
+  // Auto-extend the rolling pay-period window (once per household per mount).
+  // Only fires when there's cyclic income to build from and the latest period
+  // ends within COVERAGE_MONTHS of today — otherwise it's a no-op. bill_payments
+  // key on period_start dates, not ids, so rebuilding keeps them linked.
+  const extendedFor = useRef(null);
+  useEffect(() => {
+    if (state.loading || !state.household) return;
+    if (extendedFor.current === state.household.id) return;
+
+    const paychecks = (state.income || []).filter((i) => i.frequency !== "monthly" && i.next_pay_date);
+    if (paychecks.length === 0) return; // nothing to generate from
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const threshold = new Date(today);
+    threshold.setMonth(threshold.getMonth() + COVERAGE_MONTHS);
+    const latestEnd = (state.payPeriods || []).reduce((max, p) => {
+      const e = new Date(p.end_date + "T00:00:00");
+      return e > max ? e : max;
+    }, new Date(0));
+
+    if (state.payPeriods.length > 0 && latestEnd >= threshold) return; // still covered
+
+    extendedFor.current = state.household.id; // claim before awaiting — no re-entry
+    (async () => {
+      try {
+        const rows = buildPayPeriods({ income: state.income });
+        if (rows.length === 0) return;
+        const { error: delErr } = await supabase
+          .from("pay_periods").delete().eq("household_id", state.household.id);
+        if (delErr) throw delErr;
+        const { error: insErr } = await supabase
+          .from("pay_periods")
+          .insert(rows.map((r) => ({ ...r, household_id: state.household.id })));
+        if (insErr) throw insErr;
+        await load();
+      } catch (e) {
+        // Non-fatal: the manual Regenerate button on Pay Periods is the fallback.
+        extendedFor.current = null; // allow a retry on the next load
+        console.warn("Auto-extend pay periods failed:", e?.message || e);
+      }
+    })();
+  }, [state.loading, state.household, state.payPeriods, state.income, load]);
 
   // Refetch when the signed-in user changes, so switching accounts doesn't
   // leave the previous household's data on screen.
