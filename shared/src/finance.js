@@ -283,7 +283,7 @@ function buildContributions(ctx, upcomingPeriods, today) {
 // limit defaults to 30 so the full rolling 6-month window (~13 biweekly /
 // ~26 weekly periods) is covered; callers can still pass a smaller cap.
 export function getPayPeriodBreakdown(ctx, limit = 30) {
-  const { payPeriods = [], income = [], bills = [], billPayments = {} } = ctx;
+  const { payPeriods = [], income = [], bills = [], billPayments = {}, accounts = [] } = ctx;
   const today = ctx.today ? new Date(ctx.today) : startOfToday();
   today.setHours(0, 0, 0, 0);
 
@@ -328,6 +328,31 @@ export function getPayPeriodBreakdown(ctx, limit = 30) {
       return sum + Math.max(0, (b.amount || 0) - paid);
     }, 0);
 
+    // Open-ended savings: a bill that transfers into a plain (non-accumulating)
+    // SAVINGS account is "paying yourself." It already counts in billsTotal (the
+    // money leaves checking), so it is NOT subtracted again — these rows only
+    // drive the projected savings balance and an informational per-period line.
+    // Accumulating (goal) accounts keep their own smoothed contribution rows.
+    const savingsContributions = periodBills
+      .filter((b) => {
+        if (!b.transfer_to_account_id) return false;
+        const dest = accounts.find((a) => a.id === b.transfer_to_account_id);
+        return dest && dest.account_type === "savings" && !dest.is_accumulating;
+      })
+      .map((b) => {
+        const dest = accounts.find((a) => a.id === b.transfer_to_account_id);
+        const paid = getBillPaidAmount(billPayments, b.id, period.start_date);
+        return {
+          name: dest.name,
+          accountId: dest.id,
+          billId: b.id,
+          amount: Math.max(0, (b.amount || 0) - paid),
+        };
+      })
+      .filter((c) => c.amount > 0);
+
+    const savingsAdded = savingsContributions.reduce((s, c) => s + c.amount, 0);
+
     return {
       period,
       isCurrentPeriod: periodStart <= today && periodEnd >= today,
@@ -337,6 +362,8 @@ export function getPayPeriodBreakdown(ctx, limit = 30) {
       billsTotal,
       leftOver: periodIncome - billsTotal,
       contributions: allContributions.filter((c) => periodStart < c.dueDate),
+      savingsContributions,
+      savingsAdded,
     };
   });
 }
@@ -349,6 +376,13 @@ export function getPayPeriodBreakdown(ctx, limit = 30) {
 export function getPrimaryBalance(accounts = []) {
   return accounts
     .filter((a) => a.is_primary && !a.is_accumulating && a.account_type !== "savings")
+    .reduce((sum, a) => sum + (a.current_balance || 0), 0);
+}
+
+/** Total currently held across all savings accounts (the "Savings" figure). */
+export function getSavingsBalance(accounts = []) {
+  return accounts
+    .filter((a) => a.account_type === "savings")
     .reduce((sum, a) => sum + (a.current_balance || 0), 0);
 }
 
@@ -416,10 +450,12 @@ export function enrichBreakdown(breakdown, ctx) {
   const today = ctx.today ? new Date(ctx.today) : new Date();
 
   let runningBalance = getPrimaryBalance(accounts);
+  let runningSavings = getSavingsBalance(accounts);
 
   return breakdown.map((item) => {
     const isCurrent = item.isCurrentPeriod;
     const startBalance = runningBalance;
+    const savingsStart = runningSavings;
     const periodKey = item.period.start_date;
 
     // Current period: the primary balance already includes income that landed.
@@ -450,7 +486,21 @@ export function enrichBreakdown(breakdown, ctx) {
     const endBalance = startBalance + pendingIncome - billsForEndBalance;
     runningBalance = endBalance;
 
-    return { ...item, startBalance, pendingIncome, billsDeducted, billsForEndBalance, endBalance, isCurrent };
+    // Projected savings grows by this period's scheduled "pay yourself" transfers.
+    const savingsEnd = savingsStart + (item.savingsAdded || 0);
+    runningSavings = savingsEnd;
+
+    return {
+      ...item,
+      startBalance,
+      pendingIncome,
+      billsDeducted,
+      billsForEndBalance,
+      endBalance,
+      savingsStart,
+      savingsEnd,
+      isCurrent,
+    };
   });
 }
 
@@ -518,11 +568,18 @@ export function getMonthlyProjection(rows, ctx) {
   const current = rows.find((r) => r.isCurrent);
   const fundedThisPeriod = current ? getFundedBillTotal(current, ctx) : 0;
 
+  // Savings: what's held now, and what it projects to at the end of the window
+  // if the scheduled "pay yourself" transfers are followed.
+  const savingsNow = getSavingsBalance(accounts);
+  const projectedSavings = rows.length ? rows[rows.length - 1].savingsEnd ?? savingsNow : savingsNow;
+
   return {
     availableNow,
     incomeThisMonth,
     billsRemaining,
     availableThisMonth: availableNow + incomeThisMonth - billsRemaining + fundedThisPeriod,
+    savingsNow,
+    projectedSavings,
   };
 }
 

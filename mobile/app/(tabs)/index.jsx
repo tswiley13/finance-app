@@ -137,7 +137,11 @@ export default function Dashboard() {
         </View>
         <View style={[s.tileRow, { marginTop: 8 }]}>
           <StatTile label="Savings" value={savings} />
-          <View style={{ flex: 1 }} />
+          {p.projectedSavings > savings ? (
+            <StatTile label="Projected Savings (6 mo)" value={p.projectedSavings} />
+          ) : (
+            <View style={{ flex: 1 }} />
+          )}
         </View>
 
         <View style={s.discRow}>
@@ -427,6 +431,26 @@ function PeriodCard({ row, open, onToggle, d, run }) {
               <Label style={{ marginTop: 12, marginBottom: 4 }}>Bills</Label>
               {row.bills.map((b) => (
                 <BillRow key={b.id} bill={b} periodKey={periodKey} d={d} run={run} />
+              ))}
+            </>
+          )}
+
+          {/* Savings — money paid into savings this period, and the running total */}
+          {row.savingsAdded > 0 && (
+            <>
+              <Divider style={{ marginTop: 10 }} />
+              <View style={[s.rowBetween, { marginTop: 12, alignItems: "center" }]}>
+                <Label>Savings</Label>
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+                  <Text style={{ color: c.textFaint, fontSize: 11 }}>balance →</Text>
+                  <Money value={row.savingsEnd} color={c.accent} size={13} />
+                </View>
+              </View>
+              {row.savingsContributions.map((sv, i) => (
+                <View key={`${sv.accountId}-${i}`} style={[s.rowBetween, { paddingVertical: 7 }]}>
+                  <Text style={{ color: c.text, fontSize: 13, fontWeight: "600" }}>→ {sv.name}</Text>
+                  <Money value={sv.amount} color={c.accent} size={13} />
+                </View>
               ))}
             </>
           )}

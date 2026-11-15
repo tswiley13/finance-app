@@ -521,3 +521,51 @@ console.log("✓ debt payoff-date tests passed");
 }
 
 console.log("✓ planning-fields export tests passed");
+
+// ── Open-ended savings projection ─────────────────────────────────────────────
+// A bill that transfers into a plain savings account is "paying yourself": it
+// reduces available money (billsTotal) AND grows a projected savings balance,
+// with no goal cap. Verifies the savings balance accumulates period over period.
+{
+  const svAccounts = [
+    { id: "spend", name: "Spending", current_balance: 1000, is_primary: true, is_accumulating: false, account_type: "checking" },
+    { id: "sav", name: "Emergency Fund", current_balance: 4000, is_accumulating: false, account_type: "savings" },
+  ];
+  const svPeriods = [
+    { id: "p1", start_date: "2026-07-02", end_date: "2026-07-15" }, // current
+    { id: "p2", start_date: "2026-07-16", end_date: "2026-07-29" },
+    { id: "p3", start_date: "2026-07-30", end_date: "2026-08-12" },
+  ];
+  const svIncome = [
+    { id: "pay", name: "Payroll", fixed_amount: 2000, frequency: "biweekly", next_pay_date: "2026-07-02" },
+  ];
+  const svBills = [
+    // $300 into savings every paycheck
+    { id: "save", name: "Savings", amount: 300, frequency: "payday", account_id: "spend", transfer_to_account_id: "sav" },
+  ];
+  const svCtx = {
+    payPeriods: svPeriods, income: svIncome, bills: svBills, accounts: svAccounts,
+    billPayments: {}, skippedBillPeriods: new Set(), earlyPayments: new Set(),
+    transfers: {}, today: TODAY,
+  };
+  const svRows = enrichBreakdown(getPayPeriodBreakdown(svCtx), svCtx);
+
+  assert.equal(svRows[0].savingsStart, 4000, "savings starts at current balance");
+  assert.equal(svRows[0].savingsAdded, 300, "each period adds the savings transfer");
+  assert.equal(svRows[0].savingsEnd, 4300, "savings grows by 300 in period 1");
+  assert.equal(svRows[1].savingsStart, 4300, "period 2 starts where period 1 ended");
+  assert.equal(svRows[2].savingsEnd, 4900, "savings compounds across all 3 periods");
+
+  // The savings transfer still reduces leftover (money left checking).
+  assert.equal(svRows[0].billsTotal, 300, "savings transfer counts as an outflow");
+
+  // One savings contribution row surfaces per period for the UI.
+  assert.equal(svRows[0].savingsContributions.length, 1, "one savings contribution row");
+  assert.equal(svRows[0].savingsContributions[0].name, "Emergency Fund", "named for the destination account");
+
+  const svProj = getMonthlyProjection(svRows, svCtx);
+  assert.equal(svProj.savingsNow, 4000, "projection reports current savings");
+  assert.equal(svProj.projectedSavings, 4900, "projection reports end-of-window savings");
+
+  console.log("✓ open-ended savings projection tests passed");
+}

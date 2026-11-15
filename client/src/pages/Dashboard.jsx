@@ -1475,6 +1475,30 @@ function Dashboard() {
       // Show Set Aside in all periods where saving is still relevant (due date hasn't passed at period start)
       const contributions = allContributions.filter((c) => periodStart < c.dueDate);
 
+      // Open-ended savings: a bill that transfers into a plain (non-accumulating)
+      // savings account is "paying yourself." It already counts in billsTotal, so
+      // it is not subtracted again — these rows only grow the projected savings
+      // balance and show an informational per-period line.
+      const savingsContributions = periodBills
+        .filter((b) => {
+          if (!b.transfer_to_account_id) return false;
+          const dest = accounts.find((a) => a.id === b.transfer_to_account_id);
+          return dest && dest.account_type === "savings" && !dest.is_accumulating;
+        })
+        .map((b) => {
+          const dest = accounts.find((a) => a.id === b.transfer_to_account_id);
+          const paidAmt = getBillPaidAmount(b.id, period.start_date);
+          return {
+            name: dest.name,
+            accountId: dest.id,
+            billId: b.id,
+            amount: Math.max(0, (b.amount || 0) - paidAmt),
+          };
+        })
+        .filter((c) => c.amount > 0);
+
+      const savingsAdded = savingsContributions.reduce((s, c) => s + c.amount, 0);
+
       return {
         period,
         isCurrentPeriod,
@@ -1484,6 +1508,8 @@ function Dashboard() {
         billsTotal: periodBillsTotal,
         leftOver: periodIncome - periodBillsTotal,
         contributions,
+        savingsContributions,
+        savingsAdded,
       };
     });
   }
@@ -2470,10 +2496,16 @@ function Dashboard() {
         });
       }
 
+      const savingsBalance = accounts
+        .filter((a) => a.account_type === "savings")
+        .reduce((sum, a) => sum + (a.current_balance || 0), 0);
+
       let runningBalance = primaryBalance;
+      let runningSavings = savingsBalance;
       const rows = breakdown.map((item) => {
         const isCurrent = item.isCurrentPeriod;
         const startBalance = runningBalance;
+        const savingsStart = runningSavings;
 
         // Current period: primary balance already reflects any transfers made.
         // Only add income not yet deposited; don't subtract bills already handled.
@@ -2566,7 +2598,11 @@ function Dashboard() {
         const endBalance = startBalance + pendingIncome - billsForEndBalance;
         runningBalance = endBalance;
 
-        return { ...item, startBalance, pendingIncome, billsDeducted, billsForEndBalance, endBalance, isCurrent };
+        // Projected savings grows by this period's scheduled "pay yourself" transfers.
+        const savingsEnd = savingsStart + (item.savingsAdded || 0);
+        runningSavings = savingsEnd;
+
+        return { ...item, startBalance, pendingIncome, billsDeducted, billsForEndBalance, endBalance, savingsStart, savingsEnd, isCurrent };
       });
 
       // Monthly summary — based on current calendar month only
@@ -2656,6 +2692,10 @@ function Dashboard() {
       // Available This Month: what's left after this month's *unfunded* bills.
       const availableThisMonth = primaryBalance + monthIncome - monthBills + fundedThisPeriod;
 
+      // Projected savings at the end of the rolling window, if the scheduled
+      // "pay yourself" transfers are followed.
+      const projectedSavings = rows.length ? (rows[rows.length - 1].savingsEnd ?? savingsBalance) : savingsBalance;
+
       // Snapshot for the Export feature — same numbers as the tiles below.
       exportRef.current = {
         rows,
@@ -2735,7 +2775,12 @@ function Dashboard() {
             </div>
             <div className="stat-card">
               <div className="stat-label">Savings</div>
-              <div className="stat-amount" style={{ color: "#38BDF8" }}>${fmt(accounts.filter((a) => a.account_type === "savings").reduce((s, a) => s + (a.current_balance || 0), 0))}</div>
+              <div className="stat-amount" style={{ color: "#38BDF8" }}>${fmt(savingsBalance)}</div>
+              {projectedSavings > savingsBalance && (
+                <div style={{ fontSize: "11px", color: "#8B8FA8", marginTop: "4px", fontFamily: "'Inter', sans-serif" }}>
+                  → ${fmt(projectedSavings)} in 6 mo
+                </div>
+              )}
             </div>
           </div>
 
@@ -6457,7 +6502,7 @@ function Dashboard() {
                 >
                   <option value="">Transfer to which account?</option>
                   {accounts.map((acct, i) => (
-                    <option key={i} value={acct.id}>{acct.name}{acct.is_accumulating ? " (saving)" : ""}</option>
+                    <option key={i} value={acct.id}>{acct.name}{acct.is_accumulating ? " (goal)" : acct.account_type === "savings" ? " (savings)" : ""}</option>
                   ))}
                 </select>
               )}
@@ -6837,7 +6882,7 @@ function Dashboard() {
                             <option value="">Transfer to which account?</option>
                             {accounts.map((acct, i) => (
                               <option key={i} value={acct.id}>
-                                {acct.name}{acct.is_accumulating ? " (saving)" : ""}
+                                {acct.name}{acct.is_accumulating ? " (goal)" : acct.account_type === "savings" ? " (savings)" : ""}
                               </option>
                             ))}
                           </select>
@@ -7707,6 +7752,23 @@ function Dashboard() {
                                   </div>
                                 )}
                               </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      {item.savingsAdded > 0 && (
+                        <div style={{ borderTop: "1px solid rgba(255,255,255,0.05)", paddingTop: "12px", marginTop: "12px" }}>
+                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
+                            <div style={{ fontSize: "9px", color: "#38BDF8", letterSpacing: "0.12em", textTransform: "uppercase", fontWeight: "600" }}>Savings</div>
+                            <div style={{ fontSize: "11px", color: "#8B8FA8" }}>
+                              balance → <span style={{ fontFamily: "'DM Mono', monospace", color: "#38BDF8" }}>${fmt(item.savingsEnd)}</span>
+                            </div>
+                          </div>
+                          {item.savingsContributions.map((sv, j) => (
+                            <div key={j} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "5px 0", borderBottom: j < item.savingsContributions.length - 1 ? "1px solid rgba(255,255,255,0.04)" : "none" }}>
+                              <div style={{ fontSize: "13px", color: "#F0F6FC", fontWeight: "500" }}>→ {sv.name}</div>
+                              <span style={{ fontFamily: "'DM Mono', monospace", fontSize: "13px", color: "#38BDF8" }}>+${fmt(sv.amount)}</span>
                             </div>
                           ))}
                         </div>
