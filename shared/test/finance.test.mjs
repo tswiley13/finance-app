@@ -567,5 +567,24 @@ console.log("✓ planning-fields export tests passed");
   assert.equal(svProj.savingsNow, 4000, "projection reports current savings");
   assert.equal(svProj.projectedSavings, 4900, "projection reports end-of-window savings");
 
+  // Category-driven linking: a bill whose category is "Savings" and whose account
+  // IS a savings account counts without needing transfer_to_account_id.
+  const catBills = [
+    { id: "save2", name: "Savings", amount: 300, frequency: "payday", account_id: "sav", category: "Savings" },
+  ];
+  const catCtx = { ...svCtx, bills: catBills };
+  const catRows = enrichBreakdown(getPayPeriodBreakdown(catCtx), catCtx);
+  assert.equal(catRows[0].savingsAdded, 300, "category=Savings bill linked by category, no checkbox");
+  assert.equal(catRows[2].savingsEnd, 4900, "category-driven savings compounds the same way");
+
+  // A savings-category bill pointing at a non-savings account does NOT count
+  // (prevents mis-flagging a normal bill as savings).
+  const badCtx = {
+    ...svCtx,
+    bills: [{ id: "x", name: "Savings", amount: 300, frequency: "payday", account_id: "spend", category: "Savings" }],
+  };
+  const badRows = enrichBreakdown(getPayPeriodBreakdown(badCtx), badCtx);
+  assert.equal(badRows[0].savingsAdded, 0, "category=Savings but account isn't savings → not counted");
+
   console.log("✓ open-ended savings projection tests passed");
 }

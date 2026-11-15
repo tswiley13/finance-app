@@ -1475,18 +1475,27 @@ function Dashboard() {
       // Show Set Aside in all periods where saving is still relevant (due date hasn't passed at period start)
       const contributions = allContributions.filter((c) => periodStart < c.dueDate);
 
-      // Open-ended savings: a bill that transfers into a plain (non-accumulating)
-      // savings account is "paying yourself." It already counts in billsTotal, so
+      // Open-ended savings: "paying yourself." It already counts in billsTotal, so
       // it is not subtracted again — these rows only grow the projected savings
-      // balance and show an informational per-period line.
+      // balance and show an informational per-period line. A bill links to savings
+      // either by an explicit transfer, OR by category "Savings" pointing at a
+      // savings account (so the "transfer to another account" box isn't required).
+      const savingsDestFor = (b) => {
+        const isPlainSavings = (a) => a && a.account_type === "savings" && !a.is_accumulating;
+        if (b.transfer_to_account_id) {
+          const dest = accounts.find((a) => a.id === b.transfer_to_account_id);
+          if (isPlainSavings(dest)) return dest;
+        }
+        if ((b.category || "").trim().toLowerCase() === "savings") {
+          const dest = accounts.find((a) => a.id === b.account_id);
+          if (isPlainSavings(dest)) return dest;
+        }
+        return null;
+      };
       const savingsContributions = periodBills
-        .filter((b) => {
-          if (!b.transfer_to_account_id) return false;
-          const dest = accounts.find((a) => a.id === b.transfer_to_account_id);
-          return dest && dest.account_type === "savings" && !dest.is_accumulating;
-        })
         .map((b) => {
-          const dest = accounts.find((a) => a.id === b.transfer_to_account_id);
+          const dest = savingsDestFor(b);
+          if (!dest) return null;
           const paidAmt = getBillPaidAmount(b.id, period.start_date);
           return {
             name: dest.name,
@@ -1495,7 +1504,7 @@ function Dashboard() {
             amount: Math.max(0, (b.amount || 0) - paidAmt),
           };
         })
-        .filter((c) => c.amount > 0);
+        .filter((c) => c && c.amount > 0);
 
       const savingsAdded = savingsContributions.reduce((s, c) => s + c.amount, 0);
 

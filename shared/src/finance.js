@@ -328,19 +328,14 @@ export function getPayPeriodBreakdown(ctx, limit = 30) {
       return sum + Math.max(0, (b.amount || 0) - paid);
     }, 0);
 
-    // Open-ended savings: a bill that transfers into a plain (non-accumulating)
-    // SAVINGS account is "paying yourself." It already counts in billsTotal (the
+    // Open-ended savings: "paying yourself." It already counts in billsTotal (the
     // money leaves checking), so it is NOT subtracted again — these rows only
     // drive the projected savings balance and an informational per-period line.
     // Accumulating (goal) accounts keep their own smoothed contribution rows.
     const savingsContributions = periodBills
-      .filter((b) => {
-        if (!b.transfer_to_account_id) return false;
-        const dest = accounts.find((a) => a.id === b.transfer_to_account_id);
-        return dest && dest.account_type === "savings" && !dest.is_accumulating;
-      })
       .map((b) => {
-        const dest = accounts.find((a) => a.id === b.transfer_to_account_id);
+        const dest = getSavingsDestination(b, accounts);
+        if (!dest) return null;
         const paid = getBillPaidAmount(billPayments, b.id, period.start_date);
         return {
           name: dest.name,
@@ -349,7 +344,7 @@ export function getPayPeriodBreakdown(ctx, limit = 30) {
           amount: Math.max(0, (b.amount || 0) - paid),
         };
       })
-      .filter((c) => c.amount > 0);
+      .filter((c) => c && c.amount > 0);
 
     const savingsAdded = savingsContributions.reduce((s, c) => s + c.amount, 0);
 
@@ -384,6 +379,29 @@ export function getSavingsBalance(accounts = []) {
   return accounts
     .filter((a) => a.account_type === "savings")
     .reduce((sum, a) => sum + (a.current_balance || 0), 0);
+}
+
+/**
+ * The plain (non-accumulating) savings account a bill pays into, or null.
+ *
+ * Two ways a bill counts as "paying yourself":
+ *  1. It explicitly transfers into a savings account (transfer_to_account_id), OR
+ *  2. Its category is "Savings" and the account it names is a savings account —
+ *     so a user doesn't have to also tick the "transfer to another account" box.
+ * Goal (accumulating) accounts are excluded; they use smoothed contribution rows.
+ */
+export function getSavingsDestination(bill, accounts = []) {
+  const isPlainSavings = (a) => a && a.account_type === "savings" && !a.is_accumulating;
+
+  if (bill.transfer_to_account_id) {
+    const dest = accounts.find((a) => a.id === bill.transfer_to_account_id);
+    if (isPlainSavings(dest)) return dest;
+  }
+  if ((bill.category || "").trim().toLowerCase() === "savings") {
+    const dest = accounts.find((a) => a.id === bill.account_id);
+    if (isPlainSavings(dest)) return dest;
+  }
+  return null;
 }
 
 /**
