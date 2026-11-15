@@ -320,6 +320,10 @@ function Dashboard() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [activeNav, setActiveNav] = useState("dashboard");
   const [isMobile, setIsMobile] = useState(typeof window !== "undefined" && window.innerWidth <= 640);
+  // Mid-size widths (unfolded foldables, small tablets, split-screen) are above
+  // the phone breakpoint but too narrow for the multi-column desktop layout —
+  // its wide stat numbers overflow. Treat them as "narrow": stack to one column.
+  const [isNarrow, setIsNarrow] = useState(typeof window !== "undefined" && window.innerWidth <= 900);
   const [scrollToInvite, setScrollToInvite] = useState(false);
   const [editingBill, setEditingBill] = useState(null);
   const [billName, setBillName] = useState("");
@@ -477,7 +481,10 @@ function Dashboard() {
 
   // Track viewport so layouts with fixed-width columns can adapt on phones
   useEffect(() => {
-    const onResize = () => setIsMobile(window.innerWidth <= 640);
+    const onResize = () => {
+      setIsMobile(window.innerWidth <= 640);
+      setIsNarrow(window.innerWidth <= 900);
+    };
     window.addEventListener("resize", onResize);
     return () => window.removeEventListener("resize", onResize);
   }, []);
@@ -3111,10 +3118,10 @@ function Dashboard() {
       // direction of the change (up = ▲); color reflects good/bad (for bills an
       // increase is bad → red ▲, so it never looks like bills "went down").
       const statTile = (label, value, negative, deltaInfo = null) => (
-        <div style={{ background: "#1A1826", border: whatIfMode ? "1px solid rgba(251,191,36,0.25)" : panelBorder, borderRadius: "12px", padding: isMobile ? "16px 14px" : "20px 22px", position: "relative", overflow: "hidden" }}>
+        <div style={{ background: "#1A1826", border: whatIfMode ? "1px solid rgba(251,191,36,0.25)" : panelBorder, borderRadius: "12px", padding: isMobile ? "16px 14px" : "20px 22px", position: "relative", overflow: "hidden", minWidth: 0 }}>
           <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: "1px", background: whatIfMode ? "linear-gradient(90deg, rgba(251,191,36,0.8), transparent)" : "linear-gradient(90deg, rgba(0,212,170,0.8), transparent)" }} />
           <div style={{ fontSize: "10px", color: "#8B8FA8", letterSpacing: "0.1em", textTransform: "uppercase", fontWeight: "600", marginBottom: "10px" }}>{label}</div>
-          <div style={{ fontFamily: "'DM Mono', monospace", fontSize: isMobile ? "19px" : "26px", fontWeight: "500", color: negative ? "#F87171" : "#00D4AA", lineHeight: 1.1, whiteSpace: "nowrap" }}>
+          <div style={{ fontFamily: "'DM Mono', monospace", fontSize: "clamp(17px, 4.2vw, 26px)", fontWeight: "500", color: negative ? "#F87171" : "#00D4AA", lineHeight: 1.1, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
             {value < 0 ? "-" : ""}${fmt(Math.abs(value))}
           </div>
           {whatIfMode && deltaInfo && deltaInfo.amount !== 0 && (
@@ -3300,7 +3307,7 @@ function Dashboard() {
           )}
 
           {/* Stat tiles */}
-          <div style={{ display: "grid", gridTemplateColumns: isMobile ? "repeat(2,1fr)" : "repeat(4,1fr)", gap: isMobile ? "8px" : "12px", marginBottom: "28px" }}>
+          <div style={{ display: "grid", gridTemplateColumns: isMobile ? "repeat(2,1fr)" : "repeat(auto-fit, minmax(230px, 1fr))", gap: isMobile ? "8px" : "12px", marginBottom: "28px" }}>
             {statTile("Monthly Income",    wiMonthlyIncome, false, whatIfMode ? { amount: wiMonthlyIncome - realMonthlyIncome, goodUp: true, unit: "/mo" } : null)}
             {statTile("Monthly Bills",     wiMonthlyBills,  true,  whatIfMode ? { amount: wiMonthlyBills - realMonthlyBills, goodUp: false, unit: "/mo" } : null)}
             {statTile("Monthly Remaining", wiRemaining,     wiRemaining < 0, whatIfMode ? { amount: deltaRemaining, goodUp: true, unit: "/mo" } : null)}
@@ -3332,10 +3339,10 @@ function Dashboard() {
             </div>
           )}
 
-          <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1.45fr 1fr", gap: "12px", alignItems: "start" }}>
+          <div style={{ display: "grid", gridTemplateColumns: isNarrow ? "1fr" : "1.45fr 1fr", gap: "12px", alignItems: "start" }}>
 
             {/* Left: bills — one flat monthly list, not broken into groups */}
-            <div>
+            <div style={{ minWidth: 0 }}>
               <div style={{ fontSize: "11px", color: "#8B8FA8", letterSpacing: "0.1em", textTransform: "uppercase", fontWeight: "600", marginBottom: "12px" }}>Bills</div>
               {(() => {
                 let flatBills = allBillsForView.filter(b => (b.frequency || "monthly") !== "one-time");
@@ -3400,7 +3407,7 @@ function Dashboard() {
             </div>
 
             {/* Right: income + summary */}
-            <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: "12px", minWidth: 0 }}>
               {/* Column header mirrors "Bills Breakdown" so the Income card lines
                   up with the Every Paycheck card (the 12px flex gap matches the
                   left header's 12px margin). */}
@@ -4741,10 +4748,10 @@ function Dashboard() {
       const leftToBudget = monthlyIncome - totalBudgeted;
 
       const tile = (label, value, accent, sign) => (
-        <div style={{ background: "#1A1826", border: panelBorder, borderRadius: "12px", padding: isMobile ? "16px 14px" : "20px 22px", position: "relative", overflow: "hidden" }}>
+        <div style={{ background: "#1A1826", border: panelBorder, borderRadius: "12px", padding: isMobile ? "16px 14px" : "20px 22px", position: "relative", overflow: "hidden", minWidth: 0 }}>
           <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: "1px", background: `linear-gradient(90deg, ${accent}, transparent)` }} />
           <div style={{ fontSize: "10px", color: "#8B8FA8", letterSpacing: "0.1em", textTransform: "uppercase", fontWeight: "600", marginBottom: "10px" }}>{label}</div>
-          <div style={{ fontFamily: "'DM Mono', monospace", fontSize: isMobile ? "19px" : "26px", fontWeight: "500", color: accent, lineHeight: 1.1, whiteSpace: "nowrap" }}>
+          <div style={{ fontFamily: "'DM Mono', monospace", fontSize: "clamp(17px, 4.2vw, 26px)", fontWeight: "500", color: accent, lineHeight: 1.1, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
             {sign && value < 0 ? "-" : ""}${fmt(Math.abs(value))}
           </div>
         </div>
@@ -4788,7 +4795,7 @@ function Dashboard() {
             </div>
           ) : (
             <>
-              <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr 1fr" : "repeat(4, 1fr)", gap: "12px", marginBottom: "16px" }}>
+              <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr 1fr" : "repeat(auto-fit, minmax(230px, 1fr))", gap: "12px", marginBottom: "16px" }}>
                 {tile("Monthly Income", monthlyIncome, "#00D4AA")}
                 {tile("Budgeted", totalBudgeted, "#6C63FF")}
                 {tile("In Bills", totalBills, "#F59E0B")}
