@@ -2,7 +2,7 @@
 //
 // Periods are derived entirely from income: every non-monthly source's
 // next_pay_date is walked backwards into a lookback window, then forward as a
-// rolling window of the next `futurePeriods` paychecks. Each paycheck date
+// rolling window covering the next `windowMonths` months. Each paycheck date
 // starts a period that runs until the day before the next one.
 
 import { localDateStr } from "./dates.js";
@@ -11,19 +11,20 @@ import { localDateStr } from "./dates.js";
  * Build the pay period rows for a household. Pure — returns rows to insert,
  * it does not touch the database.
  *
- * Forward coverage is a ROLLING WINDOW: it keeps the current period plus the
- * next `futurePeriods - 1` ahead of today, crossing the year boundary. (It used
- * to stop at Dec 31, which quietly shrank the projection to 1 period by late
- * December.) Past periods inside the lookback window are kept for context.
+ * Forward coverage is a ROLLING WINDOW: it keeps every current/future period
+ * whose start falls within `windowMonths` months of today, crossing the year
+ * boundary. (It used to keep a fixed 6 periods, and before that stopped at Dec
+ * 31.) A month-based window is a consistent half-year regardless of pay cadence
+ * (~13 biweekly / ~26 weekly). Past periods inside the lookback window are kept.
  *
  * @param income        income rows; monthly sources are ignored (they don't
  *                      define a pay *cycle*, they just land inside one)
  * @param today         defaults to now
  * @param lookbackDays  how much history to keep (default ~2 months)
- * @param futurePeriods how many current-or-future periods to project (default 6)
+ * @param windowMonths  how many months of current/future coverage (default 6)
  * @returns [{ name, start_day, end_day, start_date, end_date }]
  */
-export function buildPayPeriods({ income = [], today = new Date(), lookbackDays = 60, futurePeriods = 6 } = {}) {
+export function buildPayPeriods({ income = [], today = new Date(), lookbackDays = 60, windowMonths = 6 } = {}) {
   const start = new Date(today);
   start.setHours(0, 0, 0, 0);
 
@@ -31,10 +32,11 @@ export function buildPayPeriods({ income = [], today = new Date(), lookbackDays 
   if (paychecks.length === 0) return [];
 
   const lookbackFloor = new Date(start.getTime() - lookbackDays * 86400000);
-  // Generate comfortably past the window we need, then trim. Even all-weekly
-  // sources can't add more than one boundary per 7 days, so a (futurePeriods+2)
-  // × 14-day horizon always yields at least `futurePeriods` future periods.
-  const horizon = new Date(start.getTime() + (futurePeriods + 2) * 14 * 86400000);
+  // The rolling window end, and a horizon one period beyond it so the last kept
+  // period is bounded by a real next-start rather than the +13-day fallback.
+  const windowEnd = new Date(start);
+  windowEnd.setMonth(windowEnd.getMonth() + windowMonths);
+  const horizon = new Date(windowEnd.getTime() + 14 * 86400000);
 
   const allDates = [];
   paychecks.forEach((inc) => {
@@ -74,15 +76,11 @@ export function buildPayPeriods({ income = [], today = new Date(), lookbackDays 
     return { startDate, endDate };
   });
 
-  // Keep the lookback past periods, plus exactly `futurePeriods` current/future
-  // ones (end_date on or after today) — the rolling window.
-  let futureCount = 0;
-  const kept = rows.filter(({ endDate }) => {
-    if (endDate >= start) {
-      futureCount += 1;
-      return futureCount <= futurePeriods;
-    }
-    return true;
+  // Keep the lookback past periods, plus every current/future period that
+  // starts within the rolling window (start_date on or before windowEnd).
+  const kept = rows.filter(({ startDate, endDate }) => {
+    if (endDate < start) return true;     // past lookback periods
+    return startDate <= windowEnd;         // future periods within the window
   });
 
   return kept.map(({ startDate, endDate }, i) => ({

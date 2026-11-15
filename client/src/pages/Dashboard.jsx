@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, Fragment } from "react";
 import { useSearchParams } from "react-router-dom";
 import { buildFinancialSummary } from "../financialSummary";
 import { usePlaidLink } from "react-plaid-link";
@@ -455,6 +455,10 @@ function Dashboard() {
     } catch { return null; }
   });
   const [expandedPeriods, setExpandedPeriods] = useState(new Set([0]));
+  // Dashboard pay-period view: "next6" = detailed cards for the next 6 periods
+  // (default); "outlook" = the full rolling 6-month window, condensed and
+  // grouped by month.
+  const [periodView, setPeriodView] = useState("next6");
   const [skippedBillPeriods, setSkippedBillPeriods] = useState(new Set());
   const [minimumBuffer, setMinimumBuffer] = useState("");
   const [isSaving, setIsSaving] = useState(false);
@@ -697,19 +701,20 @@ function Dashboard() {
 
         setLoading(false);
 
-        // Auto-regenerate so the rolling window stays topped up: trigger when
-        // there are no periods yet, or when fewer than the target (6) still lie
-        // on or ahead of today — i.e. periods have elapsed and the window needs
-        // to roll forward. (Was: only when nothing reached the current year,
-        // which let the projection shrink as the year ran down.)
-        const FUTURE_PERIODS_TARGET = 6;
+        // Auto-regenerate so the rolling 6-month window stays topped up: trigger
+        // when there are no periods yet, or when coverage drops below ~5 months
+        // ahead (a 1-month buffer below the 6-month target so it doesn't
+        // regenerate on every single load as periods elapse).
         const periodsData = periodsRes.data || [];
         const todayStart = new Date();
         todayStart.setHours(0, 0, 0, 0);
-        const futureCount = periodsData.filter(
-          (p) => new Date(p.end_date + "T12:00:00") >= todayStart,
-        ).length;
-        if (periodsData.length === 0 || futureCount < FUTURE_PERIODS_TARGET) {
+        const coverageThreshold = new Date(todayStart);
+        coverageThreshold.setMonth(coverageThreshold.getMonth() + 5);
+        const latestEnd = periodsData.reduce((max, p) => {
+          const d = new Date(p.end_date + "T12:00:00");
+          return d > max ? d : max;
+        }, new Date(0));
+        if (periodsData.length === 0 || latestEnd < coverageThreshold) {
           // Trigger silent regeneration — will run after state is set. silent:true
           // so it never pops an alert (it runs on every load; a popup would nag).
           setTimeout(() => regeneratePayPeriods({ silent: true }), 500);
@@ -1242,7 +1247,9 @@ function Dashboard() {
         return end >= today;
       })
       .sort((a, b) => new Date(a.start_date) - new Date(b.start_date))
-      .slice(0, 10);
+      // Up to the full rolling 6-month window (~13 biweekly / ~26 weekly); the
+      // dashboard tabs then show either the first 6 or all of these.
+      .slice(0, 30);
 
     // Pre-compute per-period contributions from accumulating accounts with a due_day
     const allContributions = [];
@@ -2236,11 +2243,17 @@ function Dashboard() {
 
       const allDates = [];
       const lookbackDays = 60; // include ~2 months of past periods
-      const futurePeriods = 6; // rolling window of current + next 5 (crosses year-end)
-      // Generate past the window we need, then trim. A (futurePeriods+2)×14-day
-      // horizon always yields at least `futurePeriods` future periods, even for
-      // all-weekly income.
-      const horizon = new Date(today.getTime() + (futurePeriods + 2) * 14 * 86400000);
+      // Rolling 6-MONTH planning window (was a fixed 6 periods). We keep every
+      // period whose start falls within 6 months of today, so the horizon is a
+      // consistent half-year regardless of pay cadence (~13 biweekly / ~26
+      // weekly). The dashboard shows the first 6 on the "Next 6" tab and all of
+      // them on the "6-Month Outlook" tab.
+      const WINDOW_MONTHS = 6;
+      const windowEnd = new Date(today);
+      windowEnd.setMonth(windowEnd.getMonth() + WINDOW_MONTHS);
+      // Generate one extra period beyond the window so the last kept period is
+      // bounded by a real next-start rather than the +13-day fallback.
+      const horizon = new Date(windowEnd.getTime() + 14 * 86400000);
 
       paychecks.forEach((inc) => {
         const baseDate = new Date(inc.next_pay_date + "T12:00:00");
@@ -2272,7 +2285,7 @@ function Dashboard() {
       );
 
       // Bound each period by the next start, then keep lookback past periods +
-      // exactly `futurePeriods` current/future ones (the rolling window).
+      // every current/future period that starts within the 6-month window.
       const built = [];
       for (let i = 0; i < uniqueDates.length; i++) {
         const startDate = new Date(uniqueDates[i]);
@@ -2287,13 +2300,9 @@ function Dashboard() {
         built.push({ startDate, endDate });
       }
 
-      let futureCount = 0;
-      const kept = built.filter(({ endDate }) => {
-        if (endDate >= today) {
-          futureCount += 1;
-          return futureCount <= futurePeriods;
-        }
-        return true;
+      const kept = built.filter(({ startDate, endDate }) => {
+        if (endDate < today) return true;      // keep past lookback periods
+        return startDate <= windowEnd;          // keep future periods within 6 months
       });
 
       const periods = kept.map(({ startDate, endDate }, i) => ({
@@ -2712,11 +2721,30 @@ function Dashboard() {
 
           <div className="dashboard-grid">
             <div className="dashboard-left">
+              {/* Pay-period view tabs: Next 6 (detailed) vs 6-Month Outlook (condensed, grouped by month) */}
+              <div style={{ display: "flex", gap: "4px", marginBottom: "12px", background: "rgba(255,255,255,0.04)", borderRadius: "8px", padding: "4px", width: "fit-content" }}>
+                {[["next6", "Next 6"], ["outlook", "6-Month Outlook"]].map(([key, label]) => (
+                  <button key={key} type="button" onClick={() => setPeriodView(key)}
+                    style={{ padding: "7px 14px", fontSize: "12px", fontWeight: "600", fontFamily: "'Inter', sans-serif", border: "none", borderRadius: "6px", cursor: "pointer", background: periodView === key ? "#6C63FF" : "transparent", color: periodView === key ? "#fff" : "#8B8FA8" }}>
+                    {label}
+                  </button>
+                ))}
+              </div>
               <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
                 {rows.map((item, i) => {
+                  if (periodView === "next6" && i >= 6) return null;
                   const isExpanded = expandedPeriods.has(i);
+                  const outlook = periodView === "outlook";
+                  const monthOf = (ds) => new Date(ds + "T12:00:00").toLocaleString("en-US", { month: "long", year: "numeric" });
+                  const showMonthHeader = outlook && (i === 0 || monthOf(item.period.start_date) !== monthOf(rows[i - 1].period.start_date));
                   return (
-                  <div key={i} className="panel" style={{ borderLeft: item.isCurrent ? "3px solid #6C63FF" : "3px solid transparent" }}>
+                  <Fragment key={i}>
+                  {showMonthHeader && (
+                    <div style={{ fontSize: "11px", fontWeight: "700", color: "#6C63FF", letterSpacing: "0.12em", textTransform: "uppercase", marginTop: i === 0 ? "0" : "6px" }}>
+                      {monthOf(item.period.start_date)}
+                    </div>
+                  )}
+                  <div className="panel" style={{ borderLeft: item.isCurrent ? "3px solid #6C63FF" : "3px solid transparent" }}>
                     {/* Card header */}
                     <div
                       onClick={() => setExpandedPeriods(prev => { const n = new Set(prev); n.has(i) ? n.delete(i) : n.add(i); return n; })}
@@ -2740,7 +2768,13 @@ function Dashboard() {
                           </div>
                         )}
                       </div>
-                      <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: "14px" }}>
+                        {outlook && !isExpanded && (
+                          <div style={{ textAlign: "right", display: "flex", flexDirection: "column", gap: "2px" }}>
+                            <div style={{ fontFamily: "'DM Mono', monospace", fontSize: "12px", color: "#4ADE80" }}>+${fmt(item.pendingIncome)}</div>
+                            <div style={{ fontFamily: "'DM Mono', monospace", fontSize: "12px", color: "#F87171" }}>-${fmt(item.billsDeducted)}</div>
+                          </div>
+                        )}
                         <div style={{ textAlign: "right" }}>
                           <div style={{ fontSize: "9px", color: "#8B8FA8", letterSpacing: "0.1em", textTransform: "uppercase", fontWeight: "600", marginBottom: "3px" }}>End Balance</div>
                           <div style={{ fontFamily: "'DM Mono', monospace", fontSize: "22px", fontWeight: "500", color: item.endBalance < 0 ? "#F87171" : "#4ADE80" }}>
@@ -2966,6 +3000,7 @@ function Dashboard() {
                     </>
                     )}
                   </div>
+                  </Fragment>
                   );
                 })}
               </div>

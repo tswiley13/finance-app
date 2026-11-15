@@ -272,7 +272,9 @@ function buildContributions(ctx, upcomingPeriods, today) {
  * Build the upcoming pay periods with their income + bills.
  * Returns items: { period, isCurrentPeriod, income, incomeItems, bills, billsTotal, leftOver, contributions }
  */
-export function getPayPeriodBreakdown(ctx, limit = 10) {
+// limit defaults to 30 so the full rolling 6-month window (~13 biweekly /
+// ~26 weekly periods) is covered; callers can still pass a smaller cap.
+export function getPayPeriodBreakdown(ctx, limit = 30) {
   const { payPeriods = [], income = [], bills = [], billPayments = {} } = ctx;
   const today = ctx.today ? new Date(ctx.today) : startOfToday();
   today.setHours(0, 0, 0, 0);

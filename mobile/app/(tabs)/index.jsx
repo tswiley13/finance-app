@@ -20,7 +20,9 @@ import { c, mono } from "../../src/theme";
 export default function Dashboard() {
   const d = useStrydeData();
   const [expanded, setExpanded] = useState({ 0: true });
-  const [showUpcoming, setShowUpcoming] = useState(false);
+  // "next6" = current + next 5 periods (detailed). "outlook" = the full rolling
+  // 6-month window, grouped by month.
+  const [periodView, setPeriodView] = useState("next6");
   const [busy, setBusy] = useState(false);
 
   const gate = dataGate(d);
@@ -194,45 +196,51 @@ export default function Dashboard() {
         )}
 
         {upcoming.length > 0 && (
-          <Panel style={{ marginBottom: 10, padding: 0, overflow: "hidden" }}>
-            <Pressable onPress={() => setShowUpcoming((v) => !v)} style={s.upcomingHeader}>
-              {/* Spacer balances the chevron so the text centers on the tile,
-                  not on the space left over beside it. */}
-              <View style={s.chevronSlot} />
-              <View style={{ flex: 1 }}>
-                <Text style={[s.upcomingTitle, { textAlign: "center" }]}>Upcoming Pay Periods</Text>
-                <Text style={[s.faintSm, { textAlign: "center" }]}>
-                  {upcoming.length} period{upcoming.length === 1 ? "" : "s"}
-                  {lastUpcoming ? ` · through ${fmtDate(lastUpcoming.period.end_date)}` : ""}
-                </Text>
-              </View>
-              <View style={[s.chevronSlot, { alignItems: "flex-end" }]}>
-                <Ionicons
-                  name={showUpcoming ? "chevron-up" : "chevron-down"}
-                  size={16}
-                  color={c.textFaint}
-                />
-              </View>
-            </Pressable>
+          <>
+            {/* Tabs: Next 6 (detailed, near-term) vs 6-Month Outlook (all periods,
+                grouped by month). */}
+            <View style={s.periodTabs}>
+              {[["next6", "Next 6"], ["outlook", "6-Month Outlook"]].map(([key, label]) => (
+                <Pressable
+                  key={key}
+                  onPress={() => setPeriodView(key)}
+                  style={[s.periodTab, periodView === key && s.periodTabOn]}
+                >
+                  <Text style={[s.periodTabText, periodView === key && s.periodTabTextOn]}>{label}</Text>
+                </Pressable>
+              ))}
+            </View>
 
-            {showUpcoming && (
-              <View style={s.upcomingBody}>
-                {upcoming.map((row, i) => {
-                  const idx = d.rows.indexOf(row);
-                  return (
+            {(() => {
+              const shown = periodView === "next6" ? upcoming.slice(0, 5) : upcoming;
+              const monthOf = (ds) => new Date(ds + "T12:00:00").toLocaleString("en-US", { month: "long", year: "numeric" });
+              let lastMonth = null;
+              return shown.map((row, i) => {
+                const idx = d.rows.indexOf(row);
+                const m = monthOf(row.period.start_date);
+                const showHeader = periodView === "outlook" && m !== lastMonth;
+                lastMonth = m;
+                return (
+                  <View key={row.period.id || `u${i}`}>
+                    {showHeader && <Text style={s.monthHeader}>{m}</Text>}
                     <PeriodCard
-                      key={row.period.id || `u${i}`}
                       row={row}
                       open={!!expanded[idx]}
                       onToggle={() => setExpanded((e) => ({ ...e, [idx]: !e[idx] }))}
                       d={d}
                       run={run}
                     />
-                  );
-                })}
-              </View>
+                  </View>
+                );
+              });
+            })()}
+
+            {periodView === "next6" && upcoming.length > 5 && (
+              <Pressable onPress={() => setPeriodView("outlook")} style={{ paddingVertical: 10, alignItems: "center" }}>
+                <Text style={s.faintSm}>+{upcoming.length - 5} more · see 6-Month Outlook</Text>
+              </Pressable>
             )}
-          </Panel>
+          </>
         )}
 
         {/* Next period's pre-fund lives down here on purpose: it's planning
@@ -594,6 +602,12 @@ const s = StyleSheet.create({
   periodTitle: { color: c.text, fontSize: 14, fontWeight: "600" },
   faint: { color: c.textMuted, fontSize: 11 },
   faintSm: { color: c.textFaint, fontSize: 10, marginTop: 1 },
+  periodTabs: { flexDirection: "row", gap: 4, backgroundColor: "rgba(255,255,255,0.04)", borderRadius: 8, padding: 4, marginBottom: 12, alignSelf: "flex-start" },
+  periodTab: { paddingHorizontal: 14, paddingVertical: 7, borderRadius: 6 },
+  periodTabOn: { backgroundColor: c.accent },
+  periodTabText: { color: c.textFaint, fontSize: 12, fontWeight: "600" },
+  periodTabTextOn: { color: "#fff" },
+  monthHeader: { color: c.accent, fontSize: 11, fontWeight: "700", letterSpacing: 1, textTransform: "uppercase", marginTop: 6, marginBottom: 8 },
   subTile: { flex: 1, backgroundColor: "rgba(255,255,255,0.03)", borderRadius: 8, padding: 9 },
   undo: { color: c.textFaint, fontSize: 11, textDecorationLine: "underline" },
   paidBtn: {
