@@ -2508,6 +2508,7 @@ function Dashboard() {
       const savingsBalance = accounts
         .filter((a) => a.account_type === "savings")
         .reduce((sum, a) => sum + (a.current_balance || 0), 0);
+      const hasSavings = accounts.some((a) => a.account_type === "savings");
 
       let runningBalance = primaryBalance;
       let runningSavings = savingsBalance;
@@ -2878,8 +2879,8 @@ function Dashboard() {
 
                     {isExpanded && (
                     <>
-                    {/* 3 tiles: Start | Income | Bills */}
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "8px" }}>
+                    {/* Start | Income | Bills | Savings (Savings only when a savings account exists) */}
+                    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(110px, 1fr))", gap: "8px" }}>
                       <div style={{ background: "rgba(255,255,255,0.03)", borderRadius: "8px", padding: "10px 12px" }}>
                         <div style={{ fontSize: "9px", color: "#8B8FA8", letterSpacing: "0.1em", textTransform: "uppercase", fontWeight: "600", marginBottom: "4px" }}>Start</div>
                         <div style={{ fontFamily: "'DM Mono', monospace", fontSize: "14px", color: "#8B8FA8" }}>${fmt(item.startBalance)}</div>
@@ -2911,6 +2912,15 @@ function Dashboard() {
                           );
                         })()}
                       </div>
+                      {hasSavings && (
+                        <div style={{ background: "rgba(56,189,248,0.06)", borderRadius: "8px", padding: "10px 12px", minWidth: 0 }}>
+                          <div style={{ fontSize: "9px", color: "#38BDF8", letterSpacing: "0.1em", textTransform: "uppercase", fontWeight: "600", marginBottom: "4px" }}>Savings</div>
+                          <div style={{ fontFamily: "'DM Mono', monospace", fontSize: "14px", color: "#38BDF8", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>${fmt(item.savingsEnd ?? 0)}</div>
+                          {item.savingsAdded > 0 && (
+                            <div style={{ fontSize: "9px", color: "#8B8FA8", marginTop: "3px" }}>+${fmt(item.savingsAdded)} this period</div>
+                          )}
+                        </div>
+                      )}
                     </div>
 
                     {/* Income list */}
@@ -7519,7 +7529,19 @@ function Dashboard() {
           </div>
           <div className="dashboard-grid">
             <div className="dashboard-left">
-              {getPayPeriodBreakdown().map((item, i) => (
+              {(() => {
+                // Enrich with a running projected savings balance (the raw
+                // breakdown doesn't carry it) so every card can show Savings.
+                const ppHasSavings = accounts.some((a) => a.account_type === "savings");
+                let ppRunSav = accounts
+                  .filter((a) => a.account_type === "savings")
+                  .reduce((s, a) => s + (a.current_balance || 0), 0);
+                return getPayPeriodBreakdown().map((it) => {
+                  const savingsEnd = ppRunSav + (it.savingsAdded || 0);
+                  ppRunSav = savingsEnd;
+                  return { ...it, savingsEnd, _hasSavings: ppHasSavings };
+                });
+              })().map((item, i) => (
                 <div
                   key={i}
                   className="panel"
@@ -7639,12 +7661,12 @@ function Dashboard() {
                       <div
                         style={{
                           display: "grid",
-                          gridTemplateColumns: "1fr 1fr 1fr",
+                          gridTemplateColumns: "repeat(auto-fit, minmax(110px, 1fr))",
                           gap: "8px",
                           marginBottom: item.bills.length > 0 || item.contributions?.length > 0 ? "12px" : "0",
                         }}
                       >
-                        <div style={{ background: "rgba(255,255,255,0.03)", borderRadius: "8px", padding: "10px 12px" }}>
+                        <div style={{ background: "rgba(255,255,255,0.03)", borderRadius: "8px", padding: "10px 12px", minWidth: 0 }}>
                           <div style={{ fontSize: "9px", color: "#8B8FA8", letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: "4px", fontWeight: "600" }}>
                             Income
                           </div>
@@ -7652,7 +7674,7 @@ function Dashboard() {
                             ${fmt(item.income)}
                           </div>
                         </div>
-                        <div style={{ background: "rgba(255,255,255,0.03)", borderRadius: "8px", padding: "10px 12px" }}>
+                        <div style={{ background: "rgba(255,255,255,0.03)", borderRadius: "8px", padding: "10px 12px", minWidth: 0 }}>
                           <div style={{ fontSize: "9px", color: "#8B8FA8", letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: "4px", fontWeight: "600" }}>
                             Bills
                           </div>
@@ -7660,7 +7682,7 @@ function Dashboard() {
                             ${fmt(item.billsTotal)}
                           </div>
                         </div>
-                        <div style={{ background: "rgba(255,255,255,0.03)", borderRadius: "8px", padding: "10px 12px" }}>
+                        <div style={{ background: "rgba(255,255,255,0.03)", borderRadius: "8px", padding: "10px 12px", minWidth: 0 }}>
                           <div style={{ fontSize: "9px", color: "#8B8FA8", letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: "4px", fontWeight: "600" }}>
                             Left Over
                           </div>
@@ -7668,6 +7690,16 @@ function Dashboard() {
                             {item.leftOver < 0 ? "-" : ""}${fmt(Math.abs(item.leftOver))}
                           </div>
                         </div>
+                        {item._hasSavings && (
+                          <div style={{ background: "rgba(56,189,248,0.06)", borderRadius: "8px", padding: "10px 12px", minWidth: 0 }}>
+                            <div style={{ fontSize: "9px", color: "#38BDF8", letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: "4px", fontWeight: "600" }}>
+                              Savings
+                            </div>
+                            <div style={{ fontFamily: "'DM Mono', monospace", fontSize: "16px", color: "#38BDF8", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                              ${fmt(item.savingsEnd ?? 0)}
+                            </div>
+                          </div>
+                        )}
                       </div>
 
                       {item.contributions?.length > 0 && (
@@ -7768,12 +7800,7 @@ function Dashboard() {
 
                       {item.savingsAdded > 0 && (
                         <div style={{ borderTop: "1px solid rgba(255,255,255,0.05)", paddingTop: "12px", marginTop: "12px" }}>
-                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
-                            <div style={{ fontSize: "9px", color: "#38BDF8", letterSpacing: "0.12em", textTransform: "uppercase", fontWeight: "600" }}>Savings</div>
-                            <div style={{ fontSize: "11px", color: "#8B8FA8" }}>
-                              balance → <span style={{ fontFamily: "'DM Mono', monospace", color: "#38BDF8" }}>${fmt(item.savingsEnd)}</span>
-                            </div>
-                          </div>
+                          <div style={{ fontSize: "9px", color: "#38BDF8", letterSpacing: "0.12em", textTransform: "uppercase", fontWeight: "600", marginBottom: "8px" }}>Into Savings</div>
                           {item.savingsContributions.map((sv, j) => (
                             <div key={j} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "5px 0", borderBottom: j < item.savingsContributions.length - 1 ? "1px solid rgba(255,255,255,0.04)" : "none" }}>
                               <div style={{ fontSize: "13px", color: "#F0F6FC", fontWeight: "500" }}>→ {sv.name}</div>

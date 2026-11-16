@@ -353,6 +353,7 @@ function PreFund({ row, d, run }) {
 
 function PeriodCard({ row, open, onToggle, d, run }) {
   const periodKey = row.period.start_date;
+  const hasSavings = (d.accounts || []).some((a) => a.account_type === "savings");
 
   return (
     <Panel style={{ marginBottom: 10, borderLeftWidth: 3, borderLeftColor: row.isCurrent ? c.accent : "transparent" }}>
@@ -385,6 +386,19 @@ function PeriodCard({ row, open, onToggle, d, run }) {
             <SubTile label={row.isCurrent ? "Pending" : "Income"} value={row.pendingIncome} color={c.positive} prefix="+" />
             <SubTile label="Bills" value={-row.billsDeducted} color={row.billsDeducted > 0 ? c.danger : c.textMuted} />
           </View>
+
+          {/* Savings — shown every period when a savings account exists; reflects
+              the projected balance, and the amount added when there's a transfer. */}
+          {hasSavings && (
+            <View style={{ flexDirection: "row", gap: 6, marginTop: 6 }}>
+              <SubTile label="Savings" value={row.savingsEnd} color={c.accent} />
+              {row.savingsAdded > 0 ? (
+                <SubTile label="Added" value={row.savingsAdded} color={c.accent} prefix="+" />
+              ) : (
+                <View style={{ flex: 1 }} />
+              )}
+            </View>
+          )}
 
           {/* Income */}
           {row.incomeItems.length > 0 && (
@@ -435,17 +449,11 @@ function PeriodCard({ row, open, onToggle, d, run }) {
             </>
           )}
 
-          {/* Savings — money paid into savings this period, and the running total */}
+          {/* Where this period's savings transfer(s) land (shown only when there's one) */}
           {row.savingsAdded > 0 && (
             <>
               <Divider style={{ marginTop: 10 }} />
-              <View style={[s.rowBetween, { marginTop: 12, alignItems: "center" }]}>
-                <Label>Savings</Label>
-                <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
-                  <Text style={{ color: c.textFaint, fontSize: 11 }}>balance →</Text>
-                  <Money value={row.savingsEnd} color={c.accent} size={13} />
-                </View>
-              </View>
+              <Label style={{ marginTop: 12, marginBottom: 4 }}>Into Savings</Label>
               {row.savingsContributions.map((sv, i) => (
                 <View key={`${sv.accountId}-${i}`} style={[s.rowBetween, { paddingVertical: 7 }]}>
                   <Text style={{ color: c.text, fontSize: 13, fontWeight: "600" }}>→ {sv.name}</Text>
