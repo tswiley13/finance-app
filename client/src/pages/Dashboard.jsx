@@ -80,8 +80,8 @@ const css = `
   .stat-amount.negative { color: #F87171; }
 
   .dashboard-grid { display: grid; grid-template-columns: 1.45fr 1fr; gap: 12px; align-items: start; width: 100%; }
-  .dashboard-left { display: flex; flex-direction: column; gap: 12px; }
-  .dashboard-right { display: flex; flex-direction: column; gap: 12px; }
+  .dashboard-left { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+  .dashboard-right { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
 
   .panel { background: #1A1826; border: 1px solid rgba(255,255,255,0.06); border-radius: 12px; padding: 20px; transition: border-color 0.2s ease, box-shadow 0.2s ease; }
   .panel:hover { border-color: rgba(108,99,255,0.3); box-shadow: 0 0 0 1px rgba(108,99,255,0.1), 0 4px 20px rgba(108,99,255,0.05); }
@@ -107,17 +107,15 @@ const css = `
   .stat-row-5 { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; margin-bottom: 28px; }
   .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 
+  /* At <=1024px the sidebar is hidden (see index.css), so the content area is
+     full-width-but-narrow — exactly a tablet / unfolded-foldable / split-screen.
+     Collapse the two-column bodies and multi-column stat rows at the SAME
+     breakpoint so there is no dead zone where a desktop layout renders in a
+     tablet-width space and overflows. */
   @media (max-width: 1024px) {
     .stat-row-4 { grid-template-columns: repeat(2, 1fr) !important; gap: 8px !important; }
     .stat-row-5 { grid-template-columns: repeat(2, 1fr) !important; gap: 8px !important; }
     .stat-amount { font-size: 20px !important; }
-  }
-
-  /* Tablet dead-zone (unfolded foldables, small tablets, split-screen): the
-     sidebar is already gone below 1024px, but the two-column body + 3-across
-     stat rows are too wide to fit. Stack / reflow them below 900px so no page
-     overflows its width. */
-  @media (max-width: 900px) {
     .dashboard-grid { grid-template-columns: 1fr !important; }
     .content-grid { grid-template-columns: 1fr !important; }
     .stat-row { grid-template-columns: repeat(2, 1fr) !important; }
@@ -338,7 +336,9 @@ function Dashboard() {
   // Mid-size widths (unfolded foldables, small tablets, split-screen) are above
   // the phone breakpoint but too narrow for the multi-column desktop layout —
   // its wide stat numbers overflow. Treat them as "narrow": stack to one column.
-  const [isNarrow, setIsNarrow] = useState(typeof window !== "undefined" && window.innerWidth <= 900);
+  // <=1024 matches where the sidebar hides: below it the usable content area is
+  // tablet-width, so two-column bodies must collapse to one.
+  const [isNarrow, setIsNarrow] = useState(typeof window !== "undefined" && window.innerWidth <= 1024);
   const [scrollToInvite, setScrollToInvite] = useState(false);
   const [editingBill, setEditingBill] = useState(null);
   const [billName, setBillName] = useState("");
@@ -498,7 +498,7 @@ function Dashboard() {
   useEffect(() => {
     const onResize = () => {
       setIsMobile(window.innerWidth <= 640);
-      setIsNarrow(window.innerWidth <= 900);
+      setIsNarrow(window.innerWidth <= 1024);
     };
     window.addEventListener("resize", onResize);
     return () => window.removeEventListener("resize", onResize);
