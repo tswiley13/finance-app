@@ -34,7 +34,7 @@ const css = `
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { background: #13111F; color: #F0F6FC; font-family: 'Inter', sans-serif; -webkit-font-smoothing: antialiased; }
 
-  .app-shell { display: flex; min-height: 100vh; }
+  .app-shell { display: flex; min-height: 100vh; max-width: 100%; min-width: 0; overflow-x: clip; }
 
   .sidebar {
     width: 260px; flex-shrink: 0; background: #13111F;
@@ -58,7 +58,7 @@ const css = `
   .signout-btn { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 7px; cursor: pointer; font-size: 13px; color: #8B8FA8; border: none; background: none; width: 100%; text-align: left; font-family: 'Inter', sans-serif; transition: all 0.1s ease; }
   .signout-btn:hover { background: rgba(255,255,255,0.05); color: rgba(255,255,255,0.6); }
 
-  .main { margin-left: 260px; flex: 1; min-width: 0; padding: 0; }
+  .main { margin-left: 260px; flex: 1; min-width: 0; padding: 0; max-width: 100%; overflow-x: clip; }
 
   .topbar { display: flex; justify-content: space-between; align-items: center; height: 88px; padding: 0 32px; border-bottom: 1px solid rgba(255,255,255,0.05); margin-bottom: 0; }
   .welcome-name { font-size: 20px; font-weight: 700; color: #F0F6FC; letter-spacing: -0.02em; }
@@ -69,7 +69,7 @@ const css = `
   .period-name { font-size: 13px; font-weight: 600; color: #F0F6FC; margin-top: 3px; }
   .period-dates { font-size: 13px; color: #00D4AA; margin-top: 6px; font-family: 'DM Mono', monospace; }
 
-  .content-area { padding: 28px 32px 60px; width: 100%; }
+  .content-area { padding: 28px 32px 60px; width: 100%; max-width: 100%; min-width: 0; overflow-x: clip; }
 
   .stat-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 28px; }
   .stat-card { background: #1A1826; border: 1px solid rgba(255,255,255,0.06); border-radius: 12px; padding: 20px 22px; position: relative; overflow: hidden; }
