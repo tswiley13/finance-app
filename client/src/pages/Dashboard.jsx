@@ -2867,6 +2867,17 @@ function Dashboard() {
                             <div style={{ fontFamily: "'DM Mono', monospace", fontSize: "12px", color: "#F87171" }}>-${fmt(item.billsDeducted)}</div>
                           </div>
                         )}
+                        {hasSavings && (
+                          <div style={{ textAlign: "right" }}>
+                            <div style={{ fontSize: "9px", color: "#38BDF8", letterSpacing: "0.1em", textTransform: "uppercase", fontWeight: "600", marginBottom: "3px" }}>Savings</div>
+                            <div style={{ fontFamily: "'DM Mono', monospace", fontSize: "22px", fontWeight: "500", color: "#38BDF8", whiteSpace: "nowrap" }}>
+                              ${fmt(item.savingsEnd ?? 0)}
+                            </div>
+                            {item.savingsAdded > 0 && (
+                              <div style={{ fontFamily: "'DM Mono', monospace", fontSize: "11px", color: "#8B8FA8", marginTop: "2px" }}>+${fmt(item.savingsAdded)}</div>
+                            )}
+                          </div>
+                        )}
                         <div style={{ textAlign: "right" }}>
                           <div style={{ fontSize: "9px", color: "#8B8FA8", letterSpacing: "0.1em", textTransform: "uppercase", fontWeight: "600", marginBottom: "3px" }}>End Balance</div>
                           <div style={{ fontFamily: "'DM Mono', monospace", fontSize: "22px", fontWeight: "500", color: item.endBalance < 0 ? "#F87171" : "#4ADE80" }}>
@@ -2912,15 +2923,6 @@ function Dashboard() {
                           );
                         })()}
                       </div>
-                      {hasSavings && (
-                        <div style={{ background: "rgba(56,189,248,0.06)", borderRadius: "8px", padding: "10px 12px", minWidth: 0 }}>
-                          <div style={{ fontSize: "9px", color: "#38BDF8", letterSpacing: "0.1em", textTransform: "uppercase", fontWeight: "600", marginBottom: "4px" }}>Savings</div>
-                          <div style={{ fontFamily: "'DM Mono', monospace", fontSize: "14px", color: "#38BDF8", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>${fmt(item.savingsEnd ?? 0)}</div>
-                          {item.savingsAdded > 0 && (
-                            <div style={{ fontSize: "9px", color: "#8B8FA8", marginTop: "3px" }}>+${fmt(item.savingsAdded)} this period</div>
-                          )}
-                        </div>
-                      )}
                     </div>
 
                     {/* Income list */}
