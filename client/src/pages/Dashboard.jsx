@@ -617,6 +617,11 @@ function Dashboard() {
           membersRes,
           debtsRes,
           scenariosRes,
+          plaidRes,
+          skipRes,
+          earlyRes,
+          bpRes,
+          transferRes,
         ] = await Promise.all([
           supabase
             .from("pay_periods")
@@ -654,6 +659,28 @@ function Dashboard() {
             .select("*")
             .eq("household_id", householdData.id)
             .order("updated_at", { ascending: false }),
+          // User-scoped lookups — only need user.id, so they batch with the rest
+          supabase
+            .from("plaid_items")
+            .select("id")
+            .eq("user_id", user.id)
+            .limit(1),
+          supabase
+            .from("bill_skips")
+            .select("bill_id, period_start")
+            .eq("user_id", user.id),
+          supabase
+            .from("income_early_payments")
+            .select("income_id, period_start")
+            .eq("user_id", user.id),
+          supabase
+            .from("bill_payments")
+            .select("bill_id, period_start, paid_date, paid_amount, is_paid")
+            .eq("user_id", user.id),
+          supabase
+            .from("period_transfers")
+            .select("row_key, amount, period_start")
+            .eq("user_id", user.id),
         ]);
 
         setPayPeriods(periodsRes.data || []);
@@ -665,34 +692,21 @@ function Dashboard() {
         setCategories(categoriesRes.data || []);
         setMembers(membersRes.data || []);
 
-        const { data: plaidItems } = await supabase
-          .from("plaid_items")
-          .select("id")
-          .eq("user_id", user.id)
-          .limit(1);
+        const plaidItems = plaidRes.data;
         const connected = !!(plaidItems && plaidItems.length > 0);
         setPlaidConnected(connected);
 
-        const { data: skipRows } = await supabase
-          .from("bill_skips")
-          .select("bill_id, period_start")
-          .eq("user_id", user.id);
+        const skipRows = skipRes.data;
         if (skipRows) {
           setSkippedBillPeriods(new Set(skipRows.map(r => `${r.bill_id}-${r.period_start}`)));
         }
 
-        const { data: earlyRows } = await supabase
-          .from("income_early_payments")
-          .select("income_id, period_start")
-          .eq("user_id", user.id);
+        const earlyRows = earlyRes.data;
         if (earlyRows) {
           setEarlyPayments(new Set(earlyRows.map(r => `${r.income_id}-${r.period_start}`)));
         }
 
-        const { data: bpRows } = await supabase
-          .from("bill_payments")
-          .select("bill_id, period_start, paid_date, paid_amount, is_paid")
-          .eq("user_id", user.id);
+        const bpRows = bpRes.data;
         if (bpRows) {
           const bpMap = {};
           bpRows.forEach(r => { bpMap[`${r.bill_id}-${r.period_start}`] = r; });
@@ -700,10 +714,7 @@ function Dashboard() {
         }
 
         const today2 = localDateStr();
-        const { data: transferRows } = await supabase
-          .from("period_transfers")
-          .select("row_key, amount, period_start")
-          .eq("user_id", user.id);
+        const transferRows = transferRes.data;
         if (transferRows && transferRows.length > 0) {
           const periodsData2 = periodsRes.data || [];
           const sortedPeriods = [...periodsData2].sort((a, b) => new Date(a.start_date) - new Date(b.start_date));

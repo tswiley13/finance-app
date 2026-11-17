@@ -67,8 +67,10 @@ export function StrydeDataProvider({ children }) {
       }
 
       const householdId = memberRow.household_id;
-      const [householdRes, periodsRes, incomeRes, billsRes, accountsRes, membersRes, categoriesRes, debtsRes] =
-        await Promise.all([
+      const [
+        householdRes, periodsRes, incomeRes, billsRes, accountsRes, membersRes, categoriesRes, debtsRes,
+        skipRes, earlyRes, bpRes, transferRes,
+      ] = await Promise.all([
           supabase.from("households").select("*").eq("id", householdId).maybeSingle(),
           supabase.from("pay_periods").select("*").eq("household_id", householdId).order("start_date"),
           supabase.from("income").select("*").eq("household_id", householdId),
@@ -77,14 +79,12 @@ export function StrydeDataProvider({ children }) {
           supabase.from("household_members").select("*").eq("household_id", householdId),
           supabase.from("categories").select("*").eq("household_id", householdId).order("name"),
           supabase.from("debts").select("*").eq("household_id", householdId).order("payoff_order"),
+          // User-scoped lookups — only need user.id, so they batch with the rest
+          supabase.from("bill_skips").select("bill_id, period_start").eq("user_id", user.id),
+          supabase.from("income_early_payments").select("income_id, period_start").eq("user_id", user.id),
+          supabase.from("bill_payments").select("bill_id, period_start, paid_date, paid_amount, is_paid").eq("user_id", user.id),
+          supabase.from("period_transfers").select("period_start, row_key, amount").eq("user_id", user.id),
         ]);
-
-      const [skipRes, earlyRes, bpRes, transferRes] = await Promise.all([
-        supabase.from("bill_skips").select("bill_id, period_start").eq("user_id", user.id),
-        supabase.from("income_early_payments").select("income_id, period_start").eq("user_id", user.id),
-        supabase.from("bill_payments").select("bill_id, period_start, paid_date, paid_amount, is_paid").eq("user_id", user.id),
-        supabase.from("period_transfers").select("period_start, row_key, amount").eq("user_id", user.id),
-      ]);
 
       const billPayments = {};
       (bpRes.data || []).forEach((r) => { billPayments[`${r.bill_id}-${r.period_start}`] = r; });
