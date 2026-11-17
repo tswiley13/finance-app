@@ -2794,23 +2794,6 @@ function Dashboard() {
             </div>
           </div>
 
-          <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap", marginBottom: "24px", padding: "12px 14px", background: "rgba(108,99,255,0.06)", border: "1px solid rgba(108,99,255,0.18)", borderRadius: "10px" }}>
-            <span style={{ fontSize: "13px", color: "#C9C6E0", fontWeight: 600 }}>Avg. monthly spending beyond bills</span>
-            <div style={{ display: "flex", alignItems: "center", background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: "6px", padding: "0 10px" }}>
-              <span style={{ color: "#8B8FA8", fontSize: "13px" }}>$</span>
-              <input
-                type="number"
-                placeholder="0"
-                defaultValue={household?.monthly_discretionary ?? ""}
-                onFocus={(e) => e.target.select()}
-                onBlur={(e) => saveDiscretionary(e.target.value)}
-                onKeyDown={(e) => { if (e.key === "Enter") e.target.blur(); }}
-                style={{ background: "none", border: "none", outline: "none", color: "#F2F0EB", padding: "7px 4px", fontSize: "13px", fontFamily: "'DM Mono', monospace", width: "90px" }}
-              />
-            </div>
-            <span style={{ fontSize: "12px", color: "#8B8FA8" }}>groceries beyond a set line, dining, shopping, fuel, cash — makes your AI export honest about what's actually free.</span>
-          </div>
-
           <div className="dashboard-grid">
             <div className="dashboard-left">
               {/* Pay-period view tabs: Next 6 (detailed) vs 6-Month Outlook (condensed, grouped by month) */}
