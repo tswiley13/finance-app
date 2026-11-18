@@ -451,14 +451,21 @@ export function getSavingsDestination(bill, accounts = []) {
  * destinations ARE included (savings is a transfer you're making to yourself).
  */
 export function getBillTransferTarget(bill, accounts = []) {
+  // Explicit "transfer to another account" → that account (any non-goal account:
+  // a groceries/gas envelope, a savings account, etc).
   if (bill.transfer_to_account_id) {
     const dest = accounts.find((a) => a.id === bill.transfer_to_account_id);
     if (dest && !dest.is_accumulating) return dest;
   }
-  if (bill.account_id) {
+  // Savings-category shortcut: a bill categorized "Savings" that points at a
+  // savings account counts without needing the checkbox.
+  if ((bill.category || "").trim().toLowerCase() === "savings") {
     const dest = accounts.find((a) => a.id === bill.account_id);
-    if (dest && !dest.is_primary && !dest.is_accumulating) return dest;
+    if (dest && dest.account_type === "savings" && !dest.is_accumulating) return dest;
   }
+  // NOTE: the account a bill is merely *paid from* (account_id) is NOT a transfer.
+  // Many users draft every bill from a dedicated non-primary "bills" account —
+  // those are still real bills, not money moving into an envelope you keep.
   return null;
 }
 

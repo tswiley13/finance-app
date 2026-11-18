@@ -604,9 +604,9 @@ console.log("✓ planning-fields export tests passed");
   const trIncome = [{ id: "pay", name: "Payroll", fixed_amount: 2500, frequency: "biweekly", next_pay_date: "2026-07-02" }];
   const trBills = [
     { id: "rent", name: "Rent", amount: 1000, frequency: "payday", account_id: "chk" },        // true bill (leaves)
-    { id: "food", name: "Groceries", amount: 400, frequency: "payday", account_id: "env" },     // transfer → envelope
-    { id: "gas", name: "Gas", amount: 200, frequency: "payday", account_id: "env" },            // transfer → envelope (same acct)
-    { id: "save", name: "Savings", amount: 300, frequency: "payday", account_id: "chk", transfer_to_account_id: "sav" }, // transfer → savings
+    { id: "food", name: "Groceries", amount: 400, frequency: "payday", account_id: "chk", transfer_to_account_id: "env" }, // transfer → envelope
+    { id: "gas", name: "Gas", amount: 200, frequency: "payday", account_id: "chk", transfer_to_account_id: "env" },        // transfer → envelope (same acct)
+    { id: "save", name: "Savings", amount: 300, frequency: "payday", account_id: "chk", transfer_to_account_id: "sav" },   // transfer → savings
   ];
   const trCtx = {
     payPeriods: trPeriods, income: trIncome, bills: trBills, accounts: trAccounts,
@@ -630,10 +630,24 @@ console.log("✓ planning-fields export tests passed");
 
   // Accumulating (goal) account is NOT a lump transfer — it uses smoothed
   // contributions, so a bill into it stays out of transferGroups.
-  const goalBills = [{ id: "car", name: "Car", amount: 500, frequency: "payday", account_id: "goal" }];
+  const goalBills = [{ id: "car", name: "Car", amount: 500, frequency: "payday", transfer_to_account_id: "goal" }];
   const goalCtx = { ...trCtx, bills: goalBills };
   const gr = getPayPeriodBreakdown(goalCtx)[0];
   assert.equal(gr.transfersTotal, 0, "accumulating-goal bill is not counted as a transfer");
+
+  // REGRESSION: a bill merely PAID FROM a non-primary "bills" account (account_id
+  // set, no transfer_to) is still a real bill, not a transfer. This is the common
+  // pattern of drafting every bill from a dedicated bills account.
+  const billsAcctCtx = {
+    ...trCtx,
+    bills: [
+      { id: "ins", name: "Allstate", amount: 138.88, frequency: "payday", account_id: "env" },
+      { id: "cox", name: "Cox", amount: 105, frequency: "payday", account_id: "env" },
+    ],
+  };
+  const bar = getPayPeriodBreakdown(billsAcctCtx)[0];
+  assert.equal(bar.transfersTotal, 0, "bills drafted from a non-primary account are NOT transfers");
+  assert.equal(bar.trueBillsTotal, 243.88, "they stay in the Bills total");
 
   console.log("✓ bills vs transfers split tests passed");
 }

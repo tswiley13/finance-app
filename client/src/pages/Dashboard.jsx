@@ -1523,13 +1523,17 @@ function Dashboard() {
       // (envelope like groceries/gas, or savings) is a transfer, not a bill. Both
       // still leave checking (billsTotal unchanged) — this only splits the display.
       const transferTargetFor = (b) => {
+        // Only an explicit "transfer to another account" (or a Savings-category
+        // bill pointing at a savings account) is a transfer. The account a bill
+        // is merely paid FROM (account_id) is funding mechanics, not a transfer —
+        // bills drafted from a dedicated "bills" account are still bills.
         if (b.transfer_to_account_id) {
           const dest = accounts.find((a) => a.id === b.transfer_to_account_id);
           if (dest && !dest.is_accumulating) return dest;
         }
-        if (b.account_id) {
+        if ((b.category || "").trim().toLowerCase() === "savings") {
           const dest = accounts.find((a) => a.id === b.account_id);
-          if (dest && !dest.is_primary && !dest.is_accumulating) return dest;
+          if (dest && dest.account_type === "savings" && !dest.is_accumulating) return dest;
         }
         return null;
       };
