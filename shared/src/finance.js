@@ -357,7 +357,7 @@ export function getPayPeriodBreakdown(ctx, limit = 30) {
     // billsTotal, so the card's Income − (moves) always ties to End Balance.
     const distribution = getDistributionGroups(
       { period, bills: periodBills },
-      { accounts, billPayments },
+      { accounts, billPayments, skippedBillPeriods: ctx.skippedBillPeriods },
     );
 
     return {
@@ -476,10 +476,11 @@ export function getBillTransferTarget(bill, accounts = []) {
  * amounts sum to the period's unpaid billsTotal.
  */
 export function getDistributionGroups(item, ctx) {
-  const { accounts = [], billPayments = {} } = ctx;
+  const { accounts = [], billPayments = {}, skippedBillPeriods } = ctx;
   const periodKey = item.period.start_date;
   const groups = {};
   (item.bills || []).forEach((b) => {
+    if (isBillSkipped(skippedBillPeriods, b.id, periodKey)) return; // skipped → no money moves
     if (isBillFullyPaid(billPayments, b, periodKey)) return;
     const amount = Math.max(0, (b.amount || 0) - getBillPaidAmount(billPayments, b.id, periodKey));
     if (amount <= 0) return;

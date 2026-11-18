@@ -1532,6 +1532,7 @@ function Dashboard() {
       // excluded (funded via Set Aside). Group amounts sum to billsTotal.
       const distMap = {};
       periodBills.forEach((b) => {
+        if (skippedBillPeriods.has(`${b.id}-${period.start_date}`)) return; // skipped → no move
         if (isBillFullyPaid(b, period.start_date)) return;
         const amount = Math.max(0, (b.amount || 0) - getBillPaidAmount(b.id, period.start_date));
         if (amount <= 0) return;

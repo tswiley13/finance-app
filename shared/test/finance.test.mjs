@@ -631,6 +631,15 @@ console.log("✓ planning-fields export tests passed");
   // Sorted most-money-first.
   assert.equal(r.distribution[0].accountId, "sav", "largest move (Savings) first");
 
+  // A SKIPPED bill moves no money — it drops out of the distribution plan.
+  const skipCtx = {
+    ...trCtx,
+    skippedBillPeriods: new Set(["aps-2026-07-02"]),
+  };
+  const sr = getPayPeriodBreakdown(skipCtx)[0];
+  const srWbills = sr.distribution.find((g) => g.accountId === "wbills");
+  assert.equal(srWbills.amount, 1500, "skipped APS ($1,080) no longer needs transferring to Wiley Bills");
+
   // Accumulating (goal) destinations are excluded — funded via Set Aside rows.
   const goalCtx = { ...trCtx, bills: [{ id: "car", name: "Car", amount: 500, frequency: "payday", transfer_to_account_id: "goal" }] };
   const gr = getPayPeriodBreakdown(goalCtx)[0];
