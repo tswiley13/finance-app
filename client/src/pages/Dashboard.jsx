@@ -1020,6 +1020,55 @@ function Dashboard() {
     setIsSaving(false);
   }
 
+  // One reusable, good-looking type control for the add + edit bill forms.
+  // Bill = money that leaves you; Transfer = money you move to your own account.
+  // When Transfer, a single optional destination picker appears right below it,
+  // so there's exactly one place to describe a transfer.
+  function billTypeToggle() {
+    const opts = [
+      { v: false, label: "Bill", sub: "Money that leaves you" },
+      { v: true, label: "Transfer", sub: "To your own account" },
+    ];
+    return (
+      <div style={{ marginBottom: "14px" }}>
+        <div style={{ display: "flex", gap: "4px", background: "rgba(255,255,255,0.04)", borderRadius: "10px", padding: "4px", maxWidth: "340px" }}>
+          {opts.map((opt) => {
+            const active = isTransferItem === opt.v;
+            const accent = opt.v ? "#60A5FA" : "#6C63FF";
+            return (
+              <button
+                key={opt.label}
+                type="button"
+                onClick={() => { setIsTransferItem(opt.v); if (opt.v) setIsBillAccumulating(false); else setTransferToAccountId(""); }}
+                style={{
+                  flex: 1, padding: "8px 12px", borderRadius: "7px", border: "none", cursor: "pointer", textAlign: "center",
+                  background: active ? accent : "transparent",
+                  color: active ? "#fff" : "#8B8FA8",
+                  transition: "background 0.15s, color 0.15s",
+                }}
+              >
+                <div style={{ fontSize: "13px", fontWeight: 700 }}>{opt.label}</div>
+                <div style={{ fontSize: "10px", opacity: 0.85, marginTop: "1px" }}>{opt.sub}</div>
+              </button>
+            );
+          })}
+        </div>
+        {isTransferItem && (
+          <select
+            value={transferToAccountId}
+            onChange={(e) => setTransferToAccountId(e.target.value)}
+            style={{ marginTop: "10px", width: "100%", maxWidth: "340px", display: "block", background: "rgba(96,165,250,0.08)", border: "1px solid rgba(96,165,250,0.25)", color: "#F2F0EB", padding: "9px 12px", borderRadius: "7px", fontSize: "13px", fontFamily: "'Inter', sans-serif" }}
+          >
+            <option value="">Move it to… (optional — pick an account to track)</option>
+            {accounts.map((acct, i) => (
+              <option key={i} value={acct.id}>{acct.name}{acct.is_accumulating ? " (goal)" : acct.account_type === "savings" ? " (savings)" : ""}</option>
+            ))}
+          </select>
+        )}
+      </div>
+    );
+  }
+
   // ── Export: a downloadable / copyable financial summary for AI planning ──────
   const exportItemStyle = { display: "flex", alignItems: "center", gap: "10px", width: "100%", textAlign: "left", background: "none", border: "none", padding: "9px 10px", borderRadius: "7px", cursor: "pointer", color: "#F0F6FC" };
   const exportItemTitle = { fontSize: "13px", fontWeight: 600, fontFamily: "'Inter', sans-serif" };
@@ -6428,28 +6477,7 @@ function Dashboard() {
               <div className="panel-header">
                 <div className="panel-title">{isTransferItem ? "New Transfer" : "New Bill"}</div>
               </div>
-              {/* Bill (money that leaves you) vs Transfer (money into your own account) */}
-              <div style={{ display: "flex", gap: "6px", marginBottom: "12px", background: "rgba(255,255,255,0.04)", borderRadius: "8px", padding: "4px", maxWidth: "280px" }}>
-                {[{ v: false, label: "Bill" }, { v: true, label: "Transfer" }].map((opt) => (
-                  <button
-                    key={opt.label}
-                    type="button"
-                    onClick={() => { setIsTransferItem(opt.v); if (opt.v) setIsBillAccumulating(false); else setTransferToAccountId(""); }}
-                    style={{
-                      flex: 1, padding: "7px 10px", borderRadius: "6px", border: "none", cursor: "pointer", fontSize: "13px", fontWeight: 600,
-                      background: isTransferItem === opt.v ? (opt.v ? "#60A5FA" : "#6C63FF") : "transparent",
-                      color: isTransferItem === opt.v ? "#fff" : "#8B8FA8",
-                    }}
-                  >
-                    {opt.label}
-                  </button>
-                ))}
-              </div>
-              <div style={{ fontSize: "11px", color: "#6E7681", marginBottom: "12px" }}>
-                {isTransferItem
-                  ? "Money you move into an account you own (food, gas, savings). It shows under Transfers, not Bills."
-                  : "Money that leaves you (rent, car payment, utilities). Shows under Bills."}
-              </div>
+              {billTypeToggle()}
               <div className="form-grid">
                 <input
                   placeholder="Bill name"
@@ -6588,13 +6616,13 @@ function Dashboard() {
                 <span style={{ fontSize: "13px", color: "#8B8FA8" }}>This is a goal / sinking-fund contribution</span>
               </label>
               )}
-              {(isBillAccumulating || isTransferItem) && (
+              {isBillAccumulating && !isTransferItem && (
                 <select
                   value={transferToAccountId}
                   onChange={(e) => setTransferToAccountId(e.target.value)}
                   style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", color: "#F2F0EB", padding: "8px 12px", borderRadius: "6px", fontSize: "13px", fontFamily: "'Inter', sans-serif" }}
                 >
-                  <option value="">{isTransferItem ? "Transfer to which account? (optional)" : "Transfer to which account?"}</option>
+                  <option value="">Save up in which account?</option>
                   {accounts.map((acct, i) => (
                     <option key={i} value={acct.id}>{acct.name}{acct.is_accumulating ? " (goal)" : acct.account_type === "savings" ? " (savings)" : ""}</option>
                   ))}
@@ -6951,22 +6979,7 @@ function Dashboard() {
                             ))}
                           </select>
                         </div>
-                        <div style={{ display: "flex", gap: "6px", marginTop: "8px", background: "rgba(255,255,255,0.04)", borderRadius: "8px", padding: "4px", maxWidth: "280px" }}>
-                          {[{ v: false, label: "Bill" }, { v: true, label: "Transfer" }].map((opt) => (
-                            <button
-                              key={opt.label}
-                              type="button"
-                              onClick={() => { setIsTransferItem(opt.v); if (opt.v) setIsBillAccumulating(false); else setTransferToAccountId(""); }}
-                              style={{
-                                flex: 1, padding: "6px 10px", borderRadius: "6px", border: "none", cursor: "pointer", fontSize: "13px", fontWeight: 600,
-                                background: isTransferItem === opt.v ? (opt.v ? "#60A5FA" : "#6C63FF") : "transparent",
-                                color: isTransferItem === opt.v ? "#fff" : "#8B8FA8",
-                              }}
-                            >
-                              {opt.label}
-                            </button>
-                          ))}
-                        </div>
+                        <div style={{ marginTop: "8px" }}>{billTypeToggle()}</div>
                         {!isTransferItem && (
                         <label style={{ display: "flex", alignItems: "center", gap: "8px", cursor: "pointer", marginTop: "8px" }}>
                           <input
@@ -6977,7 +6990,7 @@ function Dashboard() {
                           <span style={{ fontSize: "13px", color: "#8B8FA8" }}>This is a goal / sinking-fund contribution</span>
                         </label>
                         )}
-                        {(isBillAccumulating || isTransferItem) && (
+                        {isBillAccumulating && !isTransferItem && (
                           <select
                             value={transferToAccountId}
                             onChange={(e) => setTransferToAccountId(e.target.value)}
@@ -6992,7 +7005,7 @@ function Dashboard() {
                               marginTop: "4px",
                             }}
                           >
-                            <option value="">{isTransferItem ? "Transfer to which account? (optional)" : "Transfer to which account?"}</option>
+                            <option value="">Save up in which account?</option>
                             {accounts.map((acct, i) => (
                               <option key={i} value={acct.id}>
                                 {acct.name}{acct.is_accumulating ? " (goal)" : acct.account_type === "savings" ? " (savings)" : ""}
