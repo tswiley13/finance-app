@@ -348,6 +348,32 @@ export function getPayPeriodBreakdown(ctx, limit = 30) {
 
     const savingsAdded = savingsContributions.reduce((s, c) => s + c.amount, 0);
 
+    // Transfers vs true bills: a transfer repositions money into another account
+    // you own (envelope/savings); a bill leaves you. Both still come out of
+    // checking (so billsTotal / End Balance are unchanged) — this only splits the
+    // display. transferContributions is grouped by destination account.
+    const transferGroupsMap = {};
+    periodBills.forEach((b) => {
+      const dest = getBillTransferTarget(b, accounts);
+      if (!dest) return;
+      if (isBillFullyPaid(billPayments, b, period.start_date)) return;
+      const amount = Math.max(0, (b.amount || 0) - getBillPaidAmount(billPayments, b.id, period.start_date));
+      if (amount <= 0) return;
+      if (!transferGroupsMap[dest.id]) {
+        transferGroupsMap[dest.id] = {
+          accountId: dest.id,
+          name: dest.name,
+          isSavings: dest.account_type === "savings",
+          amount: 0,
+        };
+      }
+      transferGroupsMap[dest.id].amount += amount;
+    });
+    const transferGroups = Object.values(transferGroupsMap);
+    const transfersTotal = transferGroups.reduce((s, g) => s + g.amount, 0);
+    // What's left is money that truly leaves you (rent, utilities, etc).
+    const trueBillsTotal = Math.max(0, billsTotal - transfersTotal);
+
     return {
       period,
       isCurrentPeriod: periodStart <= today && periodEnd >= today,
@@ -355,6 +381,9 @@ export function getPayPeriodBreakdown(ctx, limit = 30) {
       incomeItems: periodIncomeItems,
       bills: periodBills,
       billsTotal,
+      trueBillsTotal,
+      transfersTotal,
+      transferGroups,
       leftOver: periodIncome - billsTotal,
       contributions: allContributions.filter((c) => periodStart < c.dueDate),
       savingsContributions,
@@ -400,6 +429,35 @@ export function getSavingsDestination(bill, accounts = []) {
   if ((bill.category || "").trim().toLowerCase() === "savings") {
     const dest = accounts.find((a) => a.id === bill.account_id);
     if (isPlainSavings(dest)) return dest;
+  }
+  return null;
+}
+
+/**
+ * The owned account a bill actually MOVES money into, or null if it's a true
+ * expense that leaves you entirely.
+ *
+ * A "transfer" is money repositioned between your own accounts (checking →
+ * groceries/gas envelope, checking → savings) — net worth unchanged. A "bill"
+ * is money that leaves (rent, electric) — net worth down. This is what lets the
+ * pay-period card split Bills from Transfers.
+ *
+ * A bill counts as a transfer when:
+ *  1. It explicitly transfers into another account (transfer_to_account_id), OR
+ *  2. It's paid out of a non-primary account you own (its account_id points at an
+ *     envelope/savings account) — the money has to move there first.
+ * Accumulating (goal) accounts are excluded: they're funded gradually via their
+ * own smoothed contribution rows, not counted as a lump transfer here. Savings
+ * destinations ARE included (savings is a transfer you're making to yourself).
+ */
+export function getBillTransferTarget(bill, accounts = []) {
+  if (bill.transfer_to_account_id) {
+    const dest = accounts.find((a) => a.id === bill.transfer_to_account_id);
+    if (dest && !dest.is_accumulating) return dest;
+  }
+  if (bill.account_id) {
+    const dest = accounts.find((a) => a.id === bill.account_id);
+    if (dest && !dest.is_primary && !dest.is_accumulating) return dest;
   }
   return null;
 }

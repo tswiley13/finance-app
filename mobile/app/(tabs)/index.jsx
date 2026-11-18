@@ -380,12 +380,29 @@ function PeriodCard({ row, open, onToggle, d, run }) {
 
       {open && (
         <View style={{ marginTop: 14 }}>
-          {/* Start / Income / Bills */}
-          <View style={{ flexDirection: "row", gap: 6 }}>
-            <SubTile label="Start" value={row.startBalance} color={c.textMuted} />
-            <SubTile label={row.isCurrent ? "Pending" : "Income"} value={row.pendingIncome} color={c.positive} prefix="+" />
-            <SubTile label="Bills" value={-row.billsDeducted} color={row.billsDeducted > 0 ? c.danger : c.textMuted} />
-          </View>
+          {/* Start / Income / Bills (true expenses only — transfers get their own row) */}
+          {(() => {
+            const trueBills = Math.max(0, row.billsDeducted - (row.transfersTotal || 0));
+            return (
+              <View style={{ flexDirection: "row", gap: 6 }}>
+                <SubTile label="Start" value={row.startBalance} color={c.textMuted} />
+                <SubTile label={row.isCurrent ? "Pending" : "Income"} value={row.pendingIncome} color={c.positive} prefix="+" />
+                <SubTile label="Bills" value={-trueBills} color={trueBills > 0 ? c.danger : c.textMuted} />
+              </View>
+            );
+          })()}
+
+          {/* Transfers — money moving into your own accounts (envelope/savings). */}
+          {row.transferGroups && row.transferGroups.length > 0 && (
+            <View style={{ flexDirection: "row", gap: 6, marginTop: 6 }}>
+              <SubTile label="Transfers" value={-row.transfersTotal} color="#60A5FA" />
+              <View style={{ flex: 2, justifyContent: "center" }}>
+                <Text style={{ color: c.textMuted, fontSize: 10, lineHeight: 14 }}>
+                  {row.transferGroups.map((g) => `${g.name} $${Math.round(g.amount).toLocaleString()}`).join(" · ")}
+                </Text>
+              </View>
+            </View>
+          )}
 
           {/* Savings — shown every period when a savings account exists; reflects
               the projected balance, and the amount added when there's a transfer. */}

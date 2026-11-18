@@ -1519,6 +1519,35 @@ function Dashboard() {
 
       const savingsAdded = savingsContributions.reduce((s, c) => s + c.amount, 0);
 
+      // Transfers vs true bills: money moving into another account you own
+      // (envelope like groceries/gas, or savings) is a transfer, not a bill. Both
+      // still leave checking (billsTotal unchanged) — this only splits the display.
+      const transferTargetFor = (b) => {
+        if (b.transfer_to_account_id) {
+          const dest = accounts.find((a) => a.id === b.transfer_to_account_id);
+          if (dest && !dest.is_accumulating) return dest;
+        }
+        if (b.account_id) {
+          const dest = accounts.find((a) => a.id === b.account_id);
+          if (dest && !dest.is_primary && !dest.is_accumulating) return dest;
+        }
+        return null;
+      };
+      const transferGroupsMap = {};
+      periodBills.forEach((b) => {
+        const dest = transferTargetFor(b);
+        if (!dest) return;
+        const amount = Math.max(0, (b.amount || 0) - getBillPaidAmount(b.id, period.start_date));
+        if (amount <= 0) return;
+        if (!transferGroupsMap[dest.id]) {
+          transferGroupsMap[dest.id] = { accountId: dest.id, name: dest.name, isSavings: dest.account_type === "savings", amount: 0 };
+        }
+        transferGroupsMap[dest.id].amount += amount;
+      });
+      const transferGroups = Object.values(transferGroupsMap);
+      const transfersTotal = transferGroups.reduce((s, g) => s + g.amount, 0);
+      const trueBillsTotal = Math.max(0, periodBillsTotal - transfersTotal);
+
       return {
         period,
         isCurrentPeriod,
@@ -1526,6 +1555,9 @@ function Dashboard() {
         incomeItems: periodIncomeItems,
         bills: periodBills,
         billsTotal: periodBillsTotal,
+        trueBillsTotal,
+        transfersTotal,
+        transferGroups,
         leftOver: periodIncome - periodBillsTotal,
         contributions,
         savingsContributions,
@@ -2884,7 +2916,7 @@ function Dashboard() {
 
                     {isExpanded && (
                     <>
-                    {/* Start | Income | Bills | Savings (Savings only when a savings account exists) */}
+                    {/* Start | Income | Bills | Transfers (Transfers only when money moves to your own accounts) */}
                     <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(110px, 1fr))", gap: "8px" }}>
                       <div style={{ background: "rgba(255,255,255,0.03)", borderRadius: "8px", padding: "10px 12px" }}>
                         <div style={{ fontSize: "9px", color: "#8B8FA8", letterSpacing: "0.1em", textTransform: "uppercase", fontWeight: "600", marginBottom: "4px" }}>Start</div>
@@ -2902,7 +2934,8 @@ function Dashboard() {
                         </div>
                         {(() => {
                           const carryTotal = item.isCurrent ? carryOverBills.reduce((s, b) => s + (b.amount || 0), 0) : 0;
-                          const total = item.billsDeducted + carryTotal;
+                          // Bills tile is true expenses only; transfers get their own tile.
+                          const total = Math.max(0, item.billsDeducted - (item.transfersTotal || 0)) + carryTotal;
                           return (
                             <>
                               <div style={{ fontFamily: "'DM Mono', monospace", fontSize: "14px", color: total > 0 ? "#F87171" : "#8B8FA8" }}>
@@ -2917,6 +2950,15 @@ function Dashboard() {
                           );
                         })()}
                       </div>
+                      {item.transferGroups && item.transferGroups.length > 0 && (
+                        <div style={{ background: "rgba(96,165,250,0.06)", borderRadius: "8px", padding: "10px 12px", minWidth: 0 }}>
+                          <div style={{ fontSize: "9px", color: "#60A5FA", letterSpacing: "0.1em", textTransform: "uppercase", fontWeight: "600", marginBottom: "4px" }}>Transfers</div>
+                          <div style={{ fontFamily: "'DM Mono', monospace", fontSize: "14px", color: "#60A5FA" }}>${fmt(item.transfersTotal)}</div>
+                          <div style={{ fontSize: "9px", color: "#8B8FA8", marginTop: "3px", lineHeight: 1.4 }}>
+                            {item.transferGroups.map((g) => `${g.name} $${fmt(g.amount)}`).join(" · ")}
+                          </div>
+                        </div>
+                      )}
                     </div>
 
                     {/* Income list */}
@@ -7674,10 +7716,23 @@ function Dashboard() {
                           <div style={{ fontSize: "9px", color: "#8B8FA8", letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: "4px", fontWeight: "600" }}>
                             Bills
                           </div>
-                          <div style={{ fontFamily: "'DM Mono', monospace", fontSize: "16px", color: item.billsTotal > 0 ? "#F87171" : "#8B8FA8" }}>
-                            ${fmt(item.billsTotal)}
+                          <div style={{ fontFamily: "'DM Mono', monospace", fontSize: "16px", color: (item.trueBillsTotal ?? item.billsTotal) > 0 ? "#F87171" : "#8B8FA8" }}>
+                            ${fmt(item.trueBillsTotal ?? item.billsTotal)}
                           </div>
                         </div>
+                        {item.transferGroups && item.transferGroups.length > 0 && (
+                          <div style={{ background: "rgba(96,165,250,0.06)", borderRadius: "8px", padding: "10px 12px", minWidth: 0 }}>
+                            <div style={{ fontSize: "9px", color: "#60A5FA", letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: "4px", fontWeight: "600" }}>
+                              Transfers
+                            </div>
+                            <div style={{ fontFamily: "'DM Mono', monospace", fontSize: "16px", color: "#60A5FA" }}>
+                              ${fmt(item.transfersTotal)}
+                            </div>
+                            <div style={{ fontSize: "9px", color: "#8B8FA8", marginTop: "3px", lineHeight: 1.4 }}>
+                              {item.transferGroups.map((g) => `${g.name} $${fmt(g.amount)}`).join(" · ")}
+                            </div>
+                          </div>
+                        )}
                         <div style={{ background: "rgba(255,255,255,0.03)", borderRadius: "8px", padding: "10px 12px", minWidth: 0 }}>
                           <div style={{ fontSize: "9px", color: "#8B8FA8", letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: "4px", fontWeight: "600" }}>
                             Left Over

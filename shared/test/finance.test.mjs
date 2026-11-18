@@ -588,3 +588,52 @@ console.log("✓ planning-fields export tests passed");
 
   console.log("✓ open-ended savings projection tests passed");
 }
+
+// ── Bills vs Transfers split ──────────────────────────────────────────────────
+// Money moving into another account you own (envelope like groceries/gas, or
+// savings) is a TRANSFER, not a bill. The card splits them, but both still leave
+// checking so billsTotal / End Balance are unchanged.
+{
+  const trAccounts = [
+    { id: "chk", name: "Checking", current_balance: 3000, is_primary: true, is_accumulating: false, account_type: "checking" },
+    { id: "env", name: "Groceries & Gas", current_balance: 200, is_primary: false, is_accumulating: false, account_type: "checking" },
+    { id: "sav", name: "Savings", current_balance: 5000, is_primary: false, is_accumulating: false, account_type: "savings" },
+    { id: "goal", name: "Car Fund", current_balance: 0, is_primary: false, is_accumulating: true, account_type: "savings", accumulation_target: 6000 },
+  ];
+  const trPeriods = [{ id: "p1", start_date: "2026-07-02", end_date: "2026-07-15" }];
+  const trIncome = [{ id: "pay", name: "Payroll", fixed_amount: 2500, frequency: "biweekly", next_pay_date: "2026-07-02" }];
+  const trBills = [
+    { id: "rent", name: "Rent", amount: 1000, frequency: "payday", account_id: "chk" },        // true bill (leaves)
+    { id: "food", name: "Groceries", amount: 400, frequency: "payday", account_id: "env" },     // transfer → envelope
+    { id: "gas", name: "Gas", amount: 200, frequency: "payday", account_id: "env" },            // transfer → envelope (same acct)
+    { id: "save", name: "Savings", amount: 300, frequency: "payday", account_id: "chk", transfer_to_account_id: "sav" }, // transfer → savings
+  ];
+  const trCtx = {
+    payPeriods: trPeriods, income: trIncome, bills: trBills, accounts: trAccounts,
+    billPayments: {}, skippedBillPeriods: new Set(), earlyPayments: new Set(),
+    transfers: {}, today: TODAY,
+  };
+  const r = getPayPeriodBreakdown(trCtx)[0];
+
+  assert.equal(r.billsTotal, 1900, "billsTotal unchanged — all four still leave checking");
+  assert.equal(r.trueBillsTotal, 1000, "only rent is a true bill");
+  assert.equal(r.transfersTotal, 900, "groceries+gas+savings are transfers (400+200+300)");
+  assert.equal(r.trueBillsTotal + r.transfersTotal, r.billsTotal, "split ties out to the total");
+
+  // Grouped by destination account, so the card can list them.
+  const byId = Object.fromEntries(r.transferGroups.map((g) => [g.accountId, g]));
+  assert.equal(r.transferGroups.length, 2, "two destinations: envelope and savings");
+  assert.equal(byId.env.amount, 600, "groceries+gas roll into one envelope transfer");
+  assert.equal(byId.env.isSavings, false, "envelope is not a savings destination");
+  assert.equal(byId.sav.amount, 300, "savings transfer grouped on its own");
+  assert.equal(byId.sav.isSavings, true, "savings destination flagged");
+
+  // Accumulating (goal) account is NOT a lump transfer — it uses smoothed
+  // contributions, so a bill into it stays out of transferGroups.
+  const goalBills = [{ id: "car", name: "Car", amount: 500, frequency: "payday", account_id: "goal" }];
+  const goalCtx = { ...trCtx, bills: goalBills };
+  const gr = getPayPeriodBreakdown(goalCtx)[0];
+  assert.equal(gr.transfersTotal, 0, "accumulating-goal bill is not counted as a transfer");
+
+  console.log("✓ bills vs transfers split tests passed");
+}
