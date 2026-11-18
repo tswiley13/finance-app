@@ -5,7 +5,7 @@ import { Ionicons } from "@expo/vector-icons";
 import * as Clipboard from "expo-clipboard";
 import { supabase } from "../../src/supabase";
 import {
-  fmtDate, getBillsToTransfer, getPeriodTransferGroups, getCarryOverBills,
+  fmtDate, getBillsToTransfer, getCarryOverBills,
   isBillPaidInPeriod, getBillPaidAmount, ordinalSuffix, canMarkIncomeReceived,
   buildFinancialSummary,
 } from "@stryde/shared";
@@ -160,11 +160,6 @@ export default function Dashboard() {
         </View>
         <Text style={s.discHint}>Groceries beyond a set line, dining, shopping, fuel, cash — makes your AI export honest about what's free.</Text>
 
-        {/* Outstanding transfers for the CURRENT period — the one thing that's
-            actually actionable right now, so it sits up top. Disappears once
-            everything's been moved. */}
-        {current && <CurrentTransfers row={current} d={d} run={run} />}
-
         {/* Pay periods. The current one stays open; the rest fold away — a
             phone-height wall of eight cards buries everything below it. */}
         <Label style={{ marginTop: 24, marginBottom: 10 }}>Pay Periods</Label>
@@ -255,63 +250,6 @@ export default function Dashboard() {
   );
 }
 
-function CurrentTransfers({ row, d, run }) {
-  const groups = getPeriodTransferGroups(row, d.ctx);
-  const outstanding = groups.filter((g) => !g.done);
-  // Nothing left to move — don't take up space.
-  if (outstanding.length === 0) return null;
-
-  const periodStart = row.period.start_date;
-  const totalLeft = outstanding.reduce((sum, g) => sum + g.remaining, 0);
-
-  return (
-    <Panel style={{ marginTop: 16, borderColor: "rgba(108,99,255,0.3)" }}>
-      <View style={s.rowBetween}>
-        <Label style={{ color: c.accent }}>Where the Money Goes</Label>
-        <Text style={s.faint}>This pay period</Text>
-      </View>
-      <Text style={[s.faint, { marginTop: 4 }]}>
-        {outstanding.length === 1
-          ? "You still need to move money to cover this period's bills."
-          : `${outstanding.length} transfers still needed for this period.`}
-      </Text>
-      <Divider style={{ marginVertical: 12 }} />
-
-      {outstanding.map((g) => (
-        <View key={g.accountId} style={[s.rowBetween, { paddingVertical: 6 }]}>
-          <View style={{ flex: 1 }}>
-            <Text style={{ color: c.text, fontSize: 14, fontWeight: "500" }}>
-              Transfer to {g.name}
-            </Text>
-            {g.transferred > 0 && (
-              <Text style={s.faintSm}>${g.transferred.toFixed(2)} moved so far</Text>
-            )}
-            {g.buffer > 0 && (
-              <Text style={s.faintSm}>Includes ${g.buffer.toFixed(2)} buffer</Text>
-            )}
-          </View>
-          <Pressable
-            onPress={() => run(() => recordTransfer(d.userId, periodStart, g.accountId, g.needed))}
-            style={s.transferBtn}
-          >
-            <Text style={s.transferBtnText}>Transfer ${g.remaining.toFixed(2)}</Text>
-          </Pressable>
-        </View>
-      ))}
-
-      {outstanding.length > 1 && (
-        <>
-          <Divider style={{ marginVertical: 10 }} />
-          <View style={s.rowBetween}>
-            <Text style={{ color: c.textMuted, fontSize: 12, fontWeight: "600" }}>Total to move</Text>
-            <Money value={totalLeft} color={c.accent} size={14} weight="700" />
-          </View>
-        </>
-      )}
-    </Panel>
-  );
-}
-
 function PreFund({ row, d, run }) {
   const total = getBillsToTransfer(row, d.ctx);
   if (total <= 0) return null;
@@ -395,13 +333,41 @@ function PeriodCard({ row, open, onToggle, d, run }) {
                 </View>
                 {moves.length > 0 && (
                   <View style={{ marginTop: 8, backgroundColor: "rgba(96,165,250,0.06)", borderRadius: 10, padding: 10 }}>
-                    <Text style={{ color: "#60A5FA", fontSize: 10, fontWeight: "700", letterSpacing: 0.6, marginBottom: 6 }}>MOVE TO</Text>
-                    {moves.map((g, j) => (
-                      <View key={j} style={{ flexDirection: "row", justifyContent: "space-between", paddingVertical: 3 }}>
-                        <Text style={{ color: c.text, fontSize: 13 }}>{g.name}{g.isSavings ? " · savings" : ""}</Text>
-                        <Text style={{ color: "#60A5FA", fontSize: 13, fontVariant: ["tabular-nums"] }}>${Math.round(g.amount).toLocaleString()}</Text>
-                      </View>
-                    ))}
+                    <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+                      <Text style={{ color: "#60A5FA", fontSize: 10, fontWeight: "700", letterSpacing: 0.6 }}>MOVE TO</Text>
+                      {row.isCurrent && (
+                        <Text style={{ color: c.textFaint, fontSize: 10 }}>
+                          {moves.every((g) => (d.transfers[g.key] || 0) >= g.amount) ? "✓ All moved" : "Tap to check off"}
+                        </Text>
+                      )}
+                    </View>
+                    {moves.map((g, j) => {
+                      const done = row.isCurrent && (d.transfers[g.key] || 0) >= g.amount;
+                      const RowWrap = row.isCurrent ? Pressable : View;
+                      return (
+                      <RowWrap
+                        key={j}
+                        onPress={row.isCurrent ? () => run(() => (done
+                          ? undoTransfer(d.userId, periodKey, g.key)
+                          : recordTransfer(d.userId, periodKey, g.key, g.amount))) : undefined}
+                        style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingVertical: 4 }}
+                      >
+                        <View style={{ flexDirection: "row", alignItems: "center", flex: 1, gap: 6 }}>
+                          {row.isCurrent && (
+                            <Ionicons
+                              name={done ? "checkmark-circle" : "ellipse-outline"}
+                              size={15}
+                              color={done ? c.positive : c.textFaint}
+                            />
+                          )}
+                          <Text style={{ color: done ? c.textFaint : c.text, fontSize: 13, textDecorationLine: done ? "line-through" : "none" }}>
+                            {g.name}{g.isSavings ? " · savings" : ""}
+                          </Text>
+                        </View>
+                        <Text style={{ color: done ? c.textFaint : "#60A5FA", fontSize: 13, fontVariant: ["tabular-nums"], textDecorationLine: done ? "line-through" : "none" }}>${Math.round(g.amount).toLocaleString()}</Text>
+                      </RowWrap>
+                      );
+                    })}
                     {checking && checking.amount > 0 && (
                       <View style={{ flexDirection: "row", justifyContent: "space-between", paddingVertical: 3 }}>
                         <Text style={{ color: c.textMuted, fontSize: 13 }}>Paid from checking</Text>

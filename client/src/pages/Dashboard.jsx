@@ -1590,14 +1590,14 @@ function Dashboard() {
           const td = b.transfer_to_account_id ? accounts.find((a) => a.id === b.transfer_to_account_id) : null;
           if (td && td.is_accumulating) return;
           key = td ? td.id : `bill-${b.id}`;
-          group = { accountId: td ? td.id : null, name: td ? td.name : b.name, isSavings: td ? td.account_type === "savings" : false, isChecking: false, amount: 0 };
+          group = { key, accountId: td ? td.id : null, name: td ? td.name : b.name, isSavings: td ? td.account_type === "savings" : false, isChecking: false, amount: 0 };
         } else {
           let dest = null;
           if (b.transfer_to_account_id) dest = accounts.find((a) => a.id === b.transfer_to_account_id) || null;
           else if (b.account_id) { const a = accounts.find((x) => x.id === b.account_id); if (a && !a.is_primary) dest = a; }
           if (dest && dest.is_accumulating) return;
           key = dest ? dest.id : "__checking";
-          group = { accountId: dest ? dest.id : null, name: dest ? dest.name : "From checking", isSavings: dest ? dest.account_type === "savings" : false, isChecking: !dest, amount: 0 };
+          group = { key, accountId: dest ? dest.id : null, name: dest ? dest.name : "From checking", isSavings: dest ? dest.account_type === "savings" : false, isChecking: !dest, amount: 0 };
         }
         if (!distMap[key]) distMap[key] = group;
         distMap[key].amount += amount;
@@ -1888,6 +1888,22 @@ function Dashboard() {
       delete next[rowKey];
       return next;
     });
+  }
+
+  // Mark a distribution "Move to" row as moved (or undo) from the pay-period card.
+  // Writes the full amount to period_transfers so the current-period End Balance's
+  // funded-bill logic also sees it, then reflects it in the transfers map.
+  async function markMoveDone(rowKey, amount, periodKey) {
+    await supabase.from("period_transfers").upsert({
+      user_id: userId, period_start: periodKey, row_key: rowKey, amount,
+    }, { onConflict: "user_id,period_start,row_key" });
+    setTransfers(prev => ({ ...prev, [rowKey]: amount }));
+  }
+
+  async function unmarkMoveDone(rowKey, periodKey) {
+    await supabase.from("period_transfers")
+      .delete().eq("user_id", userId).eq("period_start", periodKey).eq("row_key", rowKey);
+    setTransfers(prev => { const next = { ...prev }; delete next[rowKey]; return next; });
   }
 
   async function updateAccountBalance(accountId, newBalance) {
@@ -3004,13 +3020,42 @@ function Dashboard() {
                       }
                       return (
                         <div style={{ marginTop: "8px", background: "rgba(96,165,250,0.05)", border: "1px solid rgba(96,165,250,0.15)", borderRadius: "8px", padding: "10px 12px" }}>
-                          <div style={{ fontSize: "9px", color: "#60A5FA", letterSpacing: "0.1em", textTransform: "uppercase", fontWeight: "600", marginBottom: "8px" }}>Move to</div>
-                          {moves.map((g, j) => (
-                            <div key={j} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "4px 0", borderBottom: "1px solid rgba(255,255,255,0.04)" }}>
-                              <span style={{ fontSize: "13px", color: "#F0F6FC" }}>{g.name}{g.isSavings ? " · savings" : ""}</span>
-                              <span style={{ fontFamily: "'DM Mono', monospace", fontSize: "13px", color: "#60A5FA" }}>${fmt(g.amount)}</span>
-                            </div>
-                          ))}
+                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
+                            <span style={{ fontSize: "9px", color: "#60A5FA", letterSpacing: "0.1em", textTransform: "uppercase", fontWeight: "600" }}>Move to</span>
+                            {item.isCurrent && (() => {
+                              const allDone = moves.every((g) => (transfers[g.key] || 0) + 0.001 >= g.amount);
+                              return moves.length > 0 ? (
+                                <span style={{ fontSize: "9px", color: allDone ? "#4ADE80" : "#6E7681", letterSpacing: "0.08em", textTransform: "uppercase", fontWeight: "600" }}>
+                                  {allDone ? "✓ All moved" : "Tap to check off"}
+                                </span>
+                              ) : null;
+                            })()}
+                          </div>
+                          {moves.map((g, j) => {
+                            const periodKey = item.period.start_date;
+                            const done = item.isCurrent && (transfers[g.key] || 0) + 0.001 >= g.amount;
+                            return (
+                              <div key={j} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "5px 0", borderBottom: "1px solid rgba(255,255,255,0.04)", gap: "10px" }}>
+                                <span style={{ fontSize: "13px", color: done ? "#6E7681" : "#F0F6FC", textDecoration: done ? "line-through" : "none" }}>{g.name}{g.isSavings ? " · savings" : ""}</span>
+                                <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                                  <span style={{ fontFamily: "'DM Mono', monospace", fontSize: "13px", color: done ? "#6E7681" : "#60A5FA" }}>${fmt(g.amount)}</span>
+                                  {item.isCurrent && (
+                                    <button
+                                      onClick={() => done ? unmarkMoveDone(g.key, periodKey) : markMoveDone(g.key, g.amount, periodKey)}
+                                      style={{
+                                        fontSize: "11px", fontWeight: 600, padding: "3px 9px", borderRadius: "5px", cursor: "pointer",
+                                        border: done ? "1px solid rgba(74,222,128,0.4)" : "1px solid rgba(96,165,250,0.4)",
+                                        background: done ? "rgba(74,222,128,0.12)" : "rgba(96,165,250,0.12)",
+                                        color: done ? "#4ADE80" : "#60A5FA", minWidth: "62px",
+                                      }}
+                                    >
+                                      {done ? "✓ Moved" : "Mark moved"}
+                                    </button>
+                                  )}
+                                </div>
+                              </div>
+                            );
+                          })}
                           {checking && checking.amount > 0 && (
                             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "4px 0" }}>
                               <span style={{ fontSize: "13px", color: "#8B8FA8" }}>Paid from checking</span>
@@ -7200,384 +7245,6 @@ function Dashboard() {
                     <PlaidConnectButton userId={userId} onSuccess={() => { setPlaidConnected(true); if (household?.id) syncPlaidBalances(household.id); }} />
                   </div>
                 )}
-              </div>
-              <div className="panel">
-                <div className="panel-header">
-                  <div className="panel-title">Where the Money Goes</div>
-                  <div className="panel-count">{(() => {
-                    const bd = getPayPeriodBreakdown().find(i => i.isCurrentPeriod);
-                    const nxt = bd?.incomeItems
-                      .map(inc => inc.actualPayDate ? new Date(inc.actualPayDate + "T00:00:00") : null)
-                      .filter(d => d && d > new Date())
-                      .sort((a, b) => a - b)[0];
-                    return nxt ? `Until ${fmtDate(nxt.toISOString().split("T")[0])}` : "This pay period";
-                  })()}</div>
-                </div>
-                {(() => {
-                  const currentBreakdown = getPayPeriodBreakdown().find(
-                    (item) => item.isCurrentPeriod,
-                  );
-
-                  // Split bills into regular bills and explicit account transfers
-                  const allPeriodBills = currentBreakdown?.bills || [];
-                  const wtmgPStart = currentBreakdown ? new Date(currentBreakdown.period.start_date + "T00:00:00") : null;
-                  const wtmgPEnd = currentBreakdown ? new Date(currentBreakdown.period.end_date + "T23:59:59") : null;
-                  const wtmgPeriodKey = currentBreakdown?.period.start_date;
-
-                  // Find the next income date in this period that hasn't arrived yet.
-                  // Bills due before that date are what the current paycheck needs to cover.
-                  // If no future income, show all remaining bills (last paycheck of the period).
-                  const wtmgToday = new Date();
-                  const nextIncomeDate = currentBreakdown?.incomeItems
-                    .filter(inc => !earlyPayments.has(`${inc.id}-${wtmgPeriodKey}`))
-                    .map(inc => inc.actualPayDate ? new Date(inc.actualPayDate + "T00:00:00") : null)
-                    .filter(d => d && d > wtmgToday)
-                    .sort((a, b) => a - b)[0] || null;
-
-                  // Exclude bills already paid this period or skipped this period.
-                  // Also exclude bills whose due date falls on or after the next income date.
-                  const periodBills = allPeriodBills.filter((b) => {
-                    if (skippedBillPeriods.has(`${b.id}-${wtmgPeriodKey}`)) return false;
-                    if (wtmgPeriodKey && isBillPaidInPeriod(b.id, wtmgPeriodKey)) return false;
-                    if (nextIncomeDate) {
-                      const freq = b.frequency || "monthly";
-                      if (freq === "payday" || freq === "biweekly") return true; // payday bills always go with current check
-                      const dueDate = freq === "one-time" && b.due_date
-                        ? new Date(b.due_date + "T12:00:00")
-                        : new Date(wtmgPStart.getFullYear(), wtmgPStart.getMonth(), b.due_day);
-                      if (freq !== "one-time" && dueDate < wtmgPStart) dueDate.setMonth(dueDate.getMonth() + 1);
-                      if (dueDate >= nextIncomeDate) return false;
-                    }
-                    return true;
-                  });
-
-                  // Regular bills: current period only, not transfer bills, not
-                  // assigned to accumulating accounts, and NOT paid straight from
-                  // the primary spending account — those need no transfer (you
-                  // don't move money to yourself). Matches the shared engine's
-                  // getPeriodTransferGroups, which also skips primary.
-                  const regularBills = periodBills.filter((b) => {
-                    if (b.transfer_to_account_id) return false;
-                    const acct = accounts.find((a) => a.id === b.account_id);
-                    if (acct?.is_primary) return false;
-                    return !acct?.is_accumulating;
-                  });
-
-                  // Non-accumulating transfer bills: show full amount for current period
-                  const periodTransferBills = periodBills.filter((b) => {
-                    if (!b.transfer_to_account_id) return false;
-                    const dest = accounts.find((a) => a.id === b.transfer_to_account_id);
-                    return !dest?.is_accumulating;
-                  });
-
-                  // Accumulating accounts with a due_day drive their own contribution rows
-                  const accumulatingAccounts = accounts.filter(
-                    (a) => a.is_accumulating && a.due_day && a.accumulation_target
-                  );
-
-                  // Group regular bills by source account
-                  const grouped = {};
-                  regularBills.forEach((bill) => {
-                    const acct = accounts.find((a) => a.id === bill.account_id);
-                    const key = acct ? acct.id : "unassigned";
-                    if (!grouped[key]) {
-                      grouped[key] = {
-                        acctName: acct ? acct.name : "Unassigned",
-                        total: 0,
-                        bills: [],
-                        balance: acct?.current_balance || 0,
-                        buffer: acct?.minimum_buffer || 0,
-                      };
-                    }
-                    grouped[key].total += bill.amount || 0;
-                    grouped[key].bills.push(bill);
-                  });
-
-                  const renderTransferRow = (rowKey, label, suggestedAmount, subtitle, targetAccountId = null) => {
-                    const transferred = transfers[rowKey] || 0;
-                    const remaining = Math.max(0, suggestedAmount - transferred);
-                    const done = transferred >= suggestedAmount;
-
-                    const undoTransfer = async () => {
-                      const today = localDateStr();
-                      const currentPeriod = payPeriods.find(p => p.start_date <= today && p.end_date >= today);
-                      const periodKey = currentPeriod?.start_date || today;
-                      await supabase.from("period_transfers")
-                        .delete()
-                        .eq("user_id", userId)
-                        .eq("period_start", periodKey)
-                        .eq("row_key", rowKey);
-                      setTransfers(prev => {
-                        const next = { ...prev };
-                        delete next[rowKey];
-                        return next;
-                      });
-                    };
-
-                    return (
-                      <div key={rowKey} style={{ borderBottom: "1px solid rgba(255,255,255,0.04)", padding: "10px 0" }}>
-                        {/* Main row */}
-                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                          <div>
-                            <div className="row-name" style={{ color: done ? "#4ADE80" : "#F0F6FC" }}>
-                              {done ? "✓ " : ""}{label}
-                            </div>
-                            {subtitle && <div className="row-sub">{subtitle}</div>}
-                          </div>
-                          <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                            {!done && (
-                              <div style={{ textAlign: "right" }}>
-                                <div className="row-amount" style={{ color: transferred > 0 ? "#6C63FF" : "#F0F6FC" }}>
-                                  ${fmt(remaining)}
-                                </div>
-                                <div style={{ fontSize: "10px", color: "#8B8FA8" }}>remaining</div>
-                              </div>
-                            )}
-                            {!done && transferringId === rowKey ? (
-                              <>
-                                <input
-                                  type="number"
-                                  value={transferAmount}
-                                  onChange={(e) => setTransferAmount(e.target.value)}
-                                  onKeyDown={(e) => {
-                                    if (e.key === "Enter") confirmTransfer(rowKey, transferAmount, targetAccountId);
-                                    if (e.key === "Escape") { setTransferringId(null); setTransferAmount(""); }
-                                  }}
-                                  autoFocus
-                                  onFocus={(e) => e.target.select()}
-                                  style={{ background: "#2D2B45", border: "1px solid #6C63FF", color: "#F0F6FC", padding: "4px 8px", borderRadius: "6px", fontSize: "13px", fontFamily: "'DM Mono', monospace", width: "90px", textAlign: "right" }}
-                                />
-                                <button
-                                  onClick={() => confirmTransfer(rowKey, transferAmount, targetAccountId)}
-                                  style={{ background: "#6C63FF", border: "none", color: "#0F1218", padding: "4px 10px", borderRadius: "6px", cursor: "pointer", fontSize: "11px", fontFamily: "'Inter', sans-serif", fontWeight: "600" }}
-                                >
-                                  Confirm
-                                </button>
-                                <button
-                                  onClick={() => { setTransferringId(null); setTransferAmount(""); }}
-                                  style={{ background: "none", border: "1px solid rgba(255,255,255,0.1)", color: "#8B8FA8", padding: "4px 10px", borderRadius: "6px", cursor: "pointer", fontSize: "11px", fontFamily: "'Inter', sans-serif" }}
-                                >
-                                  Cancel
-                                </button>
-                              </>
-                            ) : !done ? (
-                              <div style={{ display: "flex", gap: "6px" }}>
-                                <button
-                                  onClick={() => confirmTransfer(rowKey, remaining, targetAccountId)}
-                                  style={{ background: "rgba(0,212,170,0.1)", border: "1px solid rgba(0,212,170,0.4)", color: "#00D4AA", padding: "4px 10px", borderRadius: "6px", cursor: "pointer", fontSize: "11px", fontFamily: "'Inter', sans-serif", fontWeight: "500" }}
-                                >
-                                  Transfer
-                                </button>
-                                <button
-                                  onClick={() => { setTransferringId(rowKey); setTransferAmount(""); }}
-                                  style={{ background: "rgba(251,191,36,0.08)", border: "1px solid rgba(251,191,36,0.3)", color: "#FBBF24", padding: "4px 10px", borderRadius: "6px", cursor: "pointer", fontSize: "11px", fontFamily: "'Inter', sans-serif", fontWeight: "500" }}
-                                >
-                                  Partial
-                                </button>
-                              </div>
-                            ) : done ? (
-                              <button
-                                onClick={undoTransfer}
-                                style={{ background: "none", border: "1px solid rgba(255,255,255,0.1)", color: "#8B8FA8", padding: "4px 10px", borderRadius: "6px", cursor: "pointer", fontSize: "11px", fontFamily: "'Inter', sans-serif" }}
-                              >
-                                Undo
-                              </button>
-                            ) : null}
-                          </div>
-                        </div>
-                        {/* Partial transfer info row */}
-                        {transferred > 0 && !done && (
-                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "6px" }}>
-                            <div style={{ fontSize: "10px", color: "#6C63FF" }}>
-                              ${fmt(transferred)} transferred so far
-                            </div>
-                            <button
-                              onClick={undoTransfer}
-                              style={{ background: "none", border: "none", color: "#8B8FA8", cursor: "pointer", fontSize: "10px", fontFamily: "'Inter', sans-serif", padding: 0, textDecoration: "underline" }}
-                            >
-                              Undo
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                    );
-                  };
-
-                  const billRows = Object.entries(grouped).flatMap(([key, data]) => {
-                    const transferNeeded = Math.max(0, data.total + data.buffer);
-                    if (transferNeeded === 0) return [];
-                    const subtitle = data.buffer > 0 ? `Includes $${fmt(data.buffer)} buffer` : null;
-                    return [renderTransferRow(key, `Transfer to ${data.acctName}`, transferNeeded, subtitle)];
-                  });
-
-                  const today = new Date();
-                  const currentPeriodIndex = payPeriods.findIndex((p) => {
-                    const start = new Date(p.start_date + "T00:00:00");
-                    const end = new Date(p.end_date + "T23:59:59");
-                    return today >= start && today <= end;
-                  });
-
-                  const periodsUntilDue = (bill) => {
-                    let dueDate = new Date(today.getFullYear(), today.getMonth(), bill.due_day);
-                    if (dueDate < today) dueDate = new Date(today.getFullYear(), today.getMonth() + 1, bill.due_day);
-                    if (currentPeriodIndex === -1) return 1;
-                    let count = 0;
-                    for (let i = currentPeriodIndex; i < payPeriods.length; i++) {
-                      count++;
-                      if (dueDate <= new Date(payPeriods[i].end_date + "T23:59:59")) break;
-                    }
-                    return Math.max(1, count);
-                  };
-
-                  // Non-accumulating transfer bills: show full amount for current period
-                  const periodTransferRows = periodTransferBills.map((bill) => {
-                    const destAcct = accounts.find((a) => a.id === bill.transfer_to_account_id);
-                    const destName = destAcct ? destAcct.name : "Unknown";
-                    return renderTransferRow(`transfer-${bill.id}`, bill.name, bill.amount, `Transfer to ${destName}`, bill.transfer_to_account_id);
-                  });
-
-                  // Account-driven: accumulating accounts with due_day + accumulation_target
-                  const coveredAcctIds = new Set(accumulatingAccounts.map((a) => a.id));
-                  const accumulatingRows = accumulatingAccounts.flatMap((acct) => {
-                    const target = acct.accumulation_target;
-                    const saved = Math.min(acct.current_balance || 0, target);
-                    const stillNeeded = Math.max(0, target - saved);
-                    if (stillNeeded === 0) return [];
-                    const periods = periodsUntilDue({ due_day: acct.due_day });
-                    const amountThisPeriod = stillNeeded / periods;
-                    const subtitle = `$${fmt(saved)} of $${fmt(target)} saved`;
-                    return [renderTransferRow(`acct-${acct.id}`, acct.name, amountThisPeriod, subtitle)];
-                  });
-
-                  // Bill-driven: bills that transfer to an accumulating account (e.g. Rent → Mortgage savings)
-                  const billDrivenRows = bills
-                    .filter((b) => {
-                      if (!b.transfer_to_account_id) return false;
-                      const dest = accounts.find((a) => a.id === b.transfer_to_account_id);
-                      if (!dest?.is_accumulating) return false;
-                      return !coveredAcctIds.has(dest.id);
-                    })
-                    .flatMap((bill) => {
-                      const dest = accounts.find((a) => a.id === bill.transfer_to_account_id);
-                      const target = bill.amount;
-                      const saved = Math.min(dest.current_balance || 0, target);
-                      const stillNeeded = Math.max(0, target - saved);
-                      if (stillNeeded === 0) return [];
-                      const periods = periodsUntilDue(bill);
-                      const amountThisPeriod = stillNeeded / periods;
-                      const subtitle = `$${fmt(saved)} of $${fmt(target)} saved`;
-                      return [renderTransferRow(`bill-acct-${bill.id}`, dest.name, amountThisPeriod, subtitle)];
-                    });
-
-                  const allTransferRows = [...periodTransferRows, ...accumulatingRows, ...billDrivenRows];
-
-                  if (billRows.length === 0 && allTransferRows.length === 0) {
-                    return <div className="empty-state">No allocations this period</div>;
-                  }
-
-                  return (
-                    <>
-                      {billRows.length > 0 && (
-                        <>
-                          <div style={{ fontSize: "10px", color: "#8B8FA8", letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: "8px" }}>Bills</div>
-                          {billRows}
-                        </>
-                      )}
-                      {allTransferRows.length > 0 && (
-                        <>
-                          <div style={{ fontSize: "10px", color: "#8B8FA8", letterSpacing: "0.08em", textTransform: "uppercase", margin: billRows.length > 0 ? "16px 0 8px" : "0 0 8px" }}>Transfers</div>
-                          {allTransferRows}
-                        </>
-                      )}
-                    </>
-                  );
-                })()}
-
-                {/* Next period transfers — lets users record pre-funded transfers early */}
-                {(() => {
-                  const allBreakdown = getPayPeriodBreakdown();
-                  const curIdx = allBreakdown.findIndex(i => i.isCurrentPeriod);
-                  const nextBreakdown = curIdx >= 0 ? allBreakdown[curIdx + 1] : null;
-                  if (!nextBreakdown) return null;
-
-                  const nextPeriodKey = nextBreakdown.period.start_date;
-
-                  // One number: the total to set aside for the upcoming period's bills. This
-                  // mirrors what the End Balance subtracts (start + income - bills) so the two
-                  // agree — every bill except those funded gradually through an accumulating
-                  // account, and skipping anything already paid or skipped for that period.
-                  const billsToTransfer = (nextBreakdown.bills || []).reduce((sum, bill) => {
-                    if (skippedBillPeriods.has(`${bill.id}-${nextPeriodKey}`)) return sum;
-                    if (isBillPaidInPeriod(bill.id, nextPeriodKey)) return sum;
-                    if (bill.transfer_to_account_id) {
-                      const dest = accounts.find(a => a.id === bill.transfer_to_account_id);
-                      if (dest?.is_accumulating) return sum;
-                      return sum + (bill.amount || 0);
-                    }
-                    const acct = accounts.find(a => a.id === bill.account_id);
-                    if (acct?.is_accumulating) return sum;
-                    return sum + (bill.amount || 0);
-                  }, 0);
-                  if (billsToTransfer <= 0) return null;
-
-                  const rowKey = "next-bills-total";
-                  const transferred = nextTransfers[rowKey] || 0;
-                  const remaining = Math.max(0, billsToTransfer - transferred);
-                  const done = transferred >= billsToTransfer;
-
-                  return (
-                    <div style={{ marginTop: "20px", paddingTop: "16px", borderTop: "1px solid rgba(255,255,255,0.06)" }}>
-                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px" }}>
-                        <div style={{ fontSize: "10px", color: "#8B8FA8", letterSpacing: "0.08em", textTransform: "uppercase" }}>
-                          Next Period — {nextBreakdown.period.start_date.replace(/-/g, "/").slice(5)} to {nextBreakdown.period.end_date.replace(/-/g, "/").slice(5)}
-                        </div>
-                        <div style={{ fontSize: "10px", color: "#6C63FF", fontWeight: "600" }}>Pre-fund</div>
-                      </div>
-                      <div style={{ padding: "8px 0" }}>
-                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                          <div className="row-name" style={{ color: done ? "#4ADE80" : "#F0F6FC" }}>
-                            {done ? "✓ " : ""}Bills to transfer
-                          </div>
-                          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                            {!done && transferringId === `next-${rowKey}` ? (
-                              <>
-                                <input
-                                  type="number"
-                                  value={transferAmount}
-                                  onChange={e => setTransferAmount(e.target.value)}
-                                  onKeyDown={e => {
-                                    if (e.key === "Enter") confirmNextTransfer(rowKey, transferAmount, nextPeriodKey);
-                                    if (e.key === "Escape") { setTransferringId(null); setTransferAmount(""); }
-                                  }}
-                                  placeholder={fmt(remaining)}
-                                  autoFocus
-                                  onFocus={e => e.target.select()}
-                                  style={{ width: "80px", background: "rgba(255,255,255,0.06)", border: "1px solid rgba(108,99,255,0.4)", borderRadius: "6px", color: "#F0F6FC", fontFamily: "'DM Mono', monospace", fontSize: "12px", padding: "4px 8px", textAlign: "right" }}
-                                />
-                                <button onClick={() => confirmNextTransfer(rowKey, transferAmount, nextPeriodKey)} style={{ background: "rgba(108,99,255,0.15)", border: "1px solid rgba(108,99,255,0.3)", color: "#6C63FF", borderRadius: "6px", padding: "4px 10px", fontSize: "11px", fontWeight: "700", cursor: "pointer", fontFamily: "'Inter', sans-serif" }}>✓</button>
-                                <button onClick={() => confirmNextTransfer(rowKey, remaining, nextPeriodKey)} style={{ background: "rgba(108,99,255,0.08)", border: "1px solid rgba(108,99,255,0.2)", color: "#6C63FF", borderRadius: "6px", padding: "4px 10px", fontSize: "11px", cursor: "pointer", fontFamily: "'Inter', sans-serif" }}>Full ${fmt(remaining)}</button>
-                              </>
-                            ) : done ? (
-                              <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                                {/* Show what was actually transferred, not the bills total —
-                                    the user may fund more than the bills (extra buffer). */}
-                                <span style={{ fontFamily: "'DM Mono', monospace", fontSize: "12px", color: "#4ADE80" }}>${fmt(transferred)}</span>
-                                <button onClick={() => undoNextTransfer(rowKey, nextPeriodKey)} style={{ background: "none", border: "none", color: "#8B8FA8", cursor: "pointer", fontSize: "10px", fontFamily: "'Inter', sans-serif", textDecoration: "underline" }}>Undo</button>
-                              </div>
-                            ) : (
-                              <button onClick={() => { setTransferringId(`next-${rowKey}`); setTransferAmount(remaining.toFixed(2)); }} style={{ background: "rgba(108,99,255,0.12)", border: "1px solid rgba(108,99,255,0.25)", color: "#6C63FF", borderRadius: "6px", padding: "4px 12px", fontSize: "11px", fontWeight: "600", cursor: "pointer", fontFamily: "'Inter', sans-serif" }}>
-                                Transfer ${fmt(remaining)}
-                              </button>
-                            )}
-                          </div>
-                        </div>
-                        {transferred > 0 && !done && (
-                          <div style={{ fontSize: "10px", color: "#8B8FA8", marginTop: "4px" }}>${fmt(transferred)} of ${fmt(billsToTransfer)} transferred so far</div>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })()}
               </div>
             </div>
     );

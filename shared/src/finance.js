@@ -493,7 +493,7 @@ export function getDistributionGroups(item, ctx) {
       const td = b.transfer_to_account_id ? accounts.find((a) => a.id === b.transfer_to_account_id) : null;
       if (td && td.is_accumulating) return; // goal → Set Aside rows
       key = td ? td.id : `bill-${b.id}`;
-      group = { accountId: td ? td.id : null, name: td ? td.name : b.name, isSavings: td ? td.account_type === "savings" : false, isChecking: false, amount: 0 };
+      group = { key, accountId: td ? td.id : null, name: td ? td.name : b.name, isSavings: td ? td.account_type === "savings" : false, isChecking: false, amount: 0 };
     } else {
       // A regular bill: grouped by the account you move money into to fund it
       // (a non-primary bills/envelope/savings account), else paid from checking.
@@ -506,7 +506,7 @@ export function getDistributionGroups(item, ctx) {
       }
       if (dest && dest.is_accumulating) return; // goal → Set Aside rows, not a move
       key = dest ? dest.id : "__checking";
-      group = { accountId: dest ? dest.id : null, name: dest ? dest.name : "From checking", isSavings: dest ? dest.account_type === "savings" : false, isChecking: !dest, amount: 0 };
+      group = { key, accountId: dest ? dest.id : null, name: dest ? dest.name : "From checking", isSavings: dest ? dest.account_type === "savings" : false, isChecking: !dest, amount: 0 };
     }
     if (!groups[key]) groups[key] = group;
     groups[key].amount += amount;
