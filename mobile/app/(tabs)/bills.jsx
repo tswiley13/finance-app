@@ -32,7 +32,7 @@ const OWNERS = [
 const blank = {
   name: "", amount: "", frequency: "monthly", due_day: null, due_day_2: null,
   due_month: null, due_date: "", start_date: "", account_id: null, category: "", owner: "joint",
-  payment_method: "", transfer_to_account_id: null, is_variable: false,
+  payment_method: "", transfer_to_account_id: null, is_variable: false, is_transfer: false,
 };
 
 export function freqLabel(b) {
@@ -106,6 +106,7 @@ export default function Bills() {
       payment_method: b.payment_method || "",
       transfer_to_account_id: b.transfer_to_account_id || null,
       is_variable: !!b.is_variable,
+      is_transfer: !!b.is_transfer,
     });
     setError("");
     setEditing(b);
@@ -151,6 +152,7 @@ export default function Bills() {
       owner: form.owner,
       account_id: form.account_id || null,
       transfer_to_account_id: form.transfer_to_account_id || null,
+      is_transfer: !!form.is_transfer,
       is_variable: form.is_variable,
       frequency: form.frequency,
       due_day_2: form.frequency === "semi-monthly" && form.due_day_2 ? parseInt(form.due_day_2) : null,
@@ -205,7 +207,7 @@ export default function Bills() {
         refreshControl={<RefreshControl refreshing={false} onRefresh={d.reload} tintColor={c.accent} />}
       >
         <View style={s.headerRow}>
-          <Text style={s.pageTitle}>Bills</Text>
+          <Text style={s.pageTitle}>Bills & Transfers</Text>
           <Pressable onPress={openNew} style={s.addBtn}>
             <Ionicons name="add" size={16} color="#13111F" />
             <Text style={s.addBtnText}>Add</Text>
@@ -227,7 +229,7 @@ export default function Bills() {
                   <View style={{ flexDirection: "row", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
                     <Text style={s.name}>{b.name}</Text>
                     {b.is_variable && <Pill text="VARIABLE" color={c.warning} bg="rgba(251,191,36,0.1)" />}
-                    {b.transfer_to_account_id && <Pill text="TRANSFER" color={c.success} bg="rgba(0,212,170,0.1)" />}
+                    {(b.is_transfer || b.transfer_to_account_id) && <Pill text="TRANSFER" color="#60A5FA" bg="rgba(96,165,250,0.12)" />}
                   </View>
                   <Text style={s.faintSm}>{freqLabel(b)}</Text>
                   {!!acctName(b.account_id) && <Text style={s.faintSm}>From {acctName(b.account_id)}</Text>}
@@ -330,7 +332,7 @@ export default function Bills() {
                 </Field>
               )}
 
-              <Field label="Paid From" required hint="Which account this bill comes out of.">
+              <Field label="Paid From" required hint="Which account this comes out of.">
                 <Select
                   value={form.account_id}
                   onChange={(v) => setForm({ ...form, account_id: v })}
@@ -338,6 +340,24 @@ export default function Bills() {
                   placeholder="Pick an account"
                 />
               </Field>
+
+              <Toggle
+                label="Transfer (not a bill)"
+                hint="Money you move into an account you own — food, gas, savings. Shows under Transfers, not Bills."
+                value={form.is_transfer}
+                onValueChange={(v) => setForm({ ...form, is_transfer: v, ...(v ? {} : { transfer_to_account_id: null }) })}
+              />
+
+              {form.is_transfer && (
+                <Field label="Transfers To (optional)" hint="Point it at a savings/envelope account to track that balance, or leave as None.">
+                  <Select
+                    value={form.transfer_to_account_id}
+                    onChange={(v) => setForm({ ...form, transfer_to_account_id: v })}
+                    options={[{ label: "None", value: null }, ...accountOptions]}
+                    placeholder="None"
+                  />
+                </Field>
+              )}
 
               {categoryOptions.length > 1 && (
                 <Field label="Category">
@@ -361,7 +381,7 @@ export default function Bills() {
                 onValueChange={(v) => setForm({ ...form, is_variable: v })}
               />
 
-              {accumulatingOptions.length > 0 && (
+              {!form.is_transfer && accumulatingOptions.length > 0 && (
                 <Field
                   label="Save Up In"
                   hint="For big periodic bills — set money aside gradually in an accumulating account."

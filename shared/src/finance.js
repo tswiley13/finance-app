@@ -354,20 +354,23 @@ export function getPayPeriodBreakdown(ctx, limit = 30) {
     // display. transferContributions is grouped by destination account.
     const transferGroupsMap = {};
     periodBills.forEach((b) => {
-      const dest = getBillTransferTarget(b, accounts);
-      if (!dest) return;
+      if (!isTransferBill(b, accounts)) return;
       if (isBillFullyPaid(billPayments, b, period.start_date)) return;
       const amount = Math.max(0, (b.amount || 0) - getBillPaidAmount(billPayments, b.id, period.start_date));
       if (amount <= 0) return;
-      if (!transferGroupsMap[dest.id]) {
-        transferGroupsMap[dest.id] = {
-          accountId: dest.id,
-          name: dest.name,
-          isSavings: dest.account_type === "savings",
+      // Group by destination account when there is one (so two bills into the
+      // same envelope merge); otherwise key by the item itself.
+      const dest = getBillTransferTarget(b, accounts);
+      const key = dest ? dest.id : `bill-${b.id}`;
+      if (!transferGroupsMap[key]) {
+        transferGroupsMap[key] = {
+          accountId: dest ? dest.id : null,
+          name: dest ? dest.name : b.name,
+          isSavings: dest ? dest.account_type === "savings" : false,
           amount: 0,
         };
       }
-      transferGroupsMap[dest.id].amount += amount;
+      transferGroupsMap[key].amount += amount;
     });
     const transferGroups = Object.values(transferGroupsMap);
     const transfersTotal = transferGroups.reduce((s, g) => s + g.amount, 0);
@@ -467,6 +470,27 @@ export function getBillTransferTarget(bill, accounts = []) {
   // Many users draft every bill from a dedicated non-primary "bills" account —
   // those are still real bills, not money moving into an envelope you keep.
   return null;
+}
+
+/**
+ * Is this item a transfer (money moved into an account you own) rather than a
+ * bill (money that leaves you)? The explicit `is_transfer` flag — chosen when
+ * the item is created — wins. Back-compat: an item with an explicit transfer
+ * destination (or a Savings-category link) still reads as a transfer even if the
+ * flag was never set. A transfer need NOT have a destination account: food/gas
+ * can just be tagged "not a bill". A transfer whose destination is a goal
+ * (accumulating) account is excluded here — those use smoothed contributions.
+ */
+export function isTransferBill(bill, accounts = []) {
+  if (getBillTransferTarget(bill, accounts)) return true;
+  if (bill.is_transfer) {
+    if (bill.transfer_to_account_id) {
+      const dest = accounts.find((a) => a.id === bill.transfer_to_account_id);
+      if (dest && dest.is_accumulating) return false; // goal → handled by contributions
+    }
+    return true;
+  }
+  return false;
 }
 
 /**

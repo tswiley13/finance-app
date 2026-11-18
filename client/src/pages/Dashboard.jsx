@@ -350,6 +350,7 @@ function Dashboard() {
   const [billOwner, setBillOwner] = useState("joint");
   const [billAccountId, setBillAccountId] = useState("");
   const [transferToAccountId, setTransferToAccountId] = useState("");
+  const [isTransferItem, setIsTransferItem] = useState(false); // Bill (leaves you) vs Transfer (to your own account)
   const [isBillAccumulating, setIsBillAccumulating] = useState(false);
   const [isVariable, setIsVariable] = useState(false);
   const [billFrequency, setBillFrequency] = useState("");
@@ -891,7 +892,8 @@ function Dashboard() {
         category: billCategory,
         owner: billOwner,
         account_id: billAccountId || null,
-        transfer_to_account_id: isBillAccumulating ? (transferToAccountId || null) : null,
+        transfer_to_account_id: (isBillAccumulating || isTransferItem) ? (transferToAccountId || null) : null,
+        is_transfer: isTransferItem,
         is_variable: isVariable,
         frequency: billFrequency || "monthly",
         due_day_2: (billFrequency || "monthly") === "semi-monthly" && billDueDay2 ? parseInt(billDueDay2) : null,
@@ -919,6 +921,7 @@ function Dashboard() {
     setBillOwner("joint");
     setBillAccountId("");
     setTransferToAccountId("");
+    setIsTransferItem(false);
     setIsBillAccumulating(false);
     setIsVariable(false);
     setBillFrequency("monthly");
@@ -958,7 +961,8 @@ function Dashboard() {
         category: billCategory,
         owner: billOwner,
         account_id: billAccountId || null,
-        transfer_to_account_id: isBillAccumulating ? (transferToAccountId || null) : null,
+        transfer_to_account_id: (isBillAccumulating || isTransferItem) ? (transferToAccountId || null) : null,
+        is_transfer: isTransferItem,
         is_variable: isVariable,
         frequency: billFrequency || "monthly",
         due_day_2: (billFrequency || "monthly") === "semi-monthly" && billDueDay2 ? parseInt(billDueDay2) : null,
@@ -986,7 +990,8 @@ function Dashboard() {
               category: billCategory,
               owner: billOwner,
               account_id: billAccountId,
-              transfer_to_account_id: isBillAccumulating ? (transferToAccountId || null) : null,
+              transfer_to_account_id: (isBillAccumulating || isTransferItem) ? (transferToAccountId || null) : null,
+              is_transfer: isTransferItem,
               is_variable: isVariable,
               frequency: billFrequency,
               due_day_2: billFrequency === "semi-monthly" && billDueDay2 ? parseInt(billDueDay2) : null,
@@ -1007,6 +1012,7 @@ function Dashboard() {
     setBillOwner("joint");
     setBillAccountId("");
     setTransferToAccountId("");
+    setIsTransferItem(false);
     setIsBillAccumulating(false);
     setIsVariable(false);
     setBillFrequency("monthly");
@@ -1522,11 +1528,9 @@ function Dashboard() {
       // Transfers vs true bills: money moving into another account you own
       // (envelope like groceries/gas, or savings) is a transfer, not a bill. Both
       // still leave checking (billsTotal unchanged) — this only splits the display.
+      // The destination account a bill moves money into (explicit transfer, or a
+      // Savings-category bill pointing at a savings account), else null.
       const transferTargetFor = (b) => {
-        // Only an explicit "transfer to another account" (or a Savings-category
-        // bill pointing at a savings account) is a transfer. The account a bill
-        // is merely paid FROM (account_id) is funding mechanics, not a transfer —
-        // bills drafted from a dedicated "bills" account are still bills.
         if (b.transfer_to_account_id) {
           const dest = accounts.find((a) => a.id === b.transfer_to_account_id);
           if (dest && !dest.is_accumulating) return dest;
@@ -1537,16 +1541,32 @@ function Dashboard() {
         }
         return null;
       };
+      // An item is a transfer when it's explicitly typed one (is_transfer, chosen
+      // at creation) or has a transfer destination. A goal-destined transfer is
+      // excluded (handled by Set Aside contributions). No destination is fine —
+      // food/gas can just be "not a bill".
+      const isTransferItem = (b) => {
+        if (transferTargetFor(b)) return true;
+        if (b.is_transfer) {
+          if (b.transfer_to_account_id) {
+            const dest = accounts.find((a) => a.id === b.transfer_to_account_id);
+            if (dest && dest.is_accumulating) return false;
+          }
+          return true;
+        }
+        return false;
+      };
       const transferGroupsMap = {};
       periodBills.forEach((b) => {
-        const dest = transferTargetFor(b);
-        if (!dest) return;
+        if (!isTransferItem(b)) return;
         const amount = Math.max(0, (b.amount || 0) - getBillPaidAmount(b.id, period.start_date));
         if (amount <= 0) return;
-        if (!transferGroupsMap[dest.id]) {
-          transferGroupsMap[dest.id] = { accountId: dest.id, name: dest.name, isSavings: dest.account_type === "savings", amount: 0 };
+        const dest = transferTargetFor(b);
+        const key = dest ? dest.id : `bill-${b.id}`;
+        if (!transferGroupsMap[key]) {
+          transferGroupsMap[key] = { accountId: dest ? dest.id : null, name: dest ? dest.name : b.name, isSavings: dest ? dest.account_type === "savings" : false, amount: 0 };
         }
-        transferGroupsMap[dest.id].amount += amount;
+        transferGroupsMap[key].amount += amount;
       });
       const transferGroups = Object.values(transferGroupsMap);
       const transfersTotal = transferGroups.reduce((s, g) => s + g.amount, 0);
@@ -6377,7 +6397,7 @@ function Dashboard() {
             }}
           >
             <h2 style={{ fontFamily: "'Syne', sans-serif", fontSize: "24px" }}>
-              Bills
+              Bills &amp; Transfers
             </h2>
             <button
               onClick={() => {
@@ -6396,6 +6416,7 @@ function Dashboard() {
                 setBillFrequency("");
                 setBillDueDay2("");
                 setIsBillAccumulating(false);
+                setIsTransferItem(false);
                 setTransferToAccountId("");
               }}
               style={{
@@ -6417,7 +6438,29 @@ function Dashboard() {
           {showBillForm && (
             <div className="panel" style={{ marginBottom: "16px" }}>
               <div className="panel-header">
-                <div className="panel-title">New Bill</div>
+                <div className="panel-title">{isTransferItem ? "New Transfer" : "New Bill"}</div>
+              </div>
+              {/* Bill (money that leaves you) vs Transfer (money into your own account) */}
+              <div style={{ display: "flex", gap: "6px", marginBottom: "12px", background: "rgba(255,255,255,0.04)", borderRadius: "8px", padding: "4px", maxWidth: "280px" }}>
+                {[{ v: false, label: "Bill" }, { v: true, label: "Transfer" }].map((opt) => (
+                  <button
+                    key={opt.label}
+                    type="button"
+                    onClick={() => { setIsTransferItem(opt.v); if (opt.v) setIsBillAccumulating(false); else setTransferToAccountId(""); }}
+                    style={{
+                      flex: 1, padding: "7px 10px", borderRadius: "6px", border: "none", cursor: "pointer", fontSize: "13px", fontWeight: 600,
+                      background: isTransferItem === opt.v ? (opt.v ? "#60A5FA" : "#6C63FF") : "transparent",
+                      color: isTransferItem === opt.v ? "#fff" : "#8B8FA8",
+                    }}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+              <div style={{ fontSize: "11px", color: "#6E7681", marginBottom: "12px" }}>
+                {isTransferItem
+                  ? "Money you move into an account you own (food, gas, savings). It shows under Transfers, not Bills."
+                  : "Money that leaves you (rent, car payment, utilities). Shows under Bills."}
               </div>
               <div className="form-grid">
                 <input
@@ -6541,27 +6584,29 @@ function Dashboard() {
                   onChange={(e) => setBillAccountId(e.target.value)}
                   style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", color: "#F2F0EB", padding: "8px 12px", borderRadius: "6px", fontSize: "13px", fontFamily: "'Inter', sans-serif" }}
                 >
-                  <option value="">{isBillAccumulating ? "Transfer from which account?" : "Which account pays this?"}</option>
+                  <option value="">{isTransferItem ? "Which account does it come out of?" : isBillAccumulating ? "Transfer from which account?" : "Which account pays this?"}</option>
                   {accounts.map((acct, i) => (
                     <option key={i} value={acct.id}>{acct.name}</option>
                   ))}
                 </select>
               </div>
+              {!isTransferItem && (
               <label style={{ display: "flex", alignItems: "center", gap: "8px", cursor: "pointer", marginTop: "4px" }}>
                 <input
                   type="checkbox"
                   checked={isBillAccumulating}
                   onChange={(e) => { setIsBillAccumulating(e.target.checked); if (!e.target.checked) setTransferToAccountId(""); }}
                 />
-                <span style={{ fontSize: "13px", color: "#8B8FA8" }}>This is a transfer to another account</span>
+                <span style={{ fontSize: "13px", color: "#8B8FA8" }}>This is a goal / sinking-fund contribution</span>
               </label>
-              {isBillAccumulating && (
+              )}
+              {(isBillAccumulating || isTransferItem) && (
                 <select
                   value={transferToAccountId}
                   onChange={(e) => setTransferToAccountId(e.target.value)}
                   style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", color: "#F2F0EB", padding: "8px 12px", borderRadius: "6px", fontSize: "13px", fontFamily: "'Inter', sans-serif" }}
                 >
-                  <option value="">Transfer to which account?</option>
+                  <option value="">{isTransferItem ? "Transfer to which account? (optional)" : "Transfer to which account?"}</option>
                   {accounts.map((acct, i) => (
                     <option key={i} value={acct.id}>{acct.name}{acct.is_accumulating ? " (goal)" : acct.account_type === "savings" ? " (savings)" : ""}</option>
                   ))}
@@ -6578,7 +6623,7 @@ function Dashboard() {
                   disabled={isSaving}
                   style={{ background: isSaving ? "#4a4470" : "#6C63FF", border: "none", color: "#F0F6FC", padding: "8px 16px", borderRadius: "6px", cursor: isSaving ? "not-allowed" : "pointer", fontSize: "13px", fontWeight: "600", fontFamily: "'Inter', sans-serif" }}
                 >
-                  {isSaving ? "Saving..." : "Add Bill"}
+                  {isSaving ? "Saving..." : (isTransferItem ? "Add Transfer" : "Add Bill")}
                 </button>
                 <button
                   onClick={() => { setShowBillForm(false); setBillFormError(""); }}
@@ -6715,7 +6760,8 @@ function Dashboard() {
                                 setBillOwner(bill.owner);
                                 setBillAccountId(bill.account_id || "");
                                 setTransferToAccountId(bill.transfer_to_account_id || "");
-                                setIsBillAccumulating(!!bill.transfer_to_account_id);
+                                setIsTransferItem(!!bill.is_transfer);
+                                setIsBillAccumulating(!!accounts.find((a) => a.id === bill.transfer_to_account_id)?.is_accumulating);
                                 setIsVariable(bill.is_variable);
                                 setBillFrequency(bill.frequency || "monthly");
                                 setBillDueDay2(bill.due_day_2 || "");
@@ -6909,7 +6955,7 @@ function Dashboard() {
                               fontFamily: "'Inter', sans-serif",
                             }}
                           >
-                            <option value="">{isBillAccumulating ? "Transfer from which account?" : "Which account pays this?"}</option>
+                            <option value="">{isTransferItem ? "Which account does it come out of?" : isBillAccumulating ? "Transfer from which account?" : "Which account pays this?"}</option>
                             {accounts.map((acct, i) => (
                               <option key={i} value={acct.id}>
                                 {acct.name}
@@ -6917,15 +6963,33 @@ function Dashboard() {
                             ))}
                           </select>
                         </div>
-                        <label style={{ display: "flex", alignItems: "center", gap: "8px", cursor: "pointer", marginTop: "4px" }}>
+                        <div style={{ display: "flex", gap: "6px", marginTop: "8px", background: "rgba(255,255,255,0.04)", borderRadius: "8px", padding: "4px", maxWidth: "280px" }}>
+                          {[{ v: false, label: "Bill" }, { v: true, label: "Transfer" }].map((opt) => (
+                            <button
+                              key={opt.label}
+                              type="button"
+                              onClick={() => { setIsTransferItem(opt.v); if (opt.v) setIsBillAccumulating(false); else setTransferToAccountId(""); }}
+                              style={{
+                                flex: 1, padding: "6px 10px", borderRadius: "6px", border: "none", cursor: "pointer", fontSize: "13px", fontWeight: 600,
+                                background: isTransferItem === opt.v ? (opt.v ? "#60A5FA" : "#6C63FF") : "transparent",
+                                color: isTransferItem === opt.v ? "#fff" : "#8B8FA8",
+                              }}
+                            >
+                              {opt.label}
+                            </button>
+                          ))}
+                        </div>
+                        {!isTransferItem && (
+                        <label style={{ display: "flex", alignItems: "center", gap: "8px", cursor: "pointer", marginTop: "8px" }}>
                           <input
                             type="checkbox"
                             checked={isBillAccumulating}
                             onChange={(e) => { setIsBillAccumulating(e.target.checked); if (!e.target.checked) setTransferToAccountId(""); }}
                           />
-                          <span style={{ fontSize: "13px", color: "#8B8FA8" }}>This is a transfer to another account</span>
+                          <span style={{ fontSize: "13px", color: "#8B8FA8" }}>This is a goal / sinking-fund contribution</span>
                         </label>
-                        {isBillAccumulating && (
+                        )}
+                        {(isBillAccumulating || isTransferItem) && (
                           <select
                             value={transferToAccountId}
                             onChange={(e) => setTransferToAccountId(e.target.value)}
@@ -6940,7 +7004,7 @@ function Dashboard() {
                               marginTop: "4px",
                             }}
                           >
-                            <option value="">Transfer to which account?</option>
+                            <option value="">{isTransferItem ? "Transfer to which account? (optional)" : "Transfer to which account?"}</option>
                             {accounts.map((acct, i) => (
                               <option key={i} value={acct.id}>
                                 {acct.name}{acct.is_accumulating ? " (goal)" : acct.account_type === "savings" ? " (savings)" : ""}
@@ -7902,7 +7966,7 @@ function Dashboard() {
             },
             { key: "monthly", label: "Monthly Overview", icon: <BarChart2 size={16} /> },
             { key: "budget", label: "Budget", icon: <PieChart size={16} /> },
-            { key: "bills", label: "Bills", icon: <Receipt size={16} /> },
+            { key: "bills", label: "Bills & Transfers", icon: <Receipt size={16} /> },
             { key: "income", label: "Income", icon: <Wallet size={16} /> },
             {
               key: "accounts",
@@ -8061,7 +8125,7 @@ function Dashboard() {
             { key: "dashboard", label: "Dashboard", icon: <LayoutDashboard size={16} /> },
             { key: "monthly", label: "Monthly Overview", icon: <BarChart2 size={16} /> },
             { key: "budget", label: "Budget", icon: <PieChart size={16} /> },
-            { key: "bills", label: "Bills", icon: <Receipt size={16} /> },
+            { key: "bills", label: "Bills & Transfers", icon: <Receipt size={16} /> },
             { key: "income", label: "Income", icon: <Wallet size={16} /> },
             { key: "accounts", label: "Accounts", icon: <CreditCard size={16} /> },
             { key: "categories", label: "Categories", icon: <Tag size={16} /> },

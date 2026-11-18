@@ -649,5 +649,22 @@ console.log("✓ planning-fields export tests passed");
   assert.equal(bar.transfersTotal, 0, "bills drafted from a non-primary account are NOT transfers");
   assert.equal(bar.trueBillsTotal, 243.88, "they stay in the Bills total");
 
+  // Explicit is_transfer flag (chosen at creation) with NO destination account:
+  // food/gas tagged "not a bill" still shows as a transfer, by its own name.
+  const flagCtx = {
+    ...trCtx,
+    bills: [
+      { id: "rent", name: "Rent", amount: 1000, frequency: "payday", account_id: "chk" },
+      { id: "food", name: "Food", amount: 500, frequency: "payday", account_id: "chk", is_transfer: true },
+      { id: "gas", name: "Gas", amount: 300, frequency: "payday", account_id: "chk", is_transfer: true },
+    ],
+  };
+  const fr = getPayPeriodBreakdown(flagCtx)[0];
+  assert.equal(fr.transfersTotal, 800, "flagged transfers with no destination still total up");
+  assert.equal(fr.trueBillsTotal, 1000, "only rent stays a bill");
+  const frNames = fr.transferGroups.map((g) => g.name).sort();
+  assert.deepEqual(frNames, ["Food", "Gas"], "destination-less transfers show by their own name");
+  assert.equal(fr.transferGroups.every((g) => g.accountId === null), true, "no destination account");
+
   console.log("✓ bills vs transfers split tests passed");
 }
