@@ -348,34 +348,17 @@ export function getPayPeriodBreakdown(ctx, limit = 30) {
 
     const savingsAdded = savingsContributions.reduce((s, c) => s + c.amount, 0);
 
-    // Transfers vs true bills: a transfer repositions money into another account
-    // you own (envelope/savings); a bill leaves you. Both still come out of
-    // checking (so billsTotal / End Balance are unchanged) — this only splits the
-    // display. transferContributions is grouped by destination account.
-    const transferGroupsMap = {};
-    periodBills.forEach((b) => {
-      if (!isTransferBill(b, accounts)) return;
-      if (isBillFullyPaid(billPayments, b, period.start_date)) return;
-      const amount = Math.max(0, (b.amount || 0) - getBillPaidAmount(billPayments, b.id, period.start_date));
-      if (amount <= 0) return;
-      // Group by destination account when there is one (so two bills into the
-      // same envelope merge); otherwise key by the item itself.
-      const dest = getBillTransferTarget(b, accounts);
-      const key = dest ? dest.id : `bill-${b.id}`;
-      if (!transferGroupsMap[key]) {
-        transferGroupsMap[key] = {
-          accountId: dest ? dest.id : null,
-          name: dest ? dest.name : b.name,
-          isSavings: dest ? dest.account_type === "savings" : false,
-          amount: 0,
-        };
-      }
-      transferGroupsMap[key].amount += amount;
-    });
-    const transferGroups = Object.values(transferGroupsMap);
-    const transfersTotal = transferGroups.reduce((s, g) => s + g.amount, 0);
-    // What's left is money that truly leaves you (rent, utilities, etc).
-    const trueBillsTotal = Math.max(0, billsTotal - transfersTotal);
+    // Distribution plan: how this period's money gets moved out of checking.
+    // Every unpaid bill is grouped by the account you move the money INTO —
+    // a dedicated "bills" account (Wiley Bills), a savings/envelope account,
+    // etc. Bills paid straight from checking need no move and land in a
+    // "from checking" bucket. Accumulating goals are excluded (they're funded
+    // gradually via the Set Aside contribution rows). The group totals sum to
+    // billsTotal, so the card's Income − (moves) always ties to End Balance.
+    const distribution = getDistributionGroups(
+      { period, bills: periodBills },
+      { accounts, billPayments },
+    );
 
     return {
       period,
@@ -384,9 +367,7 @@ export function getPayPeriodBreakdown(ctx, limit = 30) {
       incomeItems: periodIncomeItems,
       bills: periodBills,
       billsTotal,
-      trueBillsTotal,
-      transfersTotal,
-      transferGroups,
+      distribution,
       leftOver: periodIncome - billsTotal,
       contributions: allContributions.filter((c) => periodStart < c.dueDate),
       savingsContributions,
@@ -481,6 +462,57 @@ export function getBillTransferTarget(bill, accounts = []) {
  * can just be tagged "not a bill". A transfer whose destination is a goal
  * (accumulating) account is excluded here — those use smoothed contributions.
  */
+/**
+ * The distribution plan for a period: every unpaid bill grouped by the account
+ * you MOVE the money into. Returns rows [{ accountId, name, amount, isSavings,
+ * isChecking }], most-money-first. This is the "where does each payday's money
+ * go" view — e.g. "Wiley Bills $2,580 · Savings $4,000 · Food/Gas $800".
+ *
+ *  - transfer_to_account_id (explicit transfer) → that account
+ *  - else a non-primary account_id (a dedicated bills/envelope account you fund)
+ *  - else it's paid straight from checking → the "from checking" bucket (money
+ *    that just leaves; no transfer to make)
+ * Accumulating goals are skipped (funded via Set Aside contributions). Group
+ * amounts sum to the period's unpaid billsTotal.
+ */
+export function getDistributionGroups(item, ctx) {
+  const { accounts = [], billPayments = {} } = ctx;
+  const periodKey = item.period.start_date;
+  const groups = {};
+  (item.bills || []).forEach((b) => {
+    if (isBillFullyPaid(billPayments, b, periodKey)) return;
+    const amount = Math.max(0, (b.amount || 0) - getBillPaidAmount(billPayments, b.id, periodKey));
+    if (amount <= 0) return;
+
+    let key, group;
+    if (b.is_transfer) {
+      // Explicitly typed a transfer: its own "move" line, regardless of which
+      // account it's drafted from — so you can split e.g. Food/Gas out of a
+      // shared bills account. Into a named destination if one is set.
+      const td = b.transfer_to_account_id ? accounts.find((a) => a.id === b.transfer_to_account_id) : null;
+      if (td && td.is_accumulating) return; // goal → Set Aside rows
+      key = td ? td.id : `bill-${b.id}`;
+      group = { accountId: td ? td.id : null, name: td ? td.name : b.name, isSavings: td ? td.account_type === "savings" : false, isChecking: false, amount: 0 };
+    } else {
+      // A regular bill: grouped by the account you move money into to fund it
+      // (a non-primary bills/envelope/savings account), else paid from checking.
+      let dest = null;
+      if (b.transfer_to_account_id) {
+        dest = accounts.find((a) => a.id === b.transfer_to_account_id) || null;
+      } else if (b.account_id) {
+        const a = accounts.find((x) => x.id === b.account_id);
+        if (a && !a.is_primary) dest = a;
+      }
+      if (dest && dest.is_accumulating) return; // goal → Set Aside rows, not a move
+      key = dest ? dest.id : "__checking";
+      group = { accountId: dest ? dest.id : null, name: dest ? dest.name : "From checking", isSavings: dest ? dest.account_type === "savings" : false, isChecking: !dest, amount: 0 };
+    }
+    if (!groups[key]) groups[key] = group;
+    groups[key].amount += amount;
+  });
+  return Object.values(groups).sort((a, b) => b.amount - a.amount);
+}
+
 export function isTransferBill(bill, accounts = []) {
   if (getBillTransferTarget(bill, accounts)) return true;
   if (bill.is_transfer) {

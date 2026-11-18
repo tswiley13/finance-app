@@ -380,29 +380,39 @@ function PeriodCard({ row, open, onToggle, d, run }) {
 
       {open && (
         <View style={{ marginTop: 14 }}>
-          {/* Start / Income / Bills (true expenses only — transfers get their own row) */}
+          {/* Start / Income, then the distribution (where the money moves). */}
           {(() => {
-            const trueBills = Math.max(0, row.billsDeducted - (row.transfersTotal || 0));
+            const dist = row.distribution || [];
+            const moves = dist.filter((g) => !g.isChecking);
+            const checking = dist.find((g) => g.isChecking);
+            const billsShown = moves.length ? (checking?.amount || 0) : row.billsDeducted;
             return (
-              <View style={{ flexDirection: "row", gap: 6 }}>
-                <SubTile label="Start" value={row.startBalance} color={c.textMuted} />
-                <SubTile label={row.isCurrent ? "Pending" : "Income"} value={row.pendingIncome} color={c.positive} prefix="+" />
-                <SubTile label="Bills" value={-trueBills} color={trueBills > 0 ? c.danger : c.textMuted} />
-              </View>
+              <>
+                <View style={{ flexDirection: "row", gap: 6 }}>
+                  <SubTile label="Start" value={row.startBalance} color={c.textMuted} />
+                  <SubTile label={row.isCurrent ? "Pending" : "Income"} value={row.pendingIncome} color={c.positive} prefix="+" />
+                  <SubTile label={moves.length ? "From Checking" : "Bills"} value={-billsShown} color={billsShown > 0 ? c.danger : c.textMuted} />
+                </View>
+                {moves.length > 0 && (
+                  <View style={{ marginTop: 8, backgroundColor: "rgba(96,165,250,0.06)", borderRadius: 10, padding: 10 }}>
+                    <Text style={{ color: "#60A5FA", fontSize: 10, fontWeight: "700", letterSpacing: 0.6, marginBottom: 6 }}>MOVE TO</Text>
+                    {moves.map((g, j) => (
+                      <View key={j} style={{ flexDirection: "row", justifyContent: "space-between", paddingVertical: 3 }}>
+                        <Text style={{ color: c.text, fontSize: 13 }}>{g.name}{g.isSavings ? " · savings" : ""}</Text>
+                        <Text style={{ color: "#60A5FA", fontSize: 13, fontVariant: ["tabular-nums"] }}>${Math.round(g.amount).toLocaleString()}</Text>
+                      </View>
+                    ))}
+                    {checking && checking.amount > 0 && (
+                      <View style={{ flexDirection: "row", justifyContent: "space-between", paddingVertical: 3 }}>
+                        <Text style={{ color: c.textMuted, fontSize: 13 }}>Paid from checking</Text>
+                        <Text style={{ color: c.textMuted, fontSize: 13, fontVariant: ["tabular-nums"] }}>${Math.round(checking.amount).toLocaleString()}</Text>
+                      </View>
+                    )}
+                  </View>
+                )}
+              </>
             );
           })()}
-
-          {/* Transfers — money moving into your own accounts (envelope/savings). */}
-          {row.transferGroups && row.transferGroups.length > 0 && (
-            <View style={{ flexDirection: "row", gap: 6, marginTop: 6 }}>
-              <SubTile label="Transfers" value={-row.transfersTotal} color="#60A5FA" />
-              <View style={{ flex: 2, justifyContent: "center" }}>
-                <Text style={{ color: c.textMuted, fontSize: 10, lineHeight: 14 }}>
-                  {row.transferGroups.map((g) => `${g.name} $${Math.round(g.amount).toLocaleString()}`).join(" · ")}
-                </Text>
-              </View>
-            </View>
-          )}
 
           {/* Savings — shown every period when a savings account exists; reflects
               the projected balance, and the amount added when there's a transfer. */}

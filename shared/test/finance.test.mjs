@@ -589,24 +589,28 @@ console.log("✓ planning-fields export tests passed");
   console.log("✓ open-ended savings projection tests passed");
 }
 
-// ── Bills vs Transfers split ──────────────────────────────────────────────────
-// Money moving into another account you own (envelope like groceries/gas, or
-// savings) is a TRANSFER, not a bill. The card splits them, but both still leave
-// checking so billsTotal / End Balance are unchanged.
+// ── Distribution plan ─────────────────────────────────────────────────────────
+// Each payday's money is MOVED out of checking into the accounts that fund the
+// bills: a dedicated "bills" account, savings, an envelope. The card shows how
+// much to move where. Bills paid straight from checking need no move and land in
+// a "from checking" bucket. Group amounts sum to billsTotal.
 {
   const trAccounts = [
     { id: "chk", name: "Checking", current_balance: 3000, is_primary: true, is_accumulating: false, account_type: "checking" },
-    { id: "env", name: "Groceries & Gas", current_balance: 200, is_primary: false, is_accumulating: false, account_type: "checking" },
+    { id: "wbills", name: "Wiley Bills", current_balance: 0, is_primary: false, is_accumulating: false, account_type: "checking" },
+    { id: "env", name: "Food/Gas", current_balance: 200, is_primary: false, is_accumulating: false, account_type: "checking" },
     { id: "sav", name: "Savings", current_balance: 5000, is_primary: false, is_accumulating: false, account_type: "savings" },
     { id: "goal", name: "Car Fund", current_balance: 0, is_primary: false, is_accumulating: true, account_type: "savings", accumulation_target: 6000 },
   ];
   const trPeriods = [{ id: "p1", start_date: "2026-07-02", end_date: "2026-07-15" }];
-  const trIncome = [{ id: "pay", name: "Payroll", fixed_amount: 2500, frequency: "biweekly", next_pay_date: "2026-07-02" }];
+  const trIncome = [{ id: "pay", name: "Payroll", fixed_amount: 7514, frequency: "biweekly", next_pay_date: "2026-07-02" }];
   const trBills = [
-    { id: "rent", name: "Rent", amount: 1000, frequency: "payday", account_id: "chk" },        // true bill (leaves)
-    { id: "food", name: "Groceries", amount: 400, frequency: "payday", account_id: "chk", transfer_to_account_id: "env" }, // transfer → envelope
-    { id: "gas", name: "Gas", amount: 200, frequency: "payday", account_id: "chk", transfer_to_account_id: "env" },        // transfer → envelope (same acct)
-    { id: "save", name: "Savings", amount: 300, frequency: "payday", account_id: "chk", transfer_to_account_id: "sav" },   // transfer → savings
+    { id: "rent", name: "Rent", amount: 1500, frequency: "payday", account_id: "wbills" },   // funded via Wiley Bills
+    { id: "aps", name: "APS", amount: 1080, frequency: "payday", account_id: "wbills" },      // funded via Wiley Bills
+    { id: "food", name: "Food", amount: 500, frequency: "payday", account_id: "env" },        // funded via Food/Gas
+    { id: "gas", name: "Gas", amount: 300, frequency: "payday", account_id: "env" },          // funded via Food/Gas
+    { id: "save", name: "Savings", amount: 4000, frequency: "payday", account_id: "chk", transfer_to_account_id: "sav" }, // → Savings
+    { id: "netflix", name: "Netflix", amount: 20, frequency: "payday", account_id: "chk" },   // straight from checking
   ];
   const trCtx = {
     payPeriods: trPeriods, income: trIncome, bills: trBills, accounts: trAccounts,
@@ -614,57 +618,40 @@ console.log("✓ planning-fields export tests passed");
     transfers: {}, today: TODAY,
   };
   const r = getPayPeriodBreakdown(trCtx)[0];
+  const byId = Object.fromEntries(r.distribution.map((g) => [g.accountId ?? "__checking", g]));
 
-  assert.equal(r.billsTotal, 1900, "billsTotal unchanged — all four still leave checking");
-  assert.equal(r.trueBillsTotal, 1000, "only rent is a true bill");
-  assert.equal(r.transfersTotal, 900, "groceries+gas+savings are transfers (400+200+300)");
-  assert.equal(r.trueBillsTotal + r.transfersTotal, r.billsTotal, "split ties out to the total");
-
-  // Grouped by destination account, so the card can list them.
-  const byId = Object.fromEntries(r.transferGroups.map((g) => [g.accountId, g]));
-  assert.equal(r.transferGroups.length, 2, "two destinations: envelope and savings");
-  assert.equal(byId.env.amount, 600, "groceries+gas roll into one envelope transfer");
-  assert.equal(byId.env.isSavings, false, "envelope is not a savings destination");
-  assert.equal(byId.sav.amount, 300, "savings transfer grouped on its own");
+  assert.equal(r.billsTotal, 7400, "billsTotal = every unpaid bill");
+  assert.equal(byId.wbills.amount, 2580, "Rent+APS roll into the Wiley Bills move");
+  assert.equal(byId.env.amount, 800, "Food+Gas roll into the Food/Gas move");
+  assert.equal(byId.sav.amount, 4000, "Savings transfer on its own");
   assert.equal(byId.sav.isSavings, true, "savings destination flagged");
+  assert.equal(byId.__checking.amount, 20, "Netflix is paid straight from checking");
+  assert.equal(byId.__checking.isChecking, true, "checking bucket flagged");
+  assert.equal(r.distribution.reduce((s, g) => s + g.amount, 0), r.billsTotal, "moves sum to billsTotal");
+  // Sorted most-money-first.
+  assert.equal(r.distribution[0].accountId, "sav", "largest move (Savings) first");
 
-  // Accumulating (goal) account is NOT a lump transfer — it uses smoothed
-  // contributions, so a bill into it stays out of transferGroups.
-  const goalBills = [{ id: "car", name: "Car", amount: 500, frequency: "payday", transfer_to_account_id: "goal" }];
-  const goalCtx = { ...trCtx, bills: goalBills };
+  // Accumulating (goal) destinations are excluded — funded via Set Aside rows.
+  const goalCtx = { ...trCtx, bills: [{ id: "car", name: "Car", amount: 500, frequency: "payday", transfer_to_account_id: "goal" }] };
   const gr = getPayPeriodBreakdown(goalCtx)[0];
-  assert.equal(gr.transfersTotal, 0, "accumulating-goal bill is not counted as a transfer");
+  assert.equal(gr.distribution.length, 0, "goal-destined money is not in the distribution plan");
 
-  // REGRESSION: a bill merely PAID FROM a non-primary "bills" account (account_id
-  // set, no transfer_to) is still a real bill, not a transfer. This is the common
-  // pattern of drafting every bill from a dedicated bills account.
-  const billsAcctCtx = {
+  // is_transfer breaks an item out of its funding account into its own line, so
+  // Food/Gas drafted from the SAME bills account still show separately.
+  const breakoutCtx = {
     ...trCtx,
     bills: [
-      { id: "ins", name: "Allstate", amount: 138.88, frequency: "payday", account_id: "env" },
-      { id: "cox", name: "Cox", amount: 105, frequency: "payday", account_id: "env" },
+      { id: "rent", name: "Rent", amount: 1500, frequency: "payday", account_id: "wbills" },
+      { id: "food", name: "Food", amount: 500, frequency: "payday", account_id: "wbills", is_transfer: true },
+      { id: "gas", name: "Gas", amount: 300, frequency: "payday", account_id: "wbills", is_transfer: true },
     ],
   };
-  const bar = getPayPeriodBreakdown(billsAcctCtx)[0];
-  assert.equal(bar.transfersTotal, 0, "bills drafted from a non-primary account are NOT transfers");
-  assert.equal(bar.trueBillsTotal, 243.88, "they stay in the Bills total");
+  const br = getPayPeriodBreakdown(breakoutCtx)[0];
+  const brById = Object.fromEntries(br.distribution.map((g) => [g.accountId ?? g.name, g]));
+  assert.equal(brById.wbills.amount, 1500, "Rent stays under Wiley Bills");
+  assert.equal(brById.Food.amount, 500, "Food broke out as its own move line");
+  assert.equal(brById.Gas.amount, 300, "Gas broke out as its own move line");
+  assert.equal(br.distribution.reduce((s, g) => s + g.amount, 0), br.billsTotal, "still sums to billsTotal");
 
-  // Explicit is_transfer flag (chosen at creation) with NO destination account:
-  // food/gas tagged "not a bill" still shows as a transfer, by its own name.
-  const flagCtx = {
-    ...trCtx,
-    bills: [
-      { id: "rent", name: "Rent", amount: 1000, frequency: "payday", account_id: "chk" },
-      { id: "food", name: "Food", amount: 500, frequency: "payday", account_id: "chk", is_transfer: true },
-      { id: "gas", name: "Gas", amount: 300, frequency: "payday", account_id: "chk", is_transfer: true },
-    ],
-  };
-  const fr = getPayPeriodBreakdown(flagCtx)[0];
-  assert.equal(fr.transfersTotal, 800, "flagged transfers with no destination still total up");
-  assert.equal(fr.trueBillsTotal, 1000, "only rent stays a bill");
-  const frNames = fr.transferGroups.map((g) => g.name).sort();
-  assert.deepEqual(frNames, ["Food", "Gas"], "destination-less transfers show by their own name");
-  assert.equal(fr.transferGroups.every((g) => g.accountId === null), true, "no destination account");
-
-  console.log("✓ bills vs transfers split tests passed");
+  console.log("✓ distribution plan tests passed");
 }
