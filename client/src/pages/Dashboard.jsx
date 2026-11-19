@@ -2981,7 +2981,7 @@ function Dashboard() {
                           <span style={{ fontSize: "12px", color: "#6E7681", marginTop: "2px" }}>{isExpanded ? "▲" : "▼"}</span>
                         </div>
                       ) : (
-                      <div style={{ display: "flex", alignItems: "center", gap: "14px" }}>
+                      <div style={{ display: "flex", alignItems: "flex-start", gap: "14px" }}>
                         {outlook && !isExpanded && (
                           <div style={{ textAlign: "right", display: "flex", flexDirection: "column", gap: "2px" }}>
                             <div style={{ fontFamily: "'DM Mono', monospace", fontSize: "12px", color: "#4ADE80" }}>+${fmt(item.pendingIncome)}</div>
