@@ -2936,7 +2936,7 @@ function Dashboard() {
                     {/* Card header */}
                     <div
                       onClick={() => setExpandedPeriods(prev => { const n = new Set(prev); n.has(i) ? n.delete(i) : n.add(i); return n; })}
-                      style={{ display: "flex", flexDirection: isMobile ? "column" : "row", justifyContent: "space-between", alignItems: isMobile ? "stretch" : "flex-start", gap: isMobile ? "10px" : "0", cursor: "pointer", marginBottom: isExpanded ? "16px" : "0" }}
+                      style={{ display: "flex", flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", gap: "12px", cursor: "pointer", marginBottom: isExpanded ? "16px" : "0" }}
                     >
                       <div style={{ minWidth: 0 }}>
                         <div style={{ fontSize: "14px", fontWeight: "600", color: "#F0F6FC", display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
@@ -2956,17 +2956,42 @@ function Dashboard() {
                           </div>
                         )}
                       </div>
-                      <div style={{ display: "flex", alignItems: "center", gap: isMobile ? "0" : "14px", justifyContent: isMobile ? "space-between" : "flex-end", width: isMobile ? "100%" : "auto" }}>
-                        {outlook && !isExpanded && !isMobile && (
+                      {isMobile ? (
+                        /* Narrow screens: stack End Balance over Savings on the
+                           right so the number column is only one value wide,
+                           leaving the date its own room. */
+                        <div style={{ display: "flex", alignItems: "flex-start", gap: "8px", flexShrink: 0 }}>
+                          <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: "8px" }}>
+                            <div style={{ textAlign: "right" }}>
+                              <div style={{ fontSize: "9px", color: "#8B8FA8", letterSpacing: "0.1em", textTransform: "uppercase", fontWeight: "600", marginBottom: "2px" }}>End Balance</div>
+                              <div style={{ fontFamily: "'DM Mono', monospace", fontSize: "19px", fontWeight: "500", color: item.endBalance < 0 ? "#F87171" : "#4ADE80", whiteSpace: "nowrap" }}>
+                                {item.endBalance < 0 ? "-" : ""}${fmt(Math.abs(item.endBalance))}
+                              </div>
+                            </div>
+                            {hasSavings && (
+                              <div style={{ textAlign: "right" }}>
+                                <div style={{ fontSize: "9px", color: "#38BDF8", letterSpacing: "0.1em", textTransform: "uppercase", fontWeight: "600", marginBottom: "2px" }}>Savings</div>
+                                <div style={{ fontFamily: "'DM Mono', monospace", fontSize: "15px", fontWeight: "500", color: "#38BDF8", whiteSpace: "nowrap" }}>
+                                  ${fmt(item.savingsEnd ?? 0)}
+                                  {item.savingsAdded > 0 && <span style={{ fontSize: "10px", color: "#8B8FA8" }}> +${fmt(item.savingsAdded)}</span>}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                          <span style={{ fontSize: "12px", color: "#6E7681", marginTop: "2px" }}>{isExpanded ? "▲" : "▼"}</span>
+                        </div>
+                      ) : (
+                      <div style={{ display: "flex", alignItems: "center", gap: "14px" }}>
+                        {outlook && !isExpanded && (
                           <div style={{ textAlign: "right", display: "flex", flexDirection: "column", gap: "2px" }}>
                             <div style={{ fontFamily: "'DM Mono', monospace", fontSize: "12px", color: "#4ADE80" }}>+${fmt(item.pendingIncome)}</div>
                             <div style={{ fontFamily: "'DM Mono', monospace", fontSize: "12px", color: "#F87171" }}>-${fmt(item.billsDeducted)}</div>
                           </div>
                         )}
                         {hasSavings && (
-                          <div style={{ textAlign: isMobile ? "left" : "right" }}>
+                          <div style={{ textAlign: "right" }}>
                             <div style={{ fontSize: "9px", color: "#38BDF8", letterSpacing: "0.1em", textTransform: "uppercase", fontWeight: "600", marginBottom: "3px" }}>Savings</div>
-                            <div style={{ fontFamily: "'DM Mono', monospace", fontSize: isMobile ? "17px" : "22px", fontWeight: "500", color: "#38BDF8", whiteSpace: "nowrap" }}>
+                            <div style={{ fontFamily: "'DM Mono', monospace", fontSize: "22px", fontWeight: "500", color: "#38BDF8", whiteSpace: "nowrap" }}>
                               ${fmt(item.savingsEnd ?? 0)}
                             </div>
                             {item.savingsAdded > 0 && (
@@ -2974,16 +2999,15 @@ function Dashboard() {
                             )}
                           </div>
                         )}
-                        <div style={{ textAlign: "right", display: "flex", alignItems: "center", gap: isMobile ? "8px" : "14px" }}>
-                          <div style={{ textAlign: "right" }}>
-                            <div style={{ fontSize: "9px", color: "#8B8FA8", letterSpacing: "0.1em", textTransform: "uppercase", fontWeight: "600", marginBottom: "3px" }}>End Balance</div>
-                            <div style={{ fontFamily: "'DM Mono', monospace", fontSize: isMobile ? "17px" : "22px", fontWeight: "500", color: item.endBalance < 0 ? "#F87171" : "#4ADE80", whiteSpace: "nowrap" }}>
-                              {item.endBalance < 0 ? "-" : ""}${fmt(Math.abs(item.endBalance))}
-                            </div>
+                        <div style={{ textAlign: "right" }}>
+                          <div style={{ fontSize: "9px", color: "#8B8FA8", letterSpacing: "0.1em", textTransform: "uppercase", fontWeight: "600", marginBottom: "3px" }}>End Balance</div>
+                          <div style={{ fontFamily: "'DM Mono', monospace", fontSize: "22px", fontWeight: "500", color: item.endBalance < 0 ? "#F87171" : "#4ADE80", whiteSpace: "nowrap" }}>
+                            {item.endBalance < 0 ? "-" : ""}${fmt(Math.abs(item.endBalance))}
                           </div>
-                          <span style={{ fontSize: "12px", color: "#6E7681" }}>{isExpanded ? "▲" : "▼"}</span>
                         </div>
+                        <span style={{ fontSize: "12px", color: "#6E7681" }}>{isExpanded ? "▲" : "▼"}</span>
                       </div>
+                      )}
                     </div>
 
                     {isExpanded && (
