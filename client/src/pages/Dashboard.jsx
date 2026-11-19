@@ -2936,11 +2936,11 @@ function Dashboard() {
                     {/* Card header */}
                     <div
                       onClick={() => setExpandedPeriods(prev => { const n = new Set(prev); n.has(i) ? n.delete(i) : n.add(i); return n; })}
-                      style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", cursor: "pointer", marginBottom: isExpanded ? "16px" : "0" }}
+                      style={{ display: "flex", flexDirection: isMobile ? "column" : "row", justifyContent: "space-between", alignItems: isMobile ? "stretch" : "flex-start", gap: isMobile ? "10px" : "0", cursor: "pointer", marginBottom: isExpanded ? "16px" : "0" }}
                     >
-                      <div>
-                        <div style={{ fontSize: "14px", fontWeight: "600", color: "#F0F6FC", display: "flex", alignItems: "center", gap: "8px" }}>
-                          {fmtDate(item.period.start_date)} — {fmtDate(item.period.end_date)}
+                      <div style={{ minWidth: 0 }}>
+                        <div style={{ fontSize: "14px", fontWeight: "600", color: "#F0F6FC", display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
+                          <span style={{ whiteSpace: "nowrap" }}>{fmtDate(item.period.start_date)} — {fmtDate(item.period.end_date)}</span>
                           {item.isCurrent && (
                             <span style={{ fontSize: "9px", background: "#6C63FF", color: "#fff", padding: "2px 8px", borderRadius: "4px", letterSpacing: "0.08em", textTransform: "uppercase", fontWeight: "700" }}>Current</span>
                           )}
@@ -2956,17 +2956,17 @@ function Dashboard() {
                           </div>
                         )}
                       </div>
-                      <div style={{ display: "flex", alignItems: "center", gap: "14px" }}>
-                        {outlook && !isExpanded && (
+                      <div style={{ display: "flex", alignItems: "center", gap: isMobile ? "0" : "14px", justifyContent: isMobile ? "space-between" : "flex-end", width: isMobile ? "100%" : "auto" }}>
+                        {outlook && !isExpanded && !isMobile && (
                           <div style={{ textAlign: "right", display: "flex", flexDirection: "column", gap: "2px" }}>
                             <div style={{ fontFamily: "'DM Mono', monospace", fontSize: "12px", color: "#4ADE80" }}>+${fmt(item.pendingIncome)}</div>
                             <div style={{ fontFamily: "'DM Mono', monospace", fontSize: "12px", color: "#F87171" }}>-${fmt(item.billsDeducted)}</div>
                           </div>
                         )}
                         {hasSavings && (
-                          <div style={{ textAlign: "right" }}>
+                          <div style={{ textAlign: isMobile ? "left" : "right" }}>
                             <div style={{ fontSize: "9px", color: "#38BDF8", letterSpacing: "0.1em", textTransform: "uppercase", fontWeight: "600", marginBottom: "3px" }}>Savings</div>
-                            <div style={{ fontFamily: "'DM Mono', monospace", fontSize: "22px", fontWeight: "500", color: "#38BDF8", whiteSpace: "nowrap" }}>
+                            <div style={{ fontFamily: "'DM Mono', monospace", fontSize: isMobile ? "17px" : "22px", fontWeight: "500", color: "#38BDF8", whiteSpace: "nowrap" }}>
                               ${fmt(item.savingsEnd ?? 0)}
                             </div>
                             {item.savingsAdded > 0 && (
@@ -2974,13 +2974,15 @@ function Dashboard() {
                             )}
                           </div>
                         )}
-                        <div style={{ textAlign: "right" }}>
-                          <div style={{ fontSize: "9px", color: "#8B8FA8", letterSpacing: "0.1em", textTransform: "uppercase", fontWeight: "600", marginBottom: "3px" }}>End Balance</div>
-                          <div style={{ fontFamily: "'DM Mono', monospace", fontSize: "22px", fontWeight: "500", color: item.endBalance < 0 ? "#F87171" : "#4ADE80" }}>
-                            {item.endBalance < 0 ? "-" : ""}${fmt(Math.abs(item.endBalance))}
+                        <div style={{ textAlign: "right", display: "flex", alignItems: "center", gap: isMobile ? "8px" : "14px" }}>
+                          <div style={{ textAlign: "right" }}>
+                            <div style={{ fontSize: "9px", color: "#8B8FA8", letterSpacing: "0.1em", textTransform: "uppercase", fontWeight: "600", marginBottom: "3px" }}>End Balance</div>
+                            <div style={{ fontFamily: "'DM Mono', monospace", fontSize: isMobile ? "17px" : "22px", fontWeight: "500", color: item.endBalance < 0 ? "#F87171" : "#4ADE80", whiteSpace: "nowrap" }}>
+                              {item.endBalance < 0 ? "-" : ""}${fmt(Math.abs(item.endBalance))}
+                            </div>
                           </div>
+                          <span style={{ fontSize: "12px", color: "#6E7681" }}>{isExpanded ? "▲" : "▼"}</span>
                         </div>
-                        <span style={{ fontSize: "12px", color: "#6E7681" }}>{isExpanded ? "▲" : "▼"}</span>
                       </div>
                     </div>
 
