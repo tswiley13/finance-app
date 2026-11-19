@@ -2910,7 +2910,7 @@ function Dashboard() {
           <div className="dashboard-grid">
             <div className="dashboard-left">
               {/* Pay-period view tabs: Next 6 (detailed) vs 6-Month Outlook (condensed, grouped by month) */}
-              <div style={{ display: "flex", gap: "4px", marginBottom: "12px", background: "rgba(255,255,255,0.04)", borderRadius: "8px", padding: "4px", width: "fit-content" }}>
+              <div style={{ display: "flex", gap: "4px", background: "rgba(255,255,255,0.04)", borderRadius: "8px", padding: "4px", width: "fit-content" }}>
                 {[["next6", "Next 6"], ["outlook", "6-Month Outlook"]].map(([key, label]) => (
                   <button key={key} type="button" onClick={() => setPeriodView(key)}
                     style={{ padding: "7px 14px", fontSize: "12px", fontWeight: "600", fontFamily: "'Inter', sans-serif", border: "none", borderRadius: "6px", cursor: "pointer", background: periodView === key ? "#6C63FF" : "transparent", color: periodView === key ? "#fff" : "#8B8FA8" }}>
@@ -7163,6 +7163,14 @@ function Dashboard() {
   function renderSidePanel() {
     return (
       <div className="dashboard-right">
+              {/* Invisible clone of the pay-period toggle, so the Accounts card
+                  lines up with the first pay-period card (not the toggle above
+                  it). Hidden when the grid collapses to one column. */}
+              {!isNarrow && (
+                <div aria-hidden="true" style={{ display: "flex", gap: "4px", borderRadius: "8px", padding: "4px", width: "fit-content", visibility: "hidden", pointerEvents: "none" }}>
+                  <span style={{ padding: "7px 14px", fontSize: "12px", fontWeight: "600", fontFamily: "'Inter', sans-serif" }}>6-Month Outlook</span>
+                </div>
+              )}
               <div className="panel">
                 <div className="panel-header">
                   <div className="panel-title">Accounts</div>
