@@ -3012,8 +3012,8 @@ function Dashboard() {
 
                     {isExpanded && (
                     <>
-                    {/* Start | Income */}
-                    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(110px, 1fr))", gap: "8px" }}>
+                    {/* Start | Income | Bills */}
+                    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(104px, 1fr))", gap: "8px" }}>
                       <div style={{ background: "rgba(255,255,255,0.03)", borderRadius: "8px", padding: "10px 12px" }}>
                         <div style={{ fontSize: "9px", color: "#8B8FA8", letterSpacing: "0.1em", textTransform: "uppercase", fontWeight: "600", marginBottom: "4px" }}>Start</div>
                         <div style={{ fontFamily: "'DM Mono', monospace", fontSize: "14px", color: "#8B8FA8" }}>${fmt(item.startBalance)}</div>
@@ -3023,6 +3023,10 @@ function Dashboard() {
                           {item.isCurrent ? "Pending Income" : "Income"}
                         </div>
                         <div style={{ fontFamily: "'DM Mono', monospace", fontSize: "14px", color: "#4ADE80" }}>+${fmt(item.pendingIncome)}</div>
+                      </div>
+                      <div style={{ background: "rgba(255,255,255,0.03)", borderRadius: "8px", padding: "10px 12px" }}>
+                        <div style={{ fontSize: "9px", color: "#8B8FA8", letterSpacing: "0.1em", textTransform: "uppercase", fontWeight: "600", marginBottom: "4px" }}>Bills Out</div>
+                        <div style={{ fontFamily: "'DM Mono', monospace", fontSize: "14px", color: item.billsDeducted > 0 ? "#F87171" : "#8B8FA8" }}>{item.billsDeducted > 0 ? `-$${fmt(item.billsDeducted)}` : "—"}</div>
                       </div>
                     </div>
 
@@ -3088,11 +3092,6 @@ function Dashboard() {
                               <span style={{ fontFamily: "'DM Mono', monospace", fontSize: "13px", color: "#8B8FA8" }}>${fmt(checking.amount)}</span>
                             </div>
                           )}
-                          {/* Total leaving checking this period (moves + direct bills). */}
-                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", paddingTop: "8px", marginTop: "6px", borderTop: "1px solid rgba(96,165,250,0.2)" }}>
-                            <span style={{ fontSize: "10px", color: "#8B8FA8", fontWeight: "700", letterSpacing: "0.1em", textTransform: "uppercase" }}>Total Out</span>
-                            <span style={{ fontFamily: "'DM Mono', monospace", fontSize: "15px", fontWeight: "600", color: "#F87171" }}>${fmt(moves.reduce((s, g) => s + g.amount, 0) + (checking?.amount || 0) + carryTotal)}</span>
-                          </div>
                           {carryTotal > 0 && <div style={{ fontSize: "9px", color: "#FBBF24", marginTop: "6px" }}>incl. ${fmt(carryTotal)} carried over</div>}
                         </div>
                       );

@@ -323,13 +323,12 @@ function PeriodCard({ row, open, onToggle, d, run }) {
             const dist = row.distribution || [];
             const moves = dist.filter((g) => !g.isChecking);
             const checking = dist.find((g) => g.isChecking);
-            const billsShown = moves.length ? (checking?.amount || 0) : row.billsDeducted;
             return (
               <>
                 <View style={{ flexDirection: "row", gap: 6 }}>
                   <SubTile label="Start" value={row.startBalance} color={c.textMuted} />
                   <SubTile label={row.isCurrent ? "Pending" : "Income"} value={row.pendingIncome} color={c.positive} prefix="+" />
-                  <SubTile label={moves.length ? "From Checking" : "Bills"} value={-billsShown} color={billsShown > 0 ? c.danger : c.textMuted} />
+                  <SubTile label="Bills" value={-row.billsDeducted} color={row.billsDeducted > 0 ? c.danger : c.textMuted} />
                 </View>
                 {moves.length > 0 && (
                   <View style={{ marginTop: 8, backgroundColor: "rgba(96,165,250,0.06)", borderRadius: 10, padding: 10 }}>
@@ -374,11 +373,6 @@ function PeriodCard({ row, open, onToggle, d, run }) {
                         <Text style={{ color: c.textMuted, fontSize: 13, fontVariant: ["tabular-nums"] }}>${Math.round(checking.amount).toLocaleString()}</Text>
                       </View>
                     )}
-                    {/* Total leaving checking this period. */}
-                    <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingTop: 8, marginTop: 6, borderTopWidth: 1, borderTopColor: "rgba(96,165,250,0.2)" }}>
-                      <Text style={{ color: c.textMuted, fontSize: 10, fontWeight: "700", letterSpacing: 0.6 }}>TOTAL OUT</Text>
-                      <Text style={{ color: c.danger, fontSize: 14, fontWeight: "700", fontVariant: ["tabular-nums"] }}>${Math.round(moves.reduce((sm, g) => sm + g.amount, 0) + (checking?.amount || 0)).toLocaleString()}</Text>
-                    </View>
                   </View>
                 )}
               </>
