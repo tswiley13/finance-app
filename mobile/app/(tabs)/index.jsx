@@ -374,6 +374,11 @@ function PeriodCard({ row, open, onToggle, d, run }) {
                         <Text style={{ color: c.textMuted, fontSize: 13, fontVariant: ["tabular-nums"] }}>${Math.round(checking.amount).toLocaleString()}</Text>
                       </View>
                     )}
+                    {/* Total leaving checking this period. */}
+                    <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingTop: 8, marginTop: 6, borderTopWidth: 1, borderTopColor: "rgba(96,165,250,0.2)" }}>
+                      <Text style={{ color: c.textMuted, fontSize: 10, fontWeight: "700", letterSpacing: 0.6 }}>TOTAL OUT</Text>
+                      <Text style={{ color: c.danger, fontSize: 14, fontWeight: "700", fontVariant: ["tabular-nums"] }}>${Math.round(moves.reduce((sm, g) => sm + g.amount, 0) + (checking?.amount || 0)).toLocaleString()}</Text>
+                    </View>
                   </View>
                 )}
               </>
